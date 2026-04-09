@@ -13,6 +13,12 @@ import '../../features/booking/presentation/pages/bookings_list_screen.dart';
 import '../../features/booking/presentation/pages/payment_screen.dart';
 import '../../features/booking/presentation/pages/booking_success_screen.dart';
 import '../../features/profile/presentation/pages/profile_screen.dart';
+import '../../features/profile/presentation/pages/edit_profile_screen.dart';
+import '../../features/profile/presentation/pages/certificates_screen.dart';
+import '../../features/profile/presentation/pages/favorites_screen.dart';
+import '../../features/profile/presentation/pages/notifications_screen.dart';
+import '../../features/profile/presentation/pages/help_screen.dart';
+import '../../features/profile/presentation/pages/about_screen.dart';
 import '../../features/component_gallery/presentation/pages/component_gallery_screen.dart';
 
 class AppRouter {
@@ -35,8 +41,12 @@ class AppRouter {
   static const String bookingSuccess = '/booking-success/:bookingId';
   static const String bookings = '/bookings';
   static const String profile = '/profile';
-  static const String settings = '/settings';
-  static const String certificates = '/certificates';
+  static const String editProfile = '/profile/edit';
+  static const String certificates = '/profile/certificates';
+  static const String favorites = '/profile/favorites';
+  static const String notifications = '/profile/notifications';
+  static const String help = '/profile/help';
+  static const String about = '/profile/about';
   static const String componentGallery = '/components';
 
   static final GoRouter router = GoRouter(
@@ -169,6 +179,56 @@ class AppRouter {
             transitionsBuilder: _fadeScaleTransition,
           );
         },
+      ),
+
+      // Profile Sub-pages
+      GoRoute(
+        path: editProfile,
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const EditProfileScreen(),
+          transitionsBuilder: _slideRightTransition,
+        ),
+      ),
+      GoRoute(
+        path: certificates,
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const CertificatesScreen(),
+          transitionsBuilder: _slideRightTransition,
+        ),
+      ),
+      GoRoute(
+        path: favorites,
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const FavoritesScreen(),
+          transitionsBuilder: _slideRightTransition,
+        ),
+      ),
+      GoRoute(
+        path: notifications,
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const NotificationsScreen(),
+          transitionsBuilder: _slideRightTransition,
+        ),
+      ),
+      GoRoute(
+        path: help,
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const HelpScreen(),
+          transitionsBuilder: _slideRightTransition,
+        ),
+      ),
+      GoRoute(
+        path: about,
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const AboutScreen(),
+          transitionsBuilder: _slideRightTransition,
+        ),
       ),
 
       // Component Gallery (Development)
