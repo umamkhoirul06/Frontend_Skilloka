@@ -1,0 +1,139 @@
+{
+  "@@locale": "id",
+  "appName": "Skilloka",
+  "tagline": "Kompetensi Tanpa Batas",
+  
+  "greetingMorning": "Selamat pagi",
+  "greetingAfternoon": "Selamat siang",
+  "greetingEvening": "Selamat malam",
+  
+  "onboardingTitle1": "Cari LPK Terbaik",
+  "onboardingDesc1": "Temukan Lembaga Pelatihan Kerja terverifikasi di sekitar Anda dengan mudah",
+  "onboardingTitle2": "Booking Mudah",
+  "onboardingDesc2": "Daftar kursus favorit Anda hanya dengan beberapa ketukan",
+  "onboardingTitle3": "Sertifikat Resmi",
+  "onboardingDesc3": "Dapatkan sertifikat yang diakui Dinas Ketenagakerjaan",
+  
+  "login": "Masuk",
+  "register": "Daftar",
+  "continueWithGoogle": "Lanjutkan dengan Google",
+  "continueWithApple": "Lanjutkan dengan Apple",
+  "phoneNumber": "Nomor Telepon",
+  "verifyOtp": "Verifikasi OTP",
+  "resendOtp": "Kirim ulang OTP",
+  "biometricLogin": "Masuk dengan sidik jari",
+  
+  "home": "Beranda",
+  "search": "Cari",
+  "bookings": "Pesanan",
+  "profile": "Profil",
+  
+  "searchPlaceholder": "Cari kursus atau LPK...",
+  "nearYou": "Terdekat dari Anda",
+  "popularCourses": "Kursus Populer di Indramayu",
+  "verifiedLPK": "LPK Terverifikasi",
+  "viewAll": "Lihat Semua",
+  
+  "categoryLas": "Las",
+  "categoryIT": "IT & Komputer",
+  "categoryOtomotif": "Otomotif",
+  "categoryTataBusana": "Tata Busana",
+  "categoryTataBoga": "Tata Boga",
+  "categoryBahasa": "Bahasa",
+  
+  "verifiedByDinas": "Terverifikasi Dinas",
+  "distance": "{distance} km",
+  "@distance": {
+    "placeholders": {
+      "distance": {"type": "String"}
+    }
+  },
+  "rating": "{rating}",
+  "@rating": {
+    "placeholders": {
+      "rating": {"type": "String"}
+    }
+  },
+  "reviews": "({count} ulasan)",
+  "@reviews": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  
+  "courseDetail": "Detail Kursus",
+  "syllabus": "Silabus",
+  "schedule": "Jadwal",
+  "price": "Harga",
+  "registerNow": "Daftar Sekarang",
+  "addToCart": "Tambah ke Keranjang",
+  
+  "lpkProfile": "Profil LPK",
+  "facilities": "Fasilitas",
+  "alumniReviews": "Kata Alumni",
+  "getDirections": "Petunjuk Arah",
+  "contactWhatsApp": "Hubungi via WhatsApp",
+  "call": "Telepon",
+  
+  "booking": "Pemesanan",
+  "selectBatch": "Pilih Batch",
+  "personalData": "Data Pribadi",
+  "termsCondition": "Syarat & Ketentuan",
+  "iAgree": "Saya setuju dengan syarat dan ketentuan",
+  "confirmBooking": "Konfirmasi Pemesanan",
+  
+  "payment": "Pembayaran",
+  "paymentMethod": "Metode Pembayaran",
+  "qris": "QRIS",
+  "virtualAccount": "Virtual Account",
+  "eWallet": "E-Wallet",
+  "paymentExpiry": "Bayar sebelum",
+  "payNow": "Bayar Sekarang",
+  
+  "bookingSuccess": "Pemesanan Berhasil!",
+  "eTicket": "E-Ticket",
+  "downloadTicket": "Unduh Tiket",
+  "shareBooking": "Bagikan",
+  "addToCalendar": "Tambah ke Kalender",
+  
+  "myBookings": "Pesanan Saya",
+  "activeBookings": "Aktif",
+  "completedBookings": "Selesai",
+  "bookingStatus": "Status",
+  "statusPending": "Menunggu Pembayaran",
+  "statusConfirmed": "Dikonfirmasi",
+  "statusInProgress": "Sedang Berjalan",
+  "statusCompleted": "Selesai",
+  
+  "certificates": "Sertifikat",
+  "downloadPdf": "Unduh PDF",
+  "shareCertificate": "Bagikan",
+  "verifyCertificate": "Verifikasi",
+  
+  "settings": "Pengaturan",
+  "editProfile": "Edit Profil",
+  "notifications": "Notifikasi",
+  "darkMode": "Mode Gelap",
+  "language": "Bahasa",
+  "helpCenter": "Pusat Bantuan",
+  "faq": "FAQ",
+  "contactSupport": "Hubungi Dukungan",
+  "logout": "Keluar",
+  
+  "error": "Terjadi Kesalahan",
+  "retry": "Coba Lagi",
+  "noInternet": "Tidak ada koneksi internet",
+  "serverError": "Server sedang bermasalah",
+  "sessionExpired": "Sesi telah berakhir",
+  
+  "loading": "Memuat...",
+  "pullToRefresh": "Tarik untuk memperbarui",
+  "noData": "Tidak ada data",
+  "cancel": "Batal",
+  "confirm": "Konfirmasi",
+  "save": "Simpan",
+  "next": "Selanjutnya",
+  "back": "Kembali",
+  "skip": "Lewati",
+  "done": "Selesai"
+}

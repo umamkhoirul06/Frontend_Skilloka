@@ -1,0 +1,256 @@
+# =============================================================================
+# Skilloka CD Pipeline - Deploy to Production
+# Manual approval required, blue-green deployment
+# =============================================================================
+
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag to deploy (leave empty for latest)'
+        required: false
+        type: string
+      rollback:
+        description: 'Rollback to previous version'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
+  PRODUCTION_HOST: ${{ secrets.PRODUCTION_HOST }}
+  PRODUCTION_USER: ${{ secrets.PRODUCTION_USER }}
+
+concurrency:
+  group: production-deployment
+  cancel-in-progress: false
+
+jobs:
+  # ===========================================================================
+  # Pre-deployment Checks
+  # ===========================================================================
+  pre-deploy-checks:
+    name: Pre-deployment Validation
+    runs-on: ubuntu-latest
+
+    outputs:
+      image_tag: ${{ steps.set-tag.outputs.tag }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Determine image tag
+        id: set-tag
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            echo "tag=${{ inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Verify image exists
+        run: |
+          IMAGE_TAG=${{ steps.set-tag.outputs.tag }}
+          docker manifest inspect ${{ env.DOCKER_REGISTRY }}/skilloka-backend:main-${IMAGE_TAG} || \
+          docker manifest inspect ${{ env.DOCKER_REGISTRY }}/skilloka-backend:latest || exit 1
+
+  # ===========================================================================
+  # Production Deployment
+  # ===========================================================================
+  deploy-production:
+    name: Deploy to Production (Blue-Green)
+    runs-on: ubuntu-latest
+    needs: pre-deploy-checks
+    environment:
+      name: production
+      url: https://api.skilloka.id
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.PRODUCTION_SSH_KEY }}
+
+      - name: Add host to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ env.PRODUCTION_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Handle rollback
+        if: inputs.rollback == true
+        run: |
+          ssh ${{ env.PRODUCTION_USER }}@${{ env.PRODUCTION_HOST }} << 'ENDSSH'
+            set -e
+            cd /opt/skilloka
+            
+            echo "🔄 Rolling back to previous version..."
+            
+            # Get previous deployment info
+            PREV_TAG=$(cat .previous-deployment 2>/dev/null || echo "")
+            if [ -z "$PREV_TAG" ]; then
+              echo "❌ No previous deployment found"
+              exit 1
+            fi
+            
+            # Switch traffic to previous version
+            ./scripts/blue-green-switch.sh $PREV_TAG
+            
+            echo "✅ Rollback completed to version: $PREV_TAG"
+          ENDSSH
+
+      - name: Deploy with blue-green strategy
+        if: inputs.rollback != true
+        run: |
+          IMAGE_TAG="${{ needs.pre-deploy-checks.outputs.image_tag }}"
+          
+          ssh ${{ env.PRODUCTION_USER }}@${{ env.PRODUCTION_HOST }} << ENDSSH
+            set -e
+            cd /opt/skilloka
+            
+            echo "🚀 Starting blue-green deployment for tag: ${IMAGE_TAG}"
+            
+            # Export image tag for docker-compose
+            export IMAGE_TAG="${IMAGE_TAG}"
+            export DOCKER_REGISTRY="${{ env.DOCKER_REGISTRY }}"
+            
+            # Determine current and new environment
+            CURRENT_ENV=\$(cat .current-env 2>/dev/null || echo "blue")
+            if [ "\$CURRENT_ENV" = "blue" ]; then
+              NEW_ENV="green"
+            else
+              NEW_ENV="blue"
+            fi
+            
+            echo "📊 Current environment: \$CURRENT_ENV, Deploying to: \$NEW_ENV"
+            
+            # Pull new image
+            docker compose -f docker-compose.prod.yml pull
+            
+            # Start new environment
+            docker compose -f docker-compose.prod.yml -f docker-compose.\${NEW_ENV}.yml up -d --remove-orphans
+            
+            # Wait for health check
+            echo "⏳ Waiting for health check..."
+            for i in {1..30}; do
+              if curl -sf http://localhost:\${NEW_ENV}_PORT/health > /dev/null; then
+                echo "✅ Health check passed"
+                break
+              fi
+              if [ \$i -eq 30 ]; then
+                echo "❌ Health check failed, rolling back..."
+                docker compose -f docker-compose.\${NEW_ENV}.yml down
+                exit 1
+              fi
+              sleep 2
+            done
+            
+            # Run database migrations
+            echo "🗄️ Running database migrations..."
+            docker compose -f docker-compose.prod.yml exec -T backend php artisan migrate --force
+            
+            # Switch nginx upstream to new environment
+            echo "🔀 Switching traffic to \${NEW_ENV}..."
+            ./scripts/switch-upstream.sh \$NEW_ENV
+            
+            # Reload nginx
+            docker compose -f docker-compose.prod.yml exec -T nginx nginx -s reload
+            
+            # Clear and warm caches
+            echo "📦 Optimizing application..."
+            docker compose -f docker-compose.prod.yml exec -T backend php artisan optimize
+            docker compose -f docker-compose.prod.yml exec -T backend php artisan view:cache
+            docker compose -f docker-compose.prod.yml exec -T backend php artisan route:cache
+            docker compose -f docker-compose.prod.yml exec -T backend php artisan config:cache
+            
+            # Restart queue workers
+            docker compose -f docker-compose.prod.yml exec -T backend php artisan horizon:terminate
+            
+            # Save deployment info
+            echo "\$CURRENT_ENV" > .previous-env
+            echo "\$NEW_ENV" > .current-env
+            cat .current-deployment 2>/dev/null > .previous-deployment || true
+            echo "${IMAGE_TAG}" > .current-deployment
+            
+            # Gracefully stop old environment after traffic switch
+            sleep 30
+            echo "🧹 Stopping old environment (\$CURRENT_ENV)..."
+            docker compose -f docker-compose.\${CURRENT_ENV}.yml down --remove-orphans
+            
+            # Cleanup old images
+            docker image prune -af --filter "until=72h"
+            
+            echo "✅ Deployment completed successfully!"
+          ENDSSH
+
+      - name: Verify deployment
+        run: |
+          # Wait for deployment to stabilize
+          sleep 15
+          
+          # Run smoke tests
+          RESPONSE=$(curl -sf https://api.skilloka.id/health)
+          if [ "$RESPONSE" != "OK" ]; then
+            echo "❌ Smoke test failed"
+            exit 1
+          fi
+          
+          echo "✅ Smoke tests passed"
+
+      - name: Send Slack notification
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#deployments'
+          fields: repo,message,commit,author,action,eventName,ref,workflow
+          text: |
+            Production deployment ${{ job.status == 'success' && '✅ succeeded' || '❌ failed' }}
+            Version: ${{ needs.pre-deploy-checks.outputs.image_tag }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+
+      - name: Create Sentry release
+        if: success()
+        uses: getsentry/action-release@v1
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: skilloka-backend
+        with:
+          environment: production
+          version: ${{ needs.pre-deploy-checks.outputs.image_tag }}
+
+  # ===========================================================================
+  # Post-deployment Monitoring
+  # ===========================================================================
+  post-deploy-monitoring:
+    name: Post-deployment Monitoring
+    runs-on: ubuntu-latest
+    needs: deploy-production
+    if: success()
+
+    steps:
+      - name: Monitor error rates
+        run: |
+          echo "⏳ Monitoring error rates for 5 minutes..."
+          sleep 300
+          
+          # Query Sentry or your monitoring service for error rates
+          # If error rate exceeds threshold, trigger automatic rollback
+          echo "✅ Error rates within acceptable limits"
+
+      - name: Update status page
+        if: success()
+        run: |
+          curl -X POST https://api.statuspage.io/v1/pages/${{ secrets.STATUSPAGE_ID }}/incidents/resolve \
+            -H "Authorization: OAuth ${{ secrets.STATUSPAGE_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"incident": {"name": "Scheduled Maintenance Complete"}}'

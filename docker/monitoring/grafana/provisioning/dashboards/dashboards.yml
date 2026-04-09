@@ -1,0 +1,17 @@
+# =============================================================================
+# Skilloka - Grafana Dashboard Provisioning
+# =============================================================================
+
+apiVersion: 1
+
+providers:
+  - name: 'Skilloka Dashboards'
+    orgId: 1
+    folder: 'Skilloka'
+    folderUid: 'skilloka'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards

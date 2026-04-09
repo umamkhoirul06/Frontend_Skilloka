@@ -1,0 +1,139 @@
+{
+  "@@locale": "en",
+  "appName": "Skilloka",
+  "tagline": "Competence Without Limits",
+  
+  "greetingMorning": "Good morning",
+  "greetingAfternoon": "Good afternoon",
+  "greetingEvening": "Good evening",
+  
+  "onboardingTitle1": "Find the Best LPK",
+  "onboardingDesc1": "Discover verified vocational training centers near you easily",
+  "onboardingTitle2": "Easy Booking",
+  "onboardingDesc2": "Register for your favorite courses with just a few taps",
+  "onboardingTitle3": "Official Certificates",
+  "onboardingDesc3": "Get certificates recognized by the Labor Department",
+  
+  "login": "Login",
+  "register": "Register",
+  "continueWithGoogle": "Continue with Google",
+  "continueWithApple": "Continue with Apple",
+  "phoneNumber": "Phone Number",
+  "verifyOtp": "Verify OTP",
+  "resendOtp": "Resend OTP",
+  "biometricLogin": "Login with fingerprint",
+  
+  "home": "Home",
+  "search": "Search",
+  "bookings": "Bookings",
+  "profile": "Profile",
+  
+  "searchPlaceholder": "Search courses or LPK...",
+  "nearYou": "Near You",
+  "popularCourses": "Popular Courses in Indramayu",
+  "verifiedLPK": "Verified LPK",
+  "viewAll": "View All",
+  
+  "categoryLas": "Welding",
+  "categoryIT": "IT & Computer",
+  "categoryOtomotif": "Automotive",
+  "categoryTataBusana": "Fashion Design",
+  "categoryTataBoga": "Culinary",
+  "categoryBahasa": "Languages",
+  
+  "verifiedByDinas": "Verified by Department",
+  "distance": "{distance} km",
+  "@distance": {
+    "placeholders": {
+      "distance": {"type": "String"}
+    }
+  },
+  "rating": "{rating}",
+  "@rating": {
+    "placeholders": {
+      "rating": {"type": "String"}
+    }
+  },
+  "reviews": "({count} reviews)",
+  "@reviews": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  
+  "courseDetail": "Course Detail",
+  "syllabus": "Syllabus",
+  "schedule": "Schedule",
+  "price": "Price",
+  "registerNow": "Register Now",
+  "addToCart": "Add to Cart",
+  
+  "lpkProfile": "LPK Profile",
+  "facilities": "Facilities",
+  "alumniReviews": "Alumni Reviews",
+  "getDirections": "Get Directions",
+  "contactWhatsApp": "Contact via WhatsApp",
+  "call": "Call",
+  
+  "booking": "Booking",
+  "selectBatch": "Select Batch",
+  "personalData": "Personal Data",
+  "termsCondition": "Terms & Conditions",
+  "iAgree": "I agree to the terms and conditions",
+  "confirmBooking": "Confirm Booking",
+  
+  "payment": "Payment",
+  "paymentMethod": "Payment Method",
+  "qris": "QRIS",
+  "virtualAccount": "Virtual Account",
+  "eWallet": "E-Wallet",
+  "paymentExpiry": "Pay before",
+  "payNow": "Pay Now",
+  
+  "bookingSuccess": "Booking Successful!",
+  "eTicket": "E-Ticket",
+  "downloadTicket": "Download Ticket",
+  "shareBooking": "Share",
+  "addToCalendar": "Add to Calendar",
+  
+  "myBookings": "My Bookings",
+  "activeBookings": "Active",
+  "completedBookings": "Completed",
+  "bookingStatus": "Status",
+  "statusPending": "Pending Payment",
+  "statusConfirmed": "Confirmed",
+  "statusInProgress": "In Progress",
+  "statusCompleted": "Completed",
+  
+  "certificates": "Certificates",
+  "downloadPdf": "Download PDF",
+  "shareCertificate": "Share",
+  "verifyCertificate": "Verify",
+  
+  "settings": "Settings",
+  "editProfile": "Edit Profile",
+  "notifications": "Notifications",
+  "darkMode": "Dark Mode",
+  "language": "Language",
+  "helpCenter": "Help Center",
+  "faq": "FAQ",
+  "contactSupport": "Contact Support",
+  "logout": "Logout",
+  
+  "error": "An Error Occurred",
+  "retry": "Retry",
+  "noInternet": "No internet connection",
+  "serverError": "Server is having issues",
+  "sessionExpired": "Session expired",
+  
+  "loading": "Loading...",
+  "pullToRefresh": "Pull to refresh",
+  "noData": "No data",
+  "cancel": "Cancel",
+  "confirm": "Confirm",
+  "save": "Save",
+  "next": "Next",
+  "back": "Back",
+  "skip": "Skip",
+  "done": "Done"
+}
