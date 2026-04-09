@@ -18,7 +18,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final String _userPhone = '+62 812-3456-7890';
   final int _activeBookings = 2;
   final int _certificates = 5;
-  final int _reviews = 3;
+
 
   @override
   Widget build(BuildContext context) {
@@ -206,8 +206,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _buildStatCell('$_activeBookings', 'Kursus Aktif', Icons.school_outlined),
           _buildStatDivider(),
           _buildStatCell('$_certificates', 'Sertifikat', Icons.workspace_premium_outlined),
-          _buildStatDivider(),
-          _buildStatCell('$_reviews', 'Ulasan', Icons.star_outline),
+
         ],
       ),
     );

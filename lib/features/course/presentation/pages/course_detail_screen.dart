@@ -8,7 +8,7 @@ import '../../../../core/animations/app_animations.dart';
 import '../../../../core/navigation/app_router.dart';
 import '../../../../core/widgets/atoms/animated_button.dart';
 import '../../../../core/widgets/molecules/course_card.dart';
-import '../../../../core/widgets/molecules/review_card.dart';
+
 
 class CourseDetailScreen extends StatefulWidget {
   final String courseId;
@@ -240,7 +240,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                   // Stats Row
                   Row(
                     children: [
-                      _buildStat(Icons.star, '4.8', '(128 ulasan)'),
+                      _buildStat(Icons.star, '4.8', '(128 rating)'),
                       const SizedBox(width: 24),
                       _buildStat(Icons.location_on_outlined, '2.5 km', null),
                       const SizedBox(width: 24),
@@ -278,33 +278,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                       items: List<String>.from(entry.value['items']),
                     );
                   }),
-
-                  const SizedBox(height: 24),
-
-                  // Reviews Section
-                  Row(
-                    children: [
-                      Text('Ulasan Peserta', style: AppTypography.titleMedium),
-                      const Spacer(),
-                      TextButton(
-                        onPressed: () {
-                          // TODO: See all reviews
-                        },
-                        child: const Text('Lihat Semua'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  ReviewCard(
-                    reviewerName: 'Ahmad Fauzi',
-                    reviewText:
-                        'Kursus yang sangat bermanfaat! Instruktur sangat sabar dan '
-                        'menjelaskan dengan detail. Setelah selesai kursus, saya langsung '
-                        'bisa bekerja di bengkel las.',
-                    rating: 5,
-                    courseName: 'Las Listrik Pemula',
-                    completedAt: DateTime(2024, 8, 15),
-                  ),
 
                   const SizedBox(height: 120),
                 ],

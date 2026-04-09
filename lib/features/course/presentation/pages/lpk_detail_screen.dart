@@ -7,7 +7,6 @@ import '../../../../core/theme/app_shapes.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/animations/app_animations.dart';
 import '../../../../core/widgets/molecules/course_card.dart';
-import '../../../../core/widgets/molecules/review_card.dart';
 import '../../../../core/navigation/app_router.dart';
 
 class LPKDetailScreen extends StatelessWidget {
@@ -144,7 +143,7 @@ class LPKDetailScreen extends StatelessWidget {
                     children: [
                       _buildStat('4.8', 'Rating'),
                       const SizedBox(width: 24),
-                      _buildStat('128', 'Ulasan'),
+                      _buildStat('128', 'Rating'),
                       const SizedBox(width: 24),
                       _buildStat('500+', 'Alumni'),
                     ],
@@ -244,31 +243,6 @@ class LPKDetailScreen extends StatelessWidget {
                         );
                       },
                     ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Reviews
-                  Row(
-                    children: [
-                      Text('Ulasan', style: AppTypography.titleMedium),
-                      const Spacer(),
-                      TextButton(
-                        onPressed: () {},
-                        child: const Text('Lihat Semua'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  ReviewCard(
-                    reviewerName: 'Budi Santoso',
-                    reviewText:
-                        'LPK yang sangat profesional. Fasilitas lengkap dan instruktur '
-                        'sangat berpengalaman. Saya berhasil mendapat pekerjaan setelah '
-                        'lulus dari sini.',
-                    rating: 5,
-                    courseName: 'Las Listrik',
-                    completedAt: DateTime(2024, 6, 20),
                   ),
 
                   const SizedBox(height: 120),

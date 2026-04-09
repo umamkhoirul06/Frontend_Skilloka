@@ -16,7 +16,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   bool _bookingNotif = true;
   bool _paymentNotif = true;
   bool _courseUpdateNotif = false;
-  bool _reviewReminderNotif = true;
+
   bool _systemNotif = true;
 
   // Inbox notifikasi
@@ -61,16 +61,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       isRead: true,
       type: 'course',
     ),
-    _NotifItem(
-      id: '5',
-      title: 'Ingatkan Ulasan',
-      body: 'Bagaimana pengalaman kursus Las Listrik Anda? Berikan ulasan Anda sekarang.',
-      time: DateTime.now().subtract(const Duration(days: 5)),
-      icon: Icons.star_outline,
-      color: AppColors.categoryTataBoga,
-      isRead: true,
-      type: 'review',
-    ),
+
   ];
 
   int get _unreadCount => _inbox.where((n) => !n.isRead).length;
@@ -289,14 +280,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 value: _courseUpdateNotif,
                 onChanged: (v) => setState(() => _courseUpdateNotif = v),
               ),
-              _SettingToggle(
-                icon: Icons.star_outline,
-                color: AppColors.warning,
-                title: 'Pengingat Ulasan',
-                subtitle: 'Reminder setelah menyelesaikan kursus',
-                value: _reviewReminderNotif,
-                onChanged: (v) => setState(() => _reviewReminderNotif = v),
-              ),
+
             ],
           ),
           const SizedBox(height: 12),
