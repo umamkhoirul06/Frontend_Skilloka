@@ -11,7 +11,8 @@ class AppConfig {
         if (kIsWeb) {
           return 'http://localhost:8000/api/v1';
         }
-        return 'http://10.0.2.2:8000/api/v1'; // Android Emulator localhost
+        // Ganti dengan IP Address Laptop Anda jika pakai HP Asli
+        return 'http://192.168.0.205:8000/api/v1'; 
       case AppEnvironment.staging:
         return 'https://staging-api.skilloka.com/api/v1';
       case AppEnvironment.prod:
