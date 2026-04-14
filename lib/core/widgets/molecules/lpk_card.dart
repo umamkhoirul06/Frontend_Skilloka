@@ -116,7 +116,7 @@ class _LPKCardState extends State<LPKCard> with SingleTickerProviderStateMixin {
                       Text(
                         '${widget.rating.toStringAsFixed(1)} (${widget.reviewCount})',
                         style: AppTypography.labelSmall.copyWith(
-                          color: AppColors.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -135,7 +135,7 @@ class _LPKCardState extends State<LPKCard> with SingleTickerProviderStateMixin {
                         child: Text(
                           widget.address,
                           style: AppTypography.bodySmall.copyWith(
-                            color: AppColors.textSecondary,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,

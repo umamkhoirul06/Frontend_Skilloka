@@ -121,10 +121,10 @@ class _AppSearchBarState extends State<AppSearchBar>
               itemBuilder: (context, index) {
                 final search = widget.recentSearches![index];
                 return ListTile(
-                  leading: const Icon(
+                  leading: Icon(
                     Icons.history,
                     size: 20,
-                    color: AppColors.textTertiary,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                   title: Text(search, style: AppTypography.bodyMedium),
                   dense: true,
@@ -205,7 +205,7 @@ class _AppSearchBarState extends State<AppSearchBar>
                 Icons.search,
                 color: _focusNode.hasFocus
                     ? AppColors.primary
-                    : AppColors.textTertiary,
+                    : Theme.of(context).colorScheme.onSurfaceVariant,
                 size: 24,
               ),
             ),
@@ -222,7 +222,7 @@ class _AppSearchBarState extends State<AppSearchBar>
                 decoration: InputDecoration(
                   hintText: widget.hint,
                   hintStyle: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.textTertiary,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.zero,
@@ -236,7 +236,7 @@ class _AppSearchBarState extends State<AppSearchBar>
           if (_isExpanded && _controller.text.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.close, size: 20),
-              color: AppColors.textTertiary,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               onPressed: () {
                 _controller.clear();
                 widget.onChanged?.call('');
@@ -248,7 +248,7 @@ class _AppSearchBarState extends State<AppSearchBar>
           if (widget.showVoiceButton && _isExpanded)
             IconButton(
               icon: const Icon(Icons.mic, size: 22),
-              color: AppColors.textTertiary,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               onPressed: widget.onVoicePressed,
             ),
 
@@ -256,7 +256,7 @@ class _AppSearchBarState extends State<AppSearchBar>
           if (widget.showFilterButton && _isExpanded)
             IconButton(
               icon: const Icon(Icons.tune, size: 22),
-              color: AppColors.textTertiary,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               onPressed: widget.onFilterPressed,
             ),
         ],

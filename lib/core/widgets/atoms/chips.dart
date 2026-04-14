@@ -239,7 +239,7 @@ class CategoryIcon extends StatelessWidget {
               Text(
                 category,
                 style: AppTypography.labelSmall.copyWith(
-                  color: isSelected ? categoryColor : AppColors.textSecondary,
+                  color: isSelected ? categoryColor : Theme.of(context).colorScheme.onSurfaceVariant,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                 ),
                 textAlign: TextAlign.center,
@@ -319,7 +319,7 @@ class CategoryFilterChips extends StatelessWidget {
         child: Text(
           label,
           style: AppTypography.labelMedium.copyWith(
-            color: isSelected ? Colors.white : AppColors.textSecondary,
+            color: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurfaceVariant,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
           ),
         ),

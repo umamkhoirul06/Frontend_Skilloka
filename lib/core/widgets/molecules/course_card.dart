@@ -168,7 +168,7 @@ class _CourseCardState extends State<CourseCard>
                               child: Text(
                                 widget.lpkName,
                                 style: AppTypography.bodySmall.copyWith(
-                                  color: AppColors.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -196,7 +196,7 @@ class _CourseCardState extends State<CourseCard>
                               child: Text(
                                 '${widget.rating.toStringAsFixed(1)} (${widget.reviewCount})',
                                 style: AppTypography.labelSmall.copyWith(
-                                  color: AppColors.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -238,10 +238,10 @@ class _CourseCardState extends State<CourseCard>
         errorWidget:
             (context, url, error) => Container(
               color: AppColors.surfaceVariant,
-              child: const Center(
+              child: Center(
                 child: Icon(
                   Icons.image_not_supported_outlined,
-                  color: AppColors.textTertiary,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                   size: 32,
                 ),
               ),

@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/di/injection_container.dart' as di;
 import 'core/theme/app_theme.dart';
+import 'core/theme/theme_cubit.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/navigation/app_router.dart';
 import 'core/localization/app_localizations.dart';
 
@@ -29,7 +31,12 @@ void main() async {
   // Initialize dependencies
   await di.init();
 
-  runApp(const SkillokApp());
+  runApp(
+    BlocProvider(
+      create: (context) => ThemeCubit(),
+      child: const SkillokApp(),
+    ),
+  );
 }
 
 class SkillokApp extends StatefulWidget {
@@ -40,13 +47,7 @@ class SkillokApp extends StatefulWidget {
 }
 
 class _SkillokAppState extends State<SkillokApp> {
-  ThemeMode _themeMode = ThemeMode.system;
   Locale _locale = const Locale('id');
-
-  // ignore: unused_element
-  void _setThemeMode(ThemeMode mode) {
-    setState(() => _themeMode = mode);
-  }
 
   // ignore: unused_element
   void _setLocale(Locale locale) {
@@ -55,14 +56,16 @@ class _SkillokAppState extends State<SkillokApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      title: 'Skilloka',
-      debugShowCheckedModeBanner: false,
+    return BlocBuilder<ThemeCubit, ThemeMode>(
+      builder: (context, themeMode) {
+        return MaterialApp.router(
+          title: 'Skilloka',
+          debugShowCheckedModeBanner: false,
 
-      // Theme Configuration
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: _themeMode,
+          // Theme Configuration
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: themeMode,
 
       // Router Configuration
       routerConfig: AppRouter.router,
@@ -95,5 +98,6 @@ class _SkillokAppState extends State<SkillokApp> {
         );
       },
     );
+    });
   }
 }

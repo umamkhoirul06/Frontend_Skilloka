@@ -1,6 +1,8 @@
 /// Hero Banner Carousel with parallax and time-based content
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../theme/theme_cubit.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_shapes.dart';
@@ -272,7 +274,7 @@ class GreetingBanner extends StatelessWidget {
                 Text(
                   '$_greeting, $_emoji',
                   style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -280,18 +282,33 @@ class GreetingBanner extends StatelessWidget {
               ],
             ),
           ),
-          // Notification Bell
-          Stack(
-            clipBehavior: Clip.none,
+          // Theme Toggle & Notification Bell
+          Row(
             children: [
               IconButton(
-                onPressed: onNotificationTap,
-                icon: const Icon(Icons.notifications_outlined),
+                onPressed: () => context.read<ThemeCubit>().toggleTheme(context),
+                icon: Icon(
+                  Theme.of(context).brightness == Brightness.dark
+                      ? Icons.light_mode_rounded
+                      : Icons.dark_mode_rounded,
+                ),
                 style: IconButton.styleFrom(
-                  backgroundColor: AppColors.surfaceVariant,
+                  backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                   padding: const EdgeInsets.all(12),
                 ),
               ),
+              const SizedBox(width: 8),
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  IconButton(
+                    onPressed: onNotificationTap,
+                    icon: const Icon(Icons.notifications_outlined),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      padding: const EdgeInsets.all(12),
+                    ),
+                  ),
               if (notificationCount > 0)
                 Positioned(
                   right: 4,
@@ -313,6 +330,8 @@ class GreetingBanner extends StatelessWidget {
                     ),
                   ),
                 ),
+            ],
+          ),
             ],
           ),
         ],

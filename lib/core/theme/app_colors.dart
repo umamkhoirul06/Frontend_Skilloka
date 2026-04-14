@@ -35,11 +35,39 @@ class AppColors {
   static const Color outline = Color(0xFFE5E5E5);
   static const Color outlineVariant = Color(0xFFD4D4D4);
 
-  // Text Colors
-  static const Color textPrimary = Color(0xFF171717);
-  static const Color textSecondary = Color(0xFF525252);
-  static const Color textTertiary = Color(0xFF737373);
-  static const Color textDisabled = Color(0xFFA3A3A3);
+  // Text Colors (Light Mode base values)
+  static const Color _textPrimaryLight = Color(0xFF171717);
+  static const Color _textSecondaryLight = Color(0xFF525252);
+  static const Color _textTertiaryLight = Color(0xFF737373);
+  static const Color _textDisabledLight = Color(0xFFA3A3A3);
+
+  // Text Colors (Dark Mode base values)
+  static const Color _textPrimaryDarkVal = Color(0xFFFAFAFA);
+  static const Color _textSecondaryDarkVal = Color(0xFFA3A3A3);
+  static const Color _textTertiaryDarkVal = Color(0xFF8A8A8A);
+  static const Color _textDisabledDarkVal = Color(0xFF525252);
+
+  // Legacy static accessors (light mode defaults, used by theme definitions)
+  static const Color textPrimary = _textPrimaryLight;
+  static const Color textSecondary = _textSecondaryLight;
+  static const Color textTertiary = _textTertiaryLight;
+  static const Color textDisabled = _textDisabledLight;
+
+  // Adaptive color methods — use these in widgets for dark mode support
+  static Color textPrimaryFor(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? _textPrimaryDarkVal : _textPrimaryLight;
+
+  static Color textSecondaryFor(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? _textSecondaryDarkVal : _textSecondaryLight;
+
+  static Color textTertiaryFor(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? _textTertiaryDarkVal : _textTertiaryLight;
+
+  static Color textDisabledFor(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? _textDisabledDarkVal : _textDisabledLight;
+
+  static Color surfaceVariantFor(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? surfaceVariantDark : surfaceVariant;
 
   // Semantic Colors
   static const Color success = Color(0xFF22C55E);

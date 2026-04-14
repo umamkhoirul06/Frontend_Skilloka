@@ -68,9 +68,8 @@ class _HomeScreenState extends State<HomeScreen> {
       context,
       kecamatanList: IndramayuKecamatan.list,
       categories: _categories,
-      selectedCategories: _selectedCategory != null
-          ? [_selectedCategory!]
-          : null,
+      selectedCategories:
+          _selectedCategory != null ? [_selectedCategory!] : null,
     );
 
     if (result != null) {
@@ -97,52 +96,72 @@ class _HomeScreenState extends State<HomeScreen> {
           slivers: [
             // App Bar
             SliverAppBar(
-              floating: true,
-              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              floating: false,
+              pinned: true,
+              backgroundColor: Colors.transparent,
               elevation: 0,
-              toolbarHeight: 150,
-              flexibleSpace: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Greeting Banner
-                      GreetingBanner(
-                        userName: 'Pengguna',
-                        notificationCount: 3,
-                        onNotificationTap: () {
-                          // TODO: Open notifications
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      // Search Bar
-                      Row(
-                        children: [
-                          Expanded(
-                            child: AppSearchBar(
-                              hint: 'Cari kursus atau LPK...',
-                              onSubmitted: (query) {
-                                // TODO: Navigate to search results
-                              },
-                              onFilterPressed: _openFilter,
-                              showFilterButton: true,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          // Location Chip
-                          LocationChip(
-                            location: _currentLocation,
-                            onTap: _openFilter,
-                          ),
-                        ],
-                      ),
+              toolbarHeight: 160,
+              flexibleSpace: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topRight,
+                    end: Alignment.bottomLeft,
+                    colors: [
+                      Theme.of(context).colorScheme.primaryContainer,
+                      Theme.of(context).scaffoldBackgroundColor,
                     ],
                   ),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.outline.withAlpha(50),
+                      width: 1,
+                    ),
+                  ),
                 ),
-              ),
-            ),
-
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Greeting Banner
+                        GreetingBanner(
+                          userName: 'Pengguna',
+                          notificationCount: 3,
+                          onNotificationTap: () {
+                            // TODO: Open notifications
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        // Search Bar
+                        Row(
+                          children: [
+                            Expanded(
+                              child: AppSearchBar(
+                                hint: 'Cari kursus atau LPK...',
+                                onSubmitted: (query) {
+                                  // TODO: Navigate to search results
+                                },
+                                onFilterPressed: _openFilter,
+                                showFilterButton: true,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            // Location Chip
+                            LocationChip(
+                              location: _currentLocation,
+                              onTap: _openFilter,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ), // SafeArea
+              ), // Container (flexibleSpace)
+            ), // SliverAppBar
             // Content
             SliverToBoxAdapter(
               child: Column(
