@@ -114,7 +114,14 @@ jobs:
 
       # ── 11. Kirim APK ke Telegram ─────────────────────────────────────
       - name: Send APK to Telegram
+        continue-on-error: true  # Jangan gagalkan build jika Telegram error
         run: |
+          # Validasi secrets
+          if [ -z "${{ secrets.TELEGRAM_BOT_TOKEN }}" ] || [ -z "${{ secrets.TELEGRAM_CHAT_ID }}" ]; then
+            echo "⚠️ TELEGRAM_BOT_TOKEN atau TELEGRAM_CHAT_ID tidak dikonfigurasi, skip."
+            exit 0
+          fi
+
           VERSION="${{ github.ref_name }}"
           if [ -z "$VERSION" ] || [ "$VERSION" = "refs/heads/main" ]; then
             VERSION="v${{ github.event.inputs.version_name || '1.0.0' }}"
