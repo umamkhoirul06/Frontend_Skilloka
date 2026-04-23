@@ -38,9 +38,9 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.29.x'  # Flutter 3.29.x membawa Dart 3.7.0
+          flutter-version: '3.29.0'  # Flutter 3.29.0 membawa Dart 3.7.0
           channel: 'stable'
-          cache: true
+          cache: false  # nonaktifkan cache untuk menghindari Dart SDK versi lama
 
       # ── 4. Verifikasi instalasi ───────────────────────────────────────
       - name: Flutter Doctor
