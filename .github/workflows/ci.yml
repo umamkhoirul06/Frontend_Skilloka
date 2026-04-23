@@ -119,9 +119,8 @@ jobs:
           BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          # Validasi secrets via env vars (aman dari special chars)
           if [ -z "${BOT_TOKEN}" ] || [ -z "${CHAT_ID}" ]; then
-            echo "⚠️ Secrets Telegram belum dikonfigurasi, skip."
+            echo "Secrets Telegram belum dikonfigurasi, skip."
             exit 0
           fi
 
@@ -136,28 +135,9 @@ jobs:
           BUILD_TIME=$(date '+%d %b %Y %H:%M UTC')
           RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-          CAPTION="📦 *Skilloka ${VERSION}*
-
-🏷️ *Versi:* \`${VERSION}\`
-🔖 *Commit:* \`${SHORT_SHA}\`
-✍️ *Author:* ${COMMIT_AUTHOR}
-🕐 *Build:* ${BUILD_TIME}
-
-📝 *Changelog:*
-\`\`\`
-${COMMIT_MSG}
-\`\`\`
-
-📱 *Pilih APK sesuai perangkat:*
-- \`arm64-v8a\` → HP modern 64-bit ✅
-- \`armeabi-v7a\` → HP lama 32-bit
-- \`x86_64\` → Emulator
-
-🔗 [Lihat Build Log](${RUN_URL})"
-
-          # Kirim setiap file APK
           for apk in release-apk/*.apk; do
             FILENAME=$(basename "$apk")
+            FILE_SIZE=$(du -sh "$apk" | cut -f1)
 
             if [[ "$FILENAME" == *"arm64-v8a"* ]]; then
               ARCH_LABEL="arm64-v8a (Rekomendasi)"
@@ -169,26 +149,18 @@ ${COMMIT_MSG}
               ARCH_LABEL="Universal"
             fi
 
-            FILE_SIZE=$(du -sh "$apk" | cut -f1)
+            CAPTION="APK Skilloka ${VERSION} | ${ARCH_LABEL} | ${FILE_SIZE} | Commit: ${SHORT_SHA} | ${BUILD_TIME}"
 
-            RESPONSE=$(curl -s -w "\n%{http_code}" \
+            RESPONSE=$(curl -s -o /tmp/tg_response.txt -w "%{http_code}" \
               -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
               -F "chat_id=${CHAT_ID}" \
               -F "document=@${apk}" \
-              -F "caption=${CAPTION}
+              -F "caption=${CAPTION}")
 
-📂 *File:* \`${FILENAME}\`
-🏗️ *Arsitektur:* ${ARCH_LABEL}
-💾 *Ukuran:* ${FILE_SIZE}" \
-              -F "parse_mode=Markdown")
-
-            HTTP_CODE=$(echo "$RESPONSE" | tail -1)
-            BODY=$(echo "$RESPONSE" | head -1)
-
-            if [ "$HTTP_CODE" = "200" ]; then
-              echo "✅ Terkirim: $FILENAME"
+            if [ "$RESPONSE" = "200" ]; then
+              echo "Terkirim: $FILENAME"
             else
-              echo "❌ Gagal ($HTTP_CODE): $BODY"
+              echo "Gagal ($RESPONSE): $(cat /tmp/tg_response.txt)"
             fi
             sleep 2
           done
