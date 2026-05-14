@@ -7,6 +7,7 @@ import '../../../../core/navigation/app_router.dart';
 import '../../../../core/security/security_checker.dart';
 import '../../../../core/di/injection_container.dart' as di;
 import '../../../../core/services/sync_service.dart';
+import '../../../../core/services/api_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -82,11 +83,17 @@ class _SplashScreenState extends State<SplashScreen>
         syncService.startInitialSync(),
       ]);
 
+      // Check if user is logged in
+      final apiService = ApiService();
+      final token = await apiService.getToken();
+
       if (!mounted) return;
 
-      // TODO: Check if user is logged in and navigate accordingly
-      // For now, always go to onboarding
-      context.go(AppRouter.onboarding);
+      if (token != null && token.isNotEmpty) {
+        context.go(AppRouter.home);
+      } else {
+        context.go(AppRouter.onboarding);
+      }
     } catch (e) {
       if (mounted) {
         context.go(AppRouter.onboarding);

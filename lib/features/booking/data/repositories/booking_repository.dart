@@ -9,7 +9,7 @@ class BookingRepository {
 
   /// Ambil semua booking user yang login
   Future<List<BookingModel>> getMyBookings() async {
-    final response = await _apiClient.get('/v1/bookings');
+    final response = await _apiClient.get('/bookings');
     final data = response.data['data'];
     final items = (data['data'] ?? data) as List;
     return items.map((e) => BookingModel.fromJson(e)).toList();
@@ -17,14 +17,14 @@ class BookingRepository {
 
   /// Detail satu booking
   Future<BookingModel> getBookingDetail(String id) async {
-    final response = await _apiClient.get('/v1/bookings/$id');
+    final response = await _apiClient.get('/bookings/$id');
     return BookingModel.fromJson(response.data['data']);
   }
 
   /// Buat booking baru
   Future<BookingModel> createBooking({required String scheduleId}) async {
     final response = await _apiClient.post(
-      '/v1/bookings',
+      '/bookings',
       data: {'schedule_id': scheduleId},
     );
     return BookingModel.fromJson(response.data['data']);
@@ -32,7 +32,7 @@ class BookingRepository {
 
   /// Batalkan booking
   Future<BookingModel> cancelBooking(String id) async {
-    final response = await _apiClient.put('/v1/bookings/$id/cancel');
+    final response = await _apiClient.patch('/bookings/$id/cancel');
     return BookingModel.fromJson(response.data['data']);
   }
 }

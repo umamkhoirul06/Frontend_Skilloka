@@ -1,4 +1,3 @@
-/// Login Screen with phone, OTP, social, and biometric options
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -9,6 +8,7 @@ import '../../../../core/animations/app_animations.dart';
 import '../../../../core/navigation/app_router.dart';
 import '../../../../core/widgets/atoms/animated_button.dart';
 import '../../../../core/widgets/atoms/input_field.dart';
+import '../../../../core/services/api_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -24,11 +24,14 @@ class _LoginScreenState extends State<LoginScreen>
   bool _isPhoneValid = false;
   bool _isLoading = false;
   bool _showOTPInput = false;
+
+  // UBAH KE 4 DIGIT (Sesuai Dummy API Backend)
   final List<TextEditingController> _otpControllers = List.generate(
-    6,
+    4,
     (_) => TextEditingController(),
   );
-  final List<FocusNode> _otpFocusNodes = List.generate(6, (_) => FocusNode());
+  final List<FocusNode> _otpFocusNodes = List.generate(4, (_) => FocusNode());
+  final ApiService _apiService = ApiService();
 
   @override
   void initState() {
@@ -60,34 +63,89 @@ class _LoginScreenState extends State<LoginScreen>
 
     setState(() => _isLoading = true);
 
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      String phone = _phoneController.text.replaceAll(RegExp(r'\D'), '');
+      if (phone.startsWith('8')) {
+        phone = '0$phone';
+      } else if (phone.startsWith('62')) {
+        phone = '0${phone.substring(2)}';
+      }
+      
+      final response = await _apiService.requestOtp(phone);
+      final success = response['success'] ?? false;
 
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-        _showOTPInput = true;
-      });
-      _otpFocusNodes[0].requestFocus();
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          if (success) {
+            _showOTPInput = true;
+          }
+        });
+        if (success) {
+          _otpFocusNodes[0].requestFocus();
+        } else {
+          final msg = (response['message'] ?? '').toString().toLowerCase();
+          if (msg.contains('belum terdaftar') || msg.contains('404') || msg.contains('not found')) {
+            context.push(AppRouter.register);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(response['message'] ?? 'Gagal mengirim OTP.')),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      // INI KUNCI OPTIMASINYA: Matikan loading kalau ada error!
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+        );
+      }
     }
   }
 
   Future<void> _verifyOTP() async {
     final otp = _otpControllers.map((c) => c.text).join();
-    if (otp.length != 6) return;
+    if (otp.length != 4) return;
 
     setState(() => _isLoading = true);
 
-    // Simulate verification
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      String phone = _phoneController.text.replaceAll(RegExp(r'\D'), '');
+      if (phone.startsWith('8')) {
+        phone = '0$phone';
+      } else if (phone.startsWith('62')) {
+        phone = '0${phone.substring(2)}';
+      }
+      
+      final response = await _apiService.verifyOtp(phone, otp);
+      final success = response['success'] ?? false;
 
-    if (mounted) {
-      context.go(AppRouter.home);
+      if (mounted) {
+        setState(() => _isLoading = false);
+        if (success) {
+          context.go(AppRouter.home);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(response['message'] ?? 'OTP Salah')),
+          );
+        }
+      }
+    } catch (e) {
+      // Matikan loading kalau server error
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+        );
+      }
     }
   }
 
   void _handleOTPInput(String value, int index) {
-    if (value.isNotEmpty && index < 5) {
+    // UBAH LOGIKA PINDAH KOTAK KE 4 DIGIT (index < 3)
+    if (value.isNotEmpty && index < 3) {
       _otpFocusNodes[index + 1].requestFocus();
     } else if (value.isEmpty && index > 0) {
       _otpFocusNodes[index - 1].requestFocus();
@@ -95,18 +153,16 @@ class _LoginScreenState extends State<LoginScreen>
 
     // Auto verify when complete
     final otp = _otpControllers.map((c) => c.text).join();
-    if (otp.length == 6) {
+    if (otp.length == 4) {
       _verifyOTP();
     }
   }
 
   void _loginWithGoogle() {
-    // TODO: Implement Google Sign-In
     context.go(AppRouter.home);
   }
 
   void _loginWithBiometric() async {
-    // TODO: Implement biometric authentication
     context.go(AppRouter.home);
   }
 
@@ -122,7 +178,6 @@ class _LoginScreenState extends State<LoginScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 32),
-                // Header
                 Text(
                   _showOTPInput ? 'Verifikasi OTP' : 'Masuk ke Skilloka',
                   style: AppTypography.headlineMedium,
@@ -130,15 +185,13 @@ class _LoginScreenState extends State<LoginScreen>
                 const SizedBox(height: 8),
                 Text(
                   _showOTPInput
-                      ? 'Masukkan kode 6 digit yang dikirim ke nomor Anda'
+                      ? 'Masukkan kode 4 digit yang dikirim ke nomor Anda'
                       : 'Masukkan nomor telepon untuk melanjutkan',
                   style: AppTypography.bodyLarge.copyWith(
                     color: AppColors.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 40),
-
-                // Phone or OTP input
                 AnimatedCrossFade(
                   duration: AppAnimations.medium,
                   crossFadeState: _showOTPInput
@@ -147,10 +200,7 @@ class _LoginScreenState extends State<LoginScreen>
                   firstChild: _buildPhoneInput(),
                   secondChild: _buildOTPInput(),
                 ),
-
                 const SizedBox(height: 24),
-
-                // Continue button
                 AnimatedPrimaryButton(
                   text: _showOTPInput ? 'Verifikasi' : 'Lanjutkan',
                   isLoading: _isLoading,
@@ -159,7 +209,6 @@ class _LoginScreenState extends State<LoginScreen>
                       : _isPhoneValid,
                   onPressed: _showOTPInput ? _verifyOTP : _sendOTP,
                 ),
-
                 if (_showOTPInput) ...[
                   const SizedBox(height: 16),
                   Center(
@@ -173,10 +222,8 @@ class _LoginScreenState extends State<LoginScreen>
                   const SizedBox(height: 8),
                   Center(child: _ResendOTPButton(onResend: _sendOTP)),
                 ],
-
                 if (!_showOTPInput) ...[
                   const SizedBox(height: 40),
-                  // Divider
                   Row(
                     children: [
                       const Expanded(child: Divider()),
@@ -193,8 +240,6 @@ class _LoginScreenState extends State<LoginScreen>
                     ],
                   ),
                   const SizedBox(height: 24),
-
-                  // Social Login Buttons
                   _SocialLoginButton(
                     icon: Icons.g_mobiledata,
                     label: 'Lanjutkan dengan Google',
@@ -208,10 +253,7 @@ class _LoginScreenState extends State<LoginScreen>
                     isPrimary: true,
                   ),
                 ],
-
                 const SizedBox(height: 40),
-
-                // Terms
                 Center(
                   child: Text(
                     'Dengan melanjutkan, Anda menyetujui\nSyarat & Ketentuan dan Kebijakan Privasi',
@@ -244,9 +286,10 @@ class _LoginScreenState extends State<LoginScreen>
   Widget _buildOTPInput() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: List.generate(6, (index) {
+      // UBAH GENERATE LOOP KE 4 KOTAK
+      children: List.generate(4, (index) {
         return SizedBox(
-          width: 48,
+          width: 56, // Sedikit dilebarkan biar lebih proporsional untuk 4 kotak
           child: TextField(
             controller: _otpControllers[index],
             focusNode: _otpFocusNodes[index],
@@ -306,9 +349,8 @@ class _SocialLoginButton extends StatelessWidget {
           side: BorderSide(
             color: isPrimary ? AppColors.primary : AppColors.outline,
           ),
-          foregroundColor: isPrimary
-              ? AppColors.primary
-              : AppColors.textPrimary,
+          foregroundColor:
+              isPrimary ? AppColors.primary : AppColors.textPrimary,
         ),
       ),
     );

@@ -10,6 +10,11 @@ import '../../../../core/widgets/molecules/lpk_card.dart';
 import '../../../../core/widgets/organisms/hero_banner.dart';
 import '../../../../core/widgets/organisms/filter_bottom_sheet.dart';
 import '../../../../core/widgets/skeleton/skeleton_loader.dart';
+import '../../../../core/di/injection_container.dart';
+import '../../../../core/config/app_config.dart';
+import '../../data/repositories/home_repository.dart';
+import '../../data/models/lpk_model.dart';
+import '../../../course/data/models/course_model.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -22,6 +27,10 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _selectedCategory;
   String _currentLocation = 'Indramayu';
   bool _isLoading = true;
+
+  List<LpkModel> _lpks = [];
+  List<CourseModel> _courses = [];
+  late final HomeRepository _homeRepository;
 
   final List<String> _categories = [
     'Las',
@@ -53,13 +62,22 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _homeRepository = HomeRepository(apiClient: sl());
     _loadData();
   }
 
   Future<void> _loadData() async {
-    await Future.delayed(const Duration(seconds: 1));
+    final responses = await Future.wait([
+      _homeRepository.getLpks(),
+      _homeRepository.getCourses(),
+    ]);
+
     if (mounted) {
-      setState(() => _isLoading = false);
+      setState(() {
+        _lpks = responses[0] as List<LpkModel>;
+        _courses = responses[1] as List<CourseModel>;
+        _isLoading = false;
+      });
     }
   }
 
@@ -232,23 +250,26 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildLPKList() {
+    if (_lpks.isEmpty) return const Center(child: Text("Belum ada LPK"));
+
     return SizedBox(
       height: 240,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: 5,
+        itemCount: _lpks.length,
         separatorBuilder: (_, __) => const SizedBox(width: 12),
         itemBuilder: (context, index) {
+          final lpk = _lpks[index];
           return LPKCard(
-            id: 'lpk_$index',
-            name: 'LPK Mitra Kerja ${index + 1}',
-            logoUrl: 'https://picsum.photos/100/100?random=$index',
-            address: 'Jl. Merdeka No. ${index + 1}, Indramayu',
-            rating: 4.5 + (index * 0.1),
-            reviewCount: 120 + (index * 10),
-            isVerified: index % 2 == 0,
-            onTap: () => context.push('${AppRouter.lpkDetail}lpk_$index'),
+            id: lpk.id.toString(),
+            name: lpk.name,
+            logoUrl: lpk.logoUrl ?? 'https://via.placeholder.com/100',
+            address: lpk.address,
+            rating: lpk.rating,
+            reviewCount: lpk.reviewCount,
+            isVerified: lpk.isVerified,
+            onTap: () => context.push('${AppRouter.lpkDetail}${lpk.id}'),
           );
         },
       ),
@@ -256,6 +277,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildCourseGrid() {
+    if (_courses.isEmpty) return const Center(child: Text("Belum ada Kursus"));
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: GridView.builder(
@@ -267,20 +290,25 @@ class _HomeScreenState extends State<HomeScreen> {
           mainAxisSpacing: 12,
           childAspectRatio: 0.68,
         ),
-        itemCount: 6,
+        itemCount: _courses.length,
         itemBuilder: (context, index) {
+          final course = _courses[index];
+          String imageUrl = course.images.isNotEmpty
+              ? '${AppConfig.baseStorageUrl}${course.images.first}'
+              : 'https://via.placeholder.com/400';
+
           return CourseCard(
-            id: 'course_$index',
-            title: 'Kursus ${_categories[index % _categories.length]}',
-            lpkName: 'LPK Mitra Kerja',
-            imageUrl: 'https://picsum.photos/400/300?random=${index + 10}',
-            rating: 4.5 + (index * 0.1),
-            reviewCount: 50 + index * 5,
-            distanceKm: 2.5 + index,
-            price: 1500000 + (index * 250000),
-            category: _categories[index % _categories.length],
-            isVerified: index % 3 == 0,
-            onTap: () => context.push('${AppRouter.courseDetail}course_$index'),
+            id: course.id.toString(),
+            title: course.title,
+            lpkName: course.lpk['name'] ?? 'LPK Tidak Diketahui',
+            imageUrl: imageUrl,
+            rating: 0.0,
+            reviewCount: 0,
+            distanceKm: 0.0,
+            price: course.price.toInt(),
+            category: course.category['name'] ?? 'Umum',
+            isVerified: true,
+            onTap: () => context.push('${AppRouter.courseDetail}${course.id}'),
           );
         },
       ),

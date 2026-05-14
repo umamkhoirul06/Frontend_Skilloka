@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/splash/presentation/pages/splash_screen.dart';
 import '../../features/auth/presentation/pages/onboarding_screen.dart';
 import '../../features/auth/presentation/pages/login_screen.dart';
+import '../../features/auth/presentation/pages/register_screen.dart';
 import '../../features/home/presentation/pages/home_screen.dart';
 import '../../features/course/presentation/pages/course_detail_screen.dart';
 import '../../features/course/presentation/pages/lpk_detail_screen.dart';
@@ -82,6 +83,15 @@ class AppRouter {
             (context, state) => CustomTransitionPage(
               key: state.pageKey,
               child: const LoginScreen(),
+              transitionsBuilder: _slideUpTransition,
+            ),
+      ),
+      GoRoute(
+        path: register,
+        pageBuilder:
+            (context, state) => CustomTransitionPage(
+              key: state.pageKey,
+              child: const RegisterScreen(),
               transitionsBuilder: _slideUpTransition,
             ),
       ),

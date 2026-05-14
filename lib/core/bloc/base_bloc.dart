@@ -1,4 +1,3 @@
-/// Base BLoC class with common functionality
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'base_event.dart';

@@ -1,4 +1,3 @@
-/// Dependency Injection Container using GetIt
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';

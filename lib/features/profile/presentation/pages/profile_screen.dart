@@ -4,6 +4,10 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_shapes.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/navigation/app_router.dart';
+import '../../../../core/services/api_service.dart';
+
+import '../../../../core/network/api_client.dart';
+import '../../../../core/di/injection_container.dart' as di;
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -13,11 +17,49 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  // User data state (akan diganti dengan data dari API/BLoC)
-  String _userName = 'Budi Santoso';
-  final String _userPhone = '+62 812-3456-7890';
-  final int _activeBookings = 2;
-  final int _certificates = 5;
+  String _userName = 'Memuat...';
+  String _userPhone = '...';
+  int _activeBookings = 0;
+  final int _certificates = 0;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchProfile();
+  }
+
+  Future<void> _fetchProfile() async {
+    try {
+      final apiService = ApiService();
+      final result = await apiService.getProfile();
+      
+      if (mounted) {
+        if (result['success']) {
+          final data = result['data']['data']; // Laravel wrapper
+          setState(() {
+            _userName = data['name'] ?? 'Pengguna';
+            _userPhone = data['phone'] ?? '';
+            _isLoading = false;
+          });
+        } else {
+          setState(() {
+            _userName = 'Gagal memuat';
+            _userPhone = result['message'] ?? '-';
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _userName = 'Error';
+          _userPhone = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
 
   @override
@@ -26,8 +68,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       backgroundColor: AppColors.background,
       body: RefreshIndicator(
         onRefresh: () async {
-          await Future.delayed(const Duration(milliseconds: 800));
-          // TODO: Refresh from API
+          await _fetchProfile();
         },
         child: CustomScrollView(
           slivers: [
@@ -337,37 +378,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               _buildMenuItem(
                 context,
-                icon: Icons.workspace_premium_outlined,
-                iconColor: const Color(0xFFF59E0B),
-                iconBg: const Color(0xFFFEF3C7),
-                title: 'Sertifikat Saya',
-                subtitle: '$_certificates sertifikat aktif',
-                onTap: () => context.push(AppRouter.certificates),
-              ),
-              _buildDivider(),
-              _buildMenuItem(
-                context,
-                icon: Icons.favorite_outline,
-                iconColor: AppColors.error,
-                iconBg: AppColors.errorContainer,
-                title: 'Favorit',
-                subtitle: 'Kursus & LPK yang disimpan',
-                onTap: () => context.push(AppRouter.favorites),
-              ),
-              _buildDivider(),
-              _buildMenuItem(
-                context,
-                icon: Icons.notifications_outlined,
-                iconColor: AppColors.secondary,
-                iconBg: AppColors.secondaryContainer,
-                title: 'Notifikasi',
-                subtitle: '2 belum dibaca',
-                badge: '2',
-                onTap: () => context.push(AppRouter.notifications),
-              ),
-              _buildDivider(),
-              _buildMenuItem(
-                context,
                 icon: Icons.help_outline,
                 iconColor: AppColors.categoryIT,
                 iconBg: const Color(0xFFDBEAFE),
@@ -529,8 +539,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
 
     if (confirmed == true && context.mounted) {
-      // TODO: Clear auth token / secure storage
-      context.go(AppRouter.login);
+      final apiService = ApiService();
+      await apiService.logout();
     }
   }
 }

@@ -1,4 +1,3 @@
-/// Base State class for all BLoC states
 import 'package:equatable/equatable.dart';
 import '../error/failures.dart';
 

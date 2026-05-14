@@ -1,4 +1,3 @@
-/// Base Event class for all BLoC events
 import 'package:equatable/equatable.dart';
 
 abstract class BaseEvent extends Equatable {

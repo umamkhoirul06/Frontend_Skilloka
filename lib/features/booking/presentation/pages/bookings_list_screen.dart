@@ -6,6 +6,9 @@ import '../../../../core/theme/app_shapes.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/navigation/app_router.dart';
 import '../../data/models/booking_model.dart';
+import '../../data/repositories/booking_repository.dart';
+import '../../../../core/di/injection_container.dart' as di;
+import '../../../../core/services/api_service.dart';
 
 class BookingsListScreen extends StatefulWidget {
   const BookingsListScreen({super.key});
@@ -17,56 +20,8 @@ class BookingsListScreen extends StatefulWidget {
 class _BookingsListScreenState extends State<BookingsListScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  bool _isLoading = true;
-
-  final List<BookingModel> _mockBookings = [
-    BookingModel(
-      id: 'bk1',
-      code: 'BK20240401ABCDEF',
-      status: 'confirmed',
-      amount: 1500000,
-      createdAt: DateTime.now().subtract(const Duration(days: 2)),
-      expiresAt: DateTime.now().add(const Duration(hours: 22)),
-      schedule: const BookingScheduleModel(
-        id: 'sch1',
-        startDate: '2024-05-01',
-        endDate: '2024-05-30',
-        courseTitle: 'Kursus Las Listrik untuk Pemula',
-        lpkName: 'LPK Mitra Kerja',
-        categoryName: 'Las',
-      ),
-    ),
-    BookingModel(
-      id: 'bk2',
-      code: 'BK20240310XYZ123',
-      status: 'completed',
-      amount: 2000000,
-      createdAt: DateTime.now().subtract(const Duration(days: 30)),
-      schedule: const BookingScheduleModel(
-        id: 'sch2',
-        startDate: '2024-03-10',
-        endDate: '2024-03-31',
-        courseTitle: 'Desain Busana Modern',
-        lpkName: 'LPK Kreatif Indonesia',
-        categoryName: 'Tata Busana',
-      ),
-    ),
-    BookingModel(
-      id: 'bk3',
-      code: 'BK20240201CANCEL',
-      status: 'cancelled',
-      amount: 750000,
-      createdAt: DateTime.now().subtract(const Duration(days: 60)),
-      schedule: const BookingScheduleModel(
-        id: 'sch3',
-        startDate: '2024-02-15',
-        endDate: '2024-02-28',
-        courseTitle: 'Kursus IT Dasar',
-        lpkName: 'LPK Digital Nusantara',
-        categoryName: 'IT',
-      ),
-    ),
-  ];
+  late Future<List<BookingModel>> _bookingsFuture;
+  List<BookingModel> _bookings = [];
 
   final List<String> _tabs = ['Semua', 'Menunggu', 'Aktif', 'Selesai'];
 
@@ -74,7 +29,23 @@ class _BookingsListScreenState extends State<BookingsListScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: _tabs.length, vsync: this);
-    _loadData();
+    _bookingsFuture = _fetchBookings();
+  }
+
+  Future<List<BookingModel>> _fetchBookings() async {
+    try {
+      final apiService = ApiService();
+      final result = await apiService.getBookings();
+      if (result['success']) {
+        final List data = result['data']['data'] ?? [];
+        _bookings = data.map((e) => BookingModel.fromJson(e)).toList();
+        return _bookings;
+      } else {
+        throw result['message'] ?? 'Gagal memuat pesanan';
+      }
+    } catch (e) {
+      rethrow;
+    }
   }
 
   @override
@@ -83,17 +54,23 @@ class _BookingsListScreenState extends State<BookingsListScreen>
     super.dispose();
   }
 
-  Future<void> _loadData() async {
-    await Future.delayed(const Duration(milliseconds: 800));
-    if (mounted) setState(() => _isLoading = false);
+  Future<void> _refresh() async {
+    setState(() {
+      _bookingsFuture = _fetchBookings();
+    });
+    await _bookingsFuture;
   }
 
   List<BookingModel> _getFilteredBookings(int tabIndex) {
     switch (tabIndex) {
-      case 1: return _mockBookings.where((b) => b.isPending).toList();
-      case 2: return _mockBookings.where((b) => b.isConfirmed).toList();
-      case 3: return _mockBookings.where((b) => b.isCompleted).toList();
-      default: return _mockBookings;
+      case 1:
+        return _bookings.where((b) => b.isPending).toList();
+      case 2:
+        return _bookings.where((b) => b.isConfirmed).toList();
+      case 3:
+        return _bookings.where((b) => b.isCompleted).toList();
+      default:
+        return _bookings;
     }
   }
 
@@ -111,31 +88,60 @@ class _BookingsListScreenState extends State<BookingsListScreen>
           onTap: (_) => setState(() {}),
         ),
       ),
-      body: _isLoading
-          ? const _BookingListSkeleton()
-          : AnimatedBuilder(
-              animation: _tabController,
-              builder: (context, _) {
-                final filtered = _getFilteredBookings(_tabController.index);
-                if (filtered.isEmpty) {
-                  return _buildEmpty();
-                }
-                return RefreshIndicator(
-                  onRefresh: _loadData,
-                  child: ListView.separated(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: filtered.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) =>
-                        _BookingCard(booking: filtered[index]),
-                  ),
-                );
-              },
-            ),
+      body: FutureBuilder<List<BookingModel>>(
+        future: _bookingsFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const _BookingListSkeleton();
+          }
+
+          if (snapshot.hasError) {
+            return _buildError(context, snapshot.error.toString());
+          }
+
+          return AnimatedBuilder(
+            animation: _tabController,
+            builder: (context, _) {
+              final filtered = _getFilteredBookings(_tabController.index);
+              if (filtered.isEmpty) {
+                return _buildEmpty(context);
+              }
+              return RefreshIndicator(
+                onRefresh: _refresh,
+                child: ListView.separated(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: filtered.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) =>
+                      _BookingCard(booking: filtered[index]),
+                ),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 
-  Widget _buildEmpty() {
+  Widget _buildError(BuildContext context, String error) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, size: 48, color: AppColors.error),
+          const SizedBox(height: 16),
+          Text(error, style: AppTypography.bodyMedium),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: _refresh,
+            child: const Text('Coba Lagi'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmpty(BuildContext context) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -171,11 +177,16 @@ class _BookingCard extends StatelessWidget {
 
   Color get _statusColor {
     switch (booking.status) {
-      case 'pending':   return AppColors.warning;
-      case 'confirmed': return AppColors.primary;
-      case 'completed': return AppColors.success;
-      case 'cancelled': return AppColors.error;
-      default:          return AppColors.textSecondary;
+      case 'pending':
+        return AppColors.warning;
+      case 'confirmed':
+        return AppColors.primary;
+      case 'completed':
+        return AppColors.success;
+      case 'cancelled':
+        return AppColors.error;
+      default:
+        return AppColors.textSecondary;
     }
   }
 
