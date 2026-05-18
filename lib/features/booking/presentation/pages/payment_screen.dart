@@ -8,6 +8,9 @@ import '../../../../core/theme/app_shapes.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/navigation/app_router.dart';
 import '../../../../core/widgets/atoms/animated_button.dart';
+import '../../../../core/network/api_client.dart';
+import '../../../../core/di/injection_container.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class PaymentScreen extends StatefulWidget {
   final String courseId;
@@ -80,11 +83,43 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
     setState(() => _isProcessing = true);
 
-    // Simulate payment processing
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      final apiClient = sl<ApiClient>();
+      final response = await apiClient.post(
+        '/payment/create-transaction',
+        data: {
+          'order_id': 'ORDER-${DateTime.now().millisecondsSinceEpoch}',
+          'gross_amount': 1505000,
+        },
+      );
 
-    if (mounted) {
-      context.push('${AppRouter.bookingSuccess}${widget.courseId}');
+      final snapToken = response.data['snap_token'];
+      if (snapToken != null) {
+        final url = Uri.parse('https://app.sandbox.midtrans.com/snap/v2/vtweb/$snapToken');
+        if (await canLaunchUrl(url)) {
+          await launchUrl(url, mode: LaunchMode.externalApplication);
+          if (mounted) {
+            context.push('${AppRouter.bookingSuccess}${widget.courseId}');
+          }
+        } else {
+          throw Exception('Gagal membuka halaman pembayaran');
+        }
+      } else {
+        throw Exception('Token pembayaran tidak valid');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal memuat pembayaran: ${e.toString()}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
     }
   }
 
