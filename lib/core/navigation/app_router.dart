@@ -46,6 +46,7 @@ class AppRouter {
   static const String certificates = '/profile/certificates';
   static const String favorites = '/profile/favorites';
   static const String notifications = '/profile/notifications';
+  static const String settings = '/profile/settings';
   static const String help = '/profile/help';
   static const String about = '/profile/about';
   static const String componentGallery = '/components';
@@ -241,6 +242,14 @@ class AppRouter {
         ),
       ),
 
+      GoRoute(
+  path: settings,
+  pageBuilder: (context, state) => CustomTransitionPage(
+    key: state.pageKey,
+    child: const NotificationsScreen(), // sementara pakai NotificationsScreen
+    transitionsBuilder: _slideRightTransition,
+  ),
+),
       // Component Gallery (Development)
       GoRoute(
         path: componentGallery,
