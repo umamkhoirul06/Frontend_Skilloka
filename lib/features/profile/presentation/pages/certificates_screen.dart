@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_shapes.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../core/services/api_service.dart';
 
 class CertificatesScreen extends StatefulWidget {
   const CertificatesScreen({super.key});
@@ -12,45 +13,19 @@ class CertificatesScreen extends StatefulWidget {
 
 class _CertificatesScreenState extends State<CertificatesScreen>
     with TickerProviderStateMixin {
+  final _api = ApiService();
   late TabController _tabController;
 
-  final List<_Certificate> _allCerts = [
-    _Certificate(
-      id: '1',
-      title: 'Las Listrik Dasar',
-      lpkName: 'LPK Mitra Karya',
-      issuedDate: DateTime(2024, 6, 20),
-      status: 'active',
-      category: 'Las',
-      number: 'SKL/2024/001/MINT',
-      color: AppColors.categoryLas,
-    ),
-    _Certificate(
-      id: '2',
-      title: 'Komputer Dasar & Office',
-      lpkName: 'LPK Digital Nusantara',
-      issuedDate: DateTime(2024, 1, 10),
-      status: 'active',
-      category: 'IT',
-      number: 'SKL/2024/045/DIGI',
-      color: AppColors.categoryIT,
-    ),
-    _Certificate(
-      id: '3',
-      title: 'Servis Sepeda Motor',
-      lpkName: 'LPK Auto Teknologi',
-      issuedDate: DateTime(2023, 9, 5),
-      status: 'expired',
-      category: 'Otomotif',
-      number: 'SKL/2023/112/AUTO',
-      color: AppColors.categoryOtomotif,
-    ),
-  ];
+  List<Map<String, dynamic>> _active = [];
+  List<Map<String, dynamic>> _expired = [];
+  bool _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _fetchCertificates();
   }
 
   @override
@@ -59,11 +34,62 @@ class _CertificatesScreenState extends State<CertificatesScreen>
     super.dispose();
   }
 
+  Future<void> _fetchCertificates() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final result = await _api.getCertificates();
+      if (!mounted) return;
+      if (result['success']) {
+        final raw = result['data'];
+        final data = raw['data'] ?? raw;
+        final all = <Map<String, dynamic>>[];
+
+        if (data is List) {
+          for (final item in data) {
+            if (item is Map<String, dynamic>) all.add(item);
+          }
+        } else if (data is Map) {
+          final list = data['certificates'] ?? data['data'] ?? [];
+          if (list is List) {
+            for (final item in list) {
+              if (item is Map<String, dynamic>) all.add(item);
+            }
+          }
+        }
+
+        setState(() {
+          _active = all
+              .where((c) =>
+                  (c['status'] ?? '').toString().toLowerCase() == 'active' ||
+                  (c['status'] ?? '').toString().toLowerCase() == 'aktif')
+              .toList();
+          _expired = all
+              .where((c) =>
+                  (c['status'] ?? '').toString().toLowerCase() == 'expired' ||
+                  (c['status'] ?? '').toString().toLowerCase() == 'kadaluwarsa')
+              .toList();
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _error = result['message'];
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted)
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final active = _allCerts.where((c) => c.status == 'active').toList();
-    final expired = _allCerts.where((c) => c.status == 'expired').toList();
-
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -78,116 +104,92 @@ class _CertificatesScreenState extends State<CertificatesScreen>
           indicatorColor: AppColors.primary,
           indicatorSize: TabBarIndicatorSize.label,
           tabs: [
-            Tab(text: 'Aktif (${active.length})'),
-            Tab(text: 'Kadaluwarsa (${expired.length})'),
+            Tab(text: 'Aktif (${_active.length})'),
+            Tab(text: 'Kadaluwarsa (${_expired.length})'),
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _CertList(certs: active, onDownload: _downloadCert),
-          _CertList(certs: expired, onDownload: _downloadCert),
-        ],
-      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? _buildError()
+              : TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildList(_active),
+                    _buildList(_expired),
+                  ],
+                ),
     );
   }
 
-  void _downloadCert(_Certificate cert) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.download_done, color: Colors.white),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Mengunduh: ${cert.title}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: AppColors.primary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: AppShapes.borderRadiusMD),
-        margin: const EdgeInsets.all(16),
-      ),
-    );
-  }
-}
-
-class _CertList extends StatelessWidget {
-  final List<_Certificate> certs;
-  final ValueChanged<_Certificate> onDownload;
-
-  const _CertList({required this.certs, required this.onDownload});
-
-  @override
-  Widget build(BuildContext context) {
-    if (certs.isEmpty) {
-      return _buildEmpty();
-    }
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: certs.length,
-      itemBuilder: (context, i) => _CertCard(
-        cert: certs[i],
-        onDownload: () => onDownload(certs[i]),
-        onShare: () {},
-      ),
-    );
-  }
-
-  Widget _buildEmpty() {
+  Widget _buildError() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: AppColors.surfaceVariant,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.workspace_premium_outlined,
-              size: 40,
-              color: AppColors.textTertiary,
-            ),
-          ),
+          const Icon(Icons.error_outline, size: 48, color: AppColors.error),
+          const SizedBox(height: 12),
+          Text(_error ?? 'Terjadi kesalahan', textAlign: TextAlign.center),
           const SizedBox(height: 16),
-          Text('Belum ada sertifikat', style: AppTypography.titleSmall),
-          const SizedBox(height: 8),
-          Text(
-            'Selesaikan kursus untuk mendapatkan\nsertifikat resmi',
-            textAlign: TextAlign.center,
-            style: AppTypography.bodyMedium.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ),
+          ElevatedButton(
+              onPressed: _fetchCertificates, child: const Text('Coba Lagi')),
         ],
       ),
     );
   }
-}
 
-class _CertCard extends StatelessWidget {
-  final _Certificate cert;
-  final VoidCallback onDownload;
-  final VoidCallback onShare;
+  Widget _buildList(List<Map<String, dynamic>> certs) {
+    if (certs.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: const BoxDecoration(
+                  color: AppColors.surfaceVariant, shape: BoxShape.circle),
+              child: const Icon(Icons.workspace_premium_outlined,
+                  size: 40, color: AppColors.textTertiary),
+            ),
+            const SizedBox(height: 16),
+            Text('Belum ada sertifikat', style: AppTypography.titleSmall),
+            const SizedBox(height: 8),
+            Text(
+              'Selesaikan kursus untuk mendapatkan\nsertifikat resmi',
+              textAlign: TextAlign.center,
+              style: AppTypography.bodyMedium
+                  .copyWith(color: AppColors.textSecondary),
+            ),
+          ],
+        ),
+      );
+    }
 
-  const _CertCard({
-    required this.cert,
-    required this.onDownload,
-    required this.onShare,
-  });
+    return RefreshIndicator(
+      onRefresh: _fetchCertificates,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: certs.length,
+        itemBuilder: (context, i) => _buildCertCard(certs[i]),
+      ),
+    );
+  }
 
-  @override
-  Widget build(BuildContext context) {
-    final isExpired = cert.status == 'expired';
+  Widget _buildCertCard(Map<String, dynamic> cert) {
+    final title = cert['title'] ?? cert['course_name'] ?? cert['name'] ?? '-';
+    final lpkName = cert['lpk_name'] ?? cert['lpk']?['name'] ?? '-';
+    final number =
+        cert['certificate_number'] ?? cert['number'] ?? cert['code'] ?? '-';
+    final issuedRaw =
+        cert['issued_at'] ?? cert['created_at'] ?? cert['issued_date'] ?? '';
+    final issuedDate = _parseDate(issuedRaw);
+    final isExpired =
+        (cert['status'] ?? '').toString().toLowerCase() == 'expired' ||
+            (cert['status'] ?? '').toString().toLowerCase() == 'kadaluwarsa';
+    final color = isExpired ? AppColors.textDisabled : AppColors.primary;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -205,7 +207,7 @@ class _CertCard extends StatelessWidget {
             child: Container(
               width: 4,
               decoration: BoxDecoration(
-                color: isExpired ? AppColors.textDisabled : cert.color,
+                color: color,
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(16),
                   bottomLeft: Radius.circular(16),
@@ -226,40 +228,33 @@ class _CertCard extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: isExpired
                             ? AppColors.surfaceVariant
-                            : cert.color.withValues(alpha: 0.1),
+                            : AppColors.primary.withValues(alpha: 0.1),
                         borderRadius: AppShapes.borderRadiusSM,
                       ),
-                      child: Icon(
-                        Icons.workspace_premium,
-                        size: 22,
-                        color: isExpired ? AppColors.textTertiary : cert.color,
-                      ),
+                      child: Icon(Icons.workspace_premium,
+                          size: 22,
+                          color: isExpired
+                              ? AppColors.textTertiary
+                              : AppColors.primary),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            cert.title,
-                            style: AppTypography.titleSmall,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          Text(
-                            cert.lpkName,
-                            style: AppTypography.bodySmall.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
+                          Text(title,
+                              style: AppTypography.titleSmall,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis),
+                          Text(lpkName,
+                              style: AppTypography.bodySmall
+                                  .copyWith(color: AppColors.textSecondary)),
                         ],
                       ),
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: isExpired
                             ? AppColors.surfaceVariant
@@ -282,16 +277,11 @@ class _CertCard extends StatelessWidget {
                 const Divider(height: 1),
                 const SizedBox(height: 12),
 
-                // Details
-                _buildInfoRow(Icons.numbers, 'No. Sertifikat', cert.number),
+                // Detail
+                _buildInfoRow(Icons.numbers, 'No. Sertifikat', number),
                 const SizedBox(height: 4),
                 _buildInfoRow(
-                  Icons.calendar_today_outlined,
-                  'Diterbitkan',
-                  '${cert.issuedDate.day.toString().padLeft(2, '0')} '
-                      '${_monthName(cert.issuedDate.month)} '
-                      '${cert.issuedDate.year}',
-                ),
+                    Icons.calendar_today_outlined, 'Diterbitkan', issuedDate),
 
                 const SizedBox(height: 12),
 
@@ -300,7 +290,7 @@ class _CertCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed: onShare,
+                        onPressed: () {},
                         icon: const Icon(Icons.share_outlined, size: 16),
                         label: const Text('Bagikan'),
                         style: OutlinedButton.styleFrom(
@@ -313,7 +303,7 @@ class _CertCard extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: isExpired ? null : onDownload,
+                        onPressed: isExpired ? null : () => _downloadCert(cert),
                         icon: const Icon(Icons.download_outlined, size: 16),
                         label: const Text('Unduh PDF'),
                         style: ElevatedButton.styleFrom(
@@ -339,53 +329,59 @@ class _CertCard extends StatelessWidget {
       children: [
         Icon(icon, size: 14, color: AppColors.textTertiary),
         const SizedBox(width: 6),
-        Text(
-          '$label: ',
-          style: AppTypography.bodySmall.copyWith(
-            color: AppColors.textTertiary,
-          ),
-        ),
+        Text('$label: ',
+            style: AppTypography.bodySmall
+                .copyWith(color: AppColors.textTertiary)),
         Expanded(
-          child: Text(
-            value,
-            style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w500,
-            ),
-            overflow: TextOverflow.ellipsis,
-          ),
+          child: Text(value,
+              style: AppTypography.bodySmall.copyWith(
+                  color: AppColors.textPrimary, fontWeight: FontWeight.w500),
+              overflow: TextOverflow.ellipsis),
         ),
       ],
     );
   }
 
-  String _monthName(int month) {
-    const months = [
-      '', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-      'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des',
-    ];
-    return months[month];
+  String _parseDate(String raw) {
+    if (raw.isEmpty) return '-';
+    try {
+      final dt = DateTime.parse(raw);
+      const months = [
+        '',
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'Mei',
+        'Jun',
+        'Jul',
+        'Ags',
+        'Sep',
+        'Okt',
+        'Nov',
+        'Des'
+      ];
+      return '${dt.day.toString().padLeft(2, '0')} '
+          '${months[dt.month]} ${dt.year}';
+    } catch (_) {
+      return raw;
+    }
   }
-}
 
-class _Certificate {
-  final String id;
-  final String title;
-  final String lpkName;
-  final DateTime issuedDate;
-  final String status;
-  final String category;
-  final String number;
-  final Color color;
-
-  const _Certificate({
-    required this.id,
-    required this.title,
-    required this.lpkName,
-    required this.issuedDate,
-    required this.status,
-    required this.category,
-    required this.number,
-    required this.color,
-  });
+  void _downloadCert(Map<String, dynamic> cert) {
+    final title = cert['title'] ?? cert['name'] ?? 'Sertifikat';
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Row(children: [
+        const Icon(Icons.download_done, color: Colors.white),
+        const SizedBox(width: 12),
+        Expanded(
+            child: Text('Mengunduh: $title',
+                maxLines: 1, overflow: TextOverflow.ellipsis)),
+      ]),
+      backgroundColor: AppColors.primary,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: AppShapes.borderRadiusMD),
+      margin: const EdgeInsets.all(16),
+    ));
+  }
 }

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_shapes.dart';
 import '../../../../core/theme/app_typography.dart';
-import 'package:go_router/go_router.dart';
+import '../../../../core/services/api_service.dart';
 
 class FavoritesScreen extends StatefulWidget {
   const FavoritesScreen({super.key});
@@ -13,63 +14,19 @@ class FavoritesScreen extends StatefulWidget {
 
 class _FavoritesScreenState extends State<FavoritesScreen>
     with TickerProviderStateMixin {
+  final _api = ApiService();
   late TabController _tabController;
 
-  final List<_FavItem> _favCourses = [
-    _FavItem(
-      id: 'c1',
-      title: 'Las Listrik untuk Pemula',
-      subtitle: 'LPK Mitra Karya · 4.8 ⭐',
-      imageTag: '35',
-      color: AppColors.categoryLas,
-      price: 'Rp 1.500.000',
-      type: 'course',
-    ),
-    _FavItem(
-      id: 'c2',
-      title: 'Desain Grafis & UI/UX Dasar',
-      subtitle: 'LPK Digital Indramayu · 4.9 ⭐',
-      imageTag: '36',
-      color: AppColors.categoryIT,
-      price: 'Rp 2.000.000',
-      type: 'course',
-    ),
-    _FavItem(
-      id: 'c3',
-      title: 'Tata Boga Profesional',
-      subtitle: 'LPK Kuliner Jaya · 4.7 ⭐',
-      imageTag: '37',
-      color: AppColors.categoryTataBoga,
-      price: 'Rp 1.800.000',
-      type: 'course',
-    ),
-  ];
-
-  final List<_FavItem> _favLPKs = [
-    _FavItem(
-      id: 'l1',
-      title: 'LPK Mitra Karya',
-      subtitle: '15 kursus · 4.8 ⭐ · 500+ alumni',
-      imageTag: '20',
-      color: AppColors.primary,
-      price: '',
-      type: 'lpk',
-    ),
-    _FavItem(
-      id: 'l2',
-      title: 'LPK Digital Nusantara',
-      subtitle: '8 kursus · 4.9 ⭐ · 300+ alumni',
-      imageTag: '21',
-      color: AppColors.categoryIT,
-      price: '',
-      type: 'lpk',
-    ),
-  ];
+  List<Map<String, dynamic>> _favCourses = [];
+  List<Map<String, dynamic>> _favLPKs = [];
+  bool _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _fetchFavorites();
   }
 
   @override
@@ -78,27 +35,81 @@ class _FavoritesScreenState extends State<FavoritesScreen>
     super.dispose();
   }
 
-  void _removeFromFav(String id, String type) {
+  Future<void> _fetchFavorites() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final result = await _api.getFavorites();
+      if (!mounted) return;
+      if (result['success']) {
+        final raw = result['data'];
+        final data = raw['data'] ?? raw;
+        // Backend bisa return { courses: [], lpks: [] }
+        // atau flat list dengan field 'type'
+        final courses = <Map<String, dynamic>>[];
+        final lpks = <Map<String, dynamic>>[];
+
+        if (data is Map) {
+          // Format: { courses: [...], lpks: [...] }
+          final c = data['courses'] ?? data['course'] ?? [];
+          final l = data['lpks'] ?? data['lpk'] ?? [];
+          for (final item in c) {
+            if (item is Map<String, dynamic>) courses.add(item);
+          }
+          for (final item in l) {
+            if (item is Map<String, dynamic>) lpks.add(item);
+          }
+        } else if (data is List) {
+          // Format: flat list dengan field type
+          for (final item in data) {
+            if (item is Map<String, dynamic>) {
+              final type = item['type'] ?? item['item_type'] ?? '';
+              if (type == 'lpk') {
+                lpks.add(item['lpk'] ?? item);
+              } else {
+                courses.add(item['course'] ?? item);
+              }
+            }
+          }
+        }
+
+        setState(() {
+          _favCourses = courses;
+          _favLPKs = lpks;
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _error = result['message'];
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted)
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+    }
+  }
+
+  Future<void> _removeFromFav(String id, String type) async {
+    await _api.toggleFavorite(itemId: id, itemType: type);
     setState(() {
       if (type == 'course') {
-        _favCourses.removeWhere((e) => e.id == id);
+        _favCourses.removeWhere((e) => e['id'].toString() == id);
       } else {
-        _favLPKs.removeWhere((e) => e.id == id);
+        _favLPKs.removeWhere((e) => e['id'].toString() == id);
       }
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Dihapus dari favorit'),
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Dihapus dari favorit'),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: AppShapes.borderRadiusMD),
-        margin: const EdgeInsets.all(16),
-        action: SnackBarAction(
-          label: 'Undo',
-          textColor: AppColors.primaryLight,
-          onPressed: () => setState(() {}),
-        ),
-      ),
-    );
+      ));
+    }
   }
 
   @override
@@ -122,17 +133,37 @@ class _FavoritesScreenState extends State<FavoritesScreen>
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? _buildError()
+              : TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildList(_favCourses, 'course'),
+                    _buildList(_favLPKs, 'lpk'),
+                  ],
+                ),
+    );
+  }
+
+  Widget _buildError() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _buildList(_favCourses),
-          _buildList(_favLPKs),
+          const Icon(Icons.error_outline, size: 48, color: AppColors.error),
+          const SizedBox(height: 12),
+          Text(_error ?? 'Terjadi kesalahan', textAlign: TextAlign.center),
+          const SizedBox(height: 16),
+          ElevatedButton(
+              onPressed: _fetchFavorites, child: const Text('Coba Lagi')),
         ],
       ),
     );
   }
 
-  Widget _buildList(List<_FavItem> items) {
+  Widget _buildList(List<Map<String, dynamic>> items, String type) {
     if (items.isEmpty) {
       return Center(
         child: Column(
@@ -142,60 +173,61 @@ class _FavoritesScreenState extends State<FavoritesScreen>
               width: 80,
               height: 80,
               decoration: const BoxDecoration(
-                color: AppColors.surfaceVariant,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.favorite_border,
-                size: 40,
-                color: AppColors.textTertiary,
-              ),
+                  color: AppColors.surfaceVariant, shape: BoxShape.circle),
+              child: const Icon(Icons.favorite_border,
+                  size: 40, color: AppColors.textTertiary),
             ),
             const SizedBox(height: 16),
             Text('Belum ada favorit', style: AppTypography.titleSmall),
             const SizedBox(height: 8),
             Text(
-              'Simpan kursus atau LPK favorit Anda\nuntuk akses cepat',
+              'Simpan kursus atau LPK favorit\nuntuk akses cepat',
               textAlign: TextAlign.center,
-              style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
-              ),
+              style: AppTypography.bodyMedium
+                  .copyWith(color: AppColors.textSecondary),
             ),
           ],
         ),
       );
     }
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: items.length,
-      itemBuilder: (context, i) {
-        final item = items[i];
-        return _buildFavCard(item);
-      },
+
+    return RefreshIndicator(
+      onRefresh: _fetchFavorites,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: items.length,
+        itemBuilder: (context, i) => _buildFavCard(items[i], type),
+      ),
     );
   }
 
-  Widget _buildFavCard(_FavItem item) {
+  Widget _buildFavCard(Map<String, dynamic> item, String type) {
+    final id = item['id']?.toString() ?? '';
+    final title = item['name'] ?? item['title'] ?? '-';
+    final imageUrl = ApiService.toFullUrl(
+        item['image_url'] ?? item['image'] ?? item['logo_url'] ?? item['logo']);
+    final price = item['price'];
+    final rating = item['rating'];
+    final lpkName = item['lpk']?['name'] ?? item['lpk_name'] ?? '';
+
     return Dismissible(
-      key: Key(item.id),
+      key: Key('$type-$id'),
       direction: DismissDirection.endToStart,
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: AppColors.error,
-          borderRadius: AppShapes.cardRadius,
-        ),
+            color: AppColors.error, borderRadius: AppShapes.cardRadius),
         child: const Icon(Icons.delete_outline, color: Colors.white, size: 28),
       ),
-      onDismissed: (_) => _removeFromFav(item.id, item.type),
+      onDismissed: (_) => _removeFromFav(id, type),
       child: GestureDetector(
         onTap: () {
-          if (item.type == 'course') {
-            context.push('/course/${item.id}');
+          if (type == 'course') {
+            context.push('/course/$id');
           } else {
-            context.push('/lpk/${item.id}');
+            context.push('/lpk/$id');
           }
         },
         child: Container(
@@ -213,12 +245,13 @@ class _FavoritesScreenState extends State<FavoritesScreen>
                   topLeft: Radius.circular(16),
                   bottomLeft: Radius.circular(16),
                 ),
-                child: Image.network(
-                  'https://picsum.photos/100/100?random=${item.imageTag}',
-                  width: 90,
-                  height: 90,
-                  fit: BoxFit.cover,
-                ),
+                child: imageUrl.isNotEmpty
+                    ? Image.network(imageUrl,
+                        width: 90,
+                        height: 90,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _imagePlaceholder())
+                    : _imagePlaceholder(),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -229,50 +262,51 @@ class _FavoritesScreenState extends State<FavoritesScreen>
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
+                            horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: item.color.withValues(alpha: 0.1),
+                          color: (type == 'course'
+                                  ? AppColors.primary
+                                  : AppColors.secondary)
+                              .withValues(alpha: 0.1),
                           borderRadius: AppShapes.chipRadius,
                         ),
                         child: Text(
-                          item.type == 'course' ? 'Kursus' : 'LPK',
+                          type == 'course' ? 'Kursus' : 'LPK',
                           style: AppTypography.badge.copyWith(
-                            color: item.color,
+                            color: type == 'course'
+                                ? AppColors.primary
+                                : AppColors.secondary,
                           ),
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        item.title,
-                        style: AppTypography.labelLarge,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        item.subtitle,
-                        style: AppTypography.bodySmall.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      if (item.price.isNotEmpty) ...[
+                      Text(title,
+                          style: AppTypography.labelLarge,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis),
+                      if (lpkName.isNotEmpty)
+                        Text(lpkName,
+                            style: AppTypography.bodySmall
+                                .copyWith(color: AppColors.textSecondary)),
+                      if (rating != null)
+                        Text('⭐ $rating',
+                            style: AppTypography.bodySmall
+                                .copyWith(color: AppColors.textSecondary)),
+                      if (price != null) ...[
                         const SizedBox(height: 4),
                         Text(
-                          item.price,
-                          style: AppTypography.labelMedium.copyWith(
-                            color: AppColors.primary,
-                          ),
+                          'Rp ${_formatPrice(price)}',
+                          style: AppTypography.labelMedium
+                              .copyWith(color: AppColors.primary),
                         ),
                       ],
                     ],
                   ),
                 ),
               ),
-              // Fav button
               IconButton(
                 icon: const Icon(Icons.favorite, color: AppColors.error),
-                onPressed: () => _removeFromFav(item.id, item.type),
+                onPressed: () => _removeFromFav(id, type),
               ),
             ],
           ),
@@ -280,24 +314,20 @@ class _FavoritesScreenState extends State<FavoritesScreen>
       ),
     );
   }
-}
 
-class _FavItem {
-  final String id;
-  final String title;
-  final String subtitle;
-  final String imageTag;
-  final Color color;
-  final String price;
-  final String type;
+  Widget _imagePlaceholder() {
+    return Container(
+      width: 90,
+      height: 90,
+      color: AppColors.surfaceVariant,
+      child:
+          const Icon(Icons.image_not_supported, color: AppColors.textTertiary),
+    );
+  }
 
-  const _FavItem({
-    required this.id,
-    required this.title,
-    required this.subtitle,
-    required this.imageTag,
-    required this.color,
-    required this.price,
-    required this.type,
-  });
+  String _formatPrice(dynamic price) {
+    final num p = price is num ? price : num.tryParse(price.toString()) ?? 0;
+    return p.toStringAsFixed(0).replaceAllMapped(
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.');
+  }
 }

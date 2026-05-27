@@ -6,7 +6,6 @@ import '../../../../core/theme/app_shapes.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/animations/app_animations.dart';
 import '../../../../core/widgets/molecules/course_card.dart';
-import '../../../../core/navigation/app_router.dart';
 import '../../../../core/services/api_service.dart';
 
 class LPKDetailScreen extends StatefulWidget {
@@ -31,13 +30,15 @@ class _LPKDetailScreenState extends State<LPKDetailScreen> {
   }
 
   Future<void> _fetchLpkDetail() async {
-    setState(() { _isLoading = true; _error = null; });
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final result = await _api.getLpkDetail(widget.lpkId);
       if (!mounted) return;
       if (result['success']) {
         final raw = result['data'];
-        // Handle format: { status, data: { lpk: {}, courses: [] } }
         final data = raw['data'] ?? raw;
         final lpkData = data['lpk'] ?? data;
         final coursesData = data['courses'] ?? lpkData['courses'] ?? [];
@@ -47,10 +48,17 @@ class _LPKDetailScreenState extends State<LPKDetailScreen> {
           _isLoading = false;
         });
       } else {
-        setState(() { _error = result['message']; _isLoading = false; });
+        setState(() {
+          _error = result['message'];
+          _isLoading = false;
+        });
       }
     } catch (e) {
-      if (mounted) setState(() { _error = e.toString(); _isLoading = false; });
+      if (mounted)
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
     }
   }
 
@@ -75,8 +83,7 @@ class _LPKDetailScreenState extends State<LPKDetailScreen> {
               ),
               const SizedBox(height: 16),
               ElevatedButton(
-                  onPressed: _fetchLpkDetail,
-                  child: const Text('Coba Lagi')),
+                  onPressed: _fetchLpkDetail, child: const Text('Coba Lagi')),
             ],
           ),
         ),
@@ -91,8 +98,8 @@ class _LPKDetailScreenState extends State<LPKDetailScreen> {
     final ratingCount = (_lpk!['rating_count'] ?? 0).toString();
     final alumniCount = (_lpk!['alumni_count'] ?? 0).toString();
     final isVerified = _lpk!['is_verified'] ?? false;
-    final coverUrl = (_lpk!['cover_url'] ?? _lpk!['cover'] ?? '').toString();
-    final logoUrl = (_lpk!['logo_url'] ?? _lpk!['logo'] ?? '').toString();
+    final coverUrl = ApiService.toFullUrl(_lpk!['cover_url'] ?? _lpk!['cover']);
+    final logoUrl = ApiService.toFullUrl(_lpk!['logo_url'] ?? _lpk!['logo']);
     final facilities = List<String>.from(_lpk!['facilities'] ?? []);
     final lat = (_lpk!['latitude'] ?? '-6.3279').toString();
     final lng = (_lpk!['longitude'] ?? '108.3265').toString();
@@ -100,6 +107,7 @@ class _LPKDetailScreenState extends State<LPKDetailScreen> {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
+          // ── Cover AppBar ──────────────────────────────────────────────
           SliverAppBar(
             expandedHeight: 240,
             pinned: true,
@@ -119,7 +127,7 @@ class _LPKDetailScreenState extends State<LPKDetailScreen> {
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // Cover
+                  // Cover Image
                   coverUrl.isNotEmpty
                       ? Hero(
                           tag: '${AppAnimations.heroTagLPK}${widget.lpkId}',
@@ -138,7 +146,7 @@ class _LPKDetailScreenState extends State<LPKDetailScreen> {
                           child: const Icon(Icons.business,
                               size: 60, color: Colors.white),
                         ),
-                  // Gradient
+                  // Gradient overlay
                   Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -146,18 +154,21 @@ class _LPKDetailScreenState extends State<LPKDetailScreen> {
                         end: Alignment.bottomCenter,
                         colors: [
                           Colors.transparent,
-                          Colors.black.withValues(alpha: 0.7)
+                          Colors.black.withValues(alpha: 0.7),
                         ],
                       ),
                     ),
                   ),
-                  // Info LPK di bawah
+                  // Info LPK
                   Positioned(
-                    left: 16, right: 16, bottom: 16,
+                    left: 16,
+                    right: 16,
+                    bottom: 16,
                     child: Row(
                       children: [
                         Container(
-                          width: 60, height: 60,
+                          width: 60,
+                          height: 60,
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: AppShapes.borderRadiusMD,
@@ -216,6 +227,7 @@ class _LPKDetailScreenState extends State<LPKDetailScreen> {
             ),
           ),
 
+          // ── Konten ───────────────────────────────────────────────────
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -249,8 +261,8 @@ class _LPKDetailScreenState extends State<LPKDetailScreen> {
                             color: AppColors.textSecondary),
                         const SizedBox(width: 12),
                         Expanded(
-                            child: Text(address,
-                                style: AppTypography.bodyMedium)),
+                            child:
+                                Text(address, style: AppTypography.bodyMedium)),
                         IconButton(
                           icon: const Icon(Icons.directions),
                           color: AppColors.primary,
@@ -260,6 +272,7 @@ class _LPKDetailScreenState extends State<LPKDetailScreen> {
                     ),
                   ),
 
+                  // Fasilitas
                   if (facilities.isNotEmpty) ...[
                     const SizedBox(height: 24),
                     Text('Fasilitas', style: AppTypography.titleMedium),
@@ -275,15 +288,13 @@ class _LPKDetailScreenState extends State<LPKDetailScreen> {
 
                   const SizedBox(height: 24),
 
-                  // Kursus
+                  // Kursus Tersedia
                   Row(
                     children: [
-                      Text('Kursus Tersedia',
-                          style: AppTypography.titleMedium),
+                      Text('Kursus Tersedia', style: AppTypography.titleMedium),
                       const Spacer(),
                       TextButton(
-                          onPressed: () {},
-                          child: const Text('Lihat Semua')),
+                          onPressed: () {}, child: const Text('Lihat Semua')),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -293,8 +304,8 @@ class _LPKDetailScreenState extends State<LPKDetailScreen> {
                       child: Padding(
                         padding: const EdgeInsets.all(24),
                         child: Text('Belum ada kursus tersedia',
-                            style: AppTypography.bodyMedium.copyWith(
-                                color: AppColors.textSecondary)),
+                            style: AppTypography.bodyMedium
+                                .copyWith(color: AppColors.textSecondary)),
                       ),
                     )
                   else
@@ -304,26 +315,22 @@ class _LPKDetailScreenState extends State<LPKDetailScreen> {
                         scrollDirection: Axis.horizontal,
                         padding: const EdgeInsets.only(right: 16),
                         itemCount: _courses.length,
-                        separatorBuilder: (_, __) =>
-                            const SizedBox(width: 12),
+                        separatorBuilder: (_, __) => const SizedBox(width: 12),
                         itemBuilder: (context, index) {
                           final course = _courses[index];
-                          final courseId =
-                              course['id']?.toString() ?? '$index';
-                          final courseTitle = course['name'] ??
-                              course['title'] ??
-                              'Kursus';
-                          final courseImage = course['image_url'] ??
-                              course['image'] ??
-                              '';
+                          final courseId = course['id']?.toString() ?? '$index';
+                          final courseTitle =
+                              course['name'] ?? course['title'] ?? 'Kursus';
+                          // ✅ FIX: pakai toFullUrl agar foto muncul
+                          final courseImage = ApiService.toFullUrl(
+                              course['image_url'] ?? course['image']);
                           final courseRating =
                               (course['rating'] ?? 0).toDouble();
-                          final courseReviews =
-                              course['rating_count'] ?? 0;
-                          final coursePrice =
-                              (course['price'] ?? 0).toDouble();
-                          final courseCategory =
-                              course['category'] ?? '';
+                          final courseReviews = course['rating_count'] ?? 0;
+                          final coursePrice = (course['price'] ?? 0).toDouble();
+                          final courseCategory = course['category'] ??
+                              course['category_name'] ??
+                              '';
 
                           return SizedBox(
                             width: 180,
@@ -337,8 +344,9 @@ class _LPKDetailScreenState extends State<LPKDetailScreen> {
                               distanceKm: 0,
                               price: coursePrice,
                               category: courseCategory,
-                              onTap: () => context.push(
-                                  '${AppRouter.courseDetail}$courseId'),
+                              // ✅ FIX UTAMA: pakai '/course/$courseId'
+                              // bukan '${AppRouter.courseDetail}$courseId'
+                              onTap: () => context.push('/course/$courseId'),
                             ),
                           );
                         },
@@ -355,6 +363,8 @@ class _LPKDetailScreenState extends State<LPKDetailScreen> {
       bottomSheet: _buildContactSheet(context, phone, whatsapp, name),
     );
   }
+
+  // ── Widgets Helper ────────────────────────────────────────────────────────
 
   Widget _buildStat(String value, String label) {
     return Column(
@@ -400,16 +410,19 @@ class _LPKDetailScreenState extends State<LPKDetailScreen> {
       BuildContext context, String phone, String wa, String lpkName) {
     return Container(
       padding: EdgeInsets.only(
-        left: 16, right: 16, top: 16,
+        left: 16,
+        right: 16,
+        top: 16,
         bottom: MediaQuery.of(context).padding.bottom + 16,
       ),
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 10,
-              offset: const Offset(0, -4))
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 10,
+            offset: const Offset(0, -4),
+          ),
         ],
       ),
       child: Row(
@@ -442,9 +455,11 @@ class _LPKDetailScreenState extends State<LPKDetailScreen> {
     );
   }
 
+  // ── Actions ───────────────────────────────────────────────────────────────
+
   void _openMaps(String lat, String lng) async {
-    final url = Uri.parse(
-        'https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+    final url =
+        Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     }
@@ -457,10 +472,8 @@ class _LPKDetailScreenState extends State<LPKDetailScreen> {
 
   void _openWhatsApp(String phone, String lpkName) async {
     final clean = phone.replaceAll(RegExp(r'[^0-9]'), '');
-    final wa =
-        clean.startsWith('0') ? '62${clean.substring(1)}' : clean;
-    final msg =
-        Uri.encodeFull('Halo, saya tertarik dengan kursus di $lpkName');
+    final wa = clean.startsWith('0') ? '62${clean.substring(1)}' : clean;
+    final msg = Uri.encodeFull('Halo, saya tertarik dengan kursus di $lpkName');
     final url = Uri.parse('https://wa.me/$wa?text=$msg');
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
