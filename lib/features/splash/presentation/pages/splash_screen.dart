@@ -58,18 +58,15 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _initializeApp() async {
     try {
-      // Initialize dependencies if not already done
+      // 1. Inisialisasi Dependencies
       if (!di.sl.isRegistered<SecurityChecker>()) {
         await di.init();
       }
 
-      // Start initial data sync (fire and forget or wait depending on needs)
-      // We wait for it but with a timeout or just let it run.
-      // To ensure data is available, we put it in the wait list.
       final syncService = di.sl<SyncService>();
-
-      // Perform security check
       final securityChecker = di.sl<SecurityChecker>();
+
+      // 2. Cek Keamanan Perangkat
       final isSecure = await securityChecker.isDeviceSecure();
 
       if (!isSecure && mounted) {
@@ -77,24 +74,48 @@ class _SplashScreenState extends State<SplashScreen>
         return;
       }
 
-      // Run sync and wait for animation/delay
+      // 3. Jalankan Sync Data dan tunggu animasi minimal 2.5 detik
       await Future.wait([
         Future.delayed(const Duration(milliseconds: 2500)),
         syncService.startInitialSync(),
       ]);
 
-      // Check if user is logged in
+      // ==========================================
+      // LOGIKA AUTO-LOGIN BARU YANG DITERAPKAN
+      // ==========================================
       final apiService = ApiService();
       final token = await apiService.getToken();
 
       if (!mounted) return;
 
-      if (token != null && token.isNotEmpty) {
-        context.go(AppRouter.home);
-      } else {
+      if (token == null || token.isEmpty) {
+        // Belum pernah login -> ke Onboarding
         context.go(AppRouter.onboarding);
+        return;
+      }
+
+      // Ada token -> validasi ke server
+      try {
+        final result = await apiService.getProfile();
+        if (!mounted) return;
+
+        if (result['success'] == true) {
+          // Token masih valid -> langsung Home
+          context.go(AppRouter.home);
+        } else {
+          // Token expired/invalid -> hapus dan ke Login
+          await apiService.removeToken();
+          context.go(
+              AppRouter.login); // Pastikan AppRouter.login sudah didefinisikan
+        }
+      } catch (e) {
+        // Koneksi gagal (misal tidak ada internet) -> coba tetap masuk kalau ada token
+        // (biar bisa pakai app offline mode)
+        if (!mounted) return;
+        context.go(AppRouter.home);
       }
     } catch (e) {
+      // Fallback jika ada error pada proses inisialisasi awal
       if (mounted) {
         context.go(AppRouter.onboarding);
       }
@@ -105,21 +126,20 @@ class _SplashScreenState extends State<SplashScreen>
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Peringatan Keamanan'),
-            content: const Text(
-              'Perangkat Anda terdeteksi telah di-root atau jailbreak. '
-              'Untuk keamanan data Anda, aplikasi tidak dapat dijalankan '
-              'pada perangkat ini.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Tutup'),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        title: const Text('Peringatan Keamanan'),
+        content: const Text(
+          'Perangkat Anda terdeteksi telah di-root atau jailbreak. '
+          'Untuk keamanan data Anda, aplikasi tidak dapat dijalankan '
+          'pada perangkat ini.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Tutup'),
           ),
+        ],
+      ),
     );
   }
 
@@ -131,6 +151,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Desain dipertahankan sama persis dengan yang lama
     return Scaffold(
       body: Container(
         width: double.infinity,
