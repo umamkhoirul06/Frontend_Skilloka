@@ -9,6 +9,7 @@ import '../../../../core/navigation/app_router.dart';
 import '../../../../core/widgets/atoms/animated_button.dart';
 import '../../../../core/widgets/atoms/input_field.dart';
 import '../../../../core/services/api_service.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:local_auth/local_auth.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -159,8 +160,31 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
-  void _loginWithGoogle() {
-    context.go(AppRouter.home);
+  static bool _isGoogleSignInInitialized = false;
+
+  void _loginWithGoogle() async {
+    try {
+      if (!_isGoogleSignInInitialized) {
+        await GoogleSignIn.instance.initialize();
+        _isGoogleSignInInitialized = true;
+      }
+
+      final GoogleSignInAccount account = await GoogleSignIn.instance.authenticate();
+
+      // Jika dibutuhkan token untuk ke backend:
+      // final auth = account.authentication;
+      // final idToken = auth.idToken;
+
+      if (mounted) {
+        context.go(AppRouter.home);
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Login Google gagal: $error')),
+        );
+      }
+    }
   }
 
   void _loginWithBiometric() async {
