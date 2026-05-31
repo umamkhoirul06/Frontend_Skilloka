@@ -9,6 +9,7 @@ import '../../../../core/navigation/app_router.dart';
 import '../../../../core/widgets/atoms/animated_button.dart';
 import '../../../../core/widgets/atoms/input_field.dart';
 import '../../../../core/services/api_service.dart';
+import 'package:local_auth/local_auth.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -163,7 +164,39 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   void _loginWithBiometric() async {
-    context.go(AppRouter.home);
+    final LocalAuthentication auth = LocalAuthentication();
+    try {
+      final bool canAuthenticateWithBiometrics = await auth.canCheckBiometrics;
+      final bool canAuthenticate =
+          canAuthenticateWithBiometrics || await auth.isDeviceSupported();
+
+      if (!canAuthenticate) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Biometrik tidak didukung di perangkat ini')),
+          );
+        }
+        return;
+      }
+
+      final bool didAuthenticate = await auth.authenticate(
+        localizedReason: 'Silakan autentikasi untuk masuk',
+        options: const AuthenticationOptions(
+          biometricOnly: true,
+          stickyAuth: true,
+        ),
+      );
+
+      if (didAuthenticate && mounted) {
+        context.go(AppRouter.home);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error biometrik: ${e.toString()}')),
+        );
+      }
+    }
   }
 
   @override
