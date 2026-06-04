@@ -10,9 +10,7 @@ class AppSearchBar extends StatefulWidget {
   final String hint;
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
-  final VoidCallback? onVoicePressed;
   final VoidCallback? onFilterPressed;
-  final bool showVoiceButton;
   final bool showFilterButton;
   final bool expandable;
   final bool autofocus;
@@ -25,9 +23,7 @@ class AppSearchBar extends StatefulWidget {
     this.hint = 'Cari kursus atau LPK...',
     this.onChanged,
     this.onSubmitted,
-    this.onVoicePressed,
     this.onFilterPressed,
-    this.showVoiceButton = true,
     this.showFilterButton = false,
     this.expandable = false,
     this.autofocus = false,
@@ -242,14 +238,6 @@ class _AppSearchBarState extends State<AppSearchBar>
                 widget.onChanged?.call('');
                 setState(() {});
               },
-            ),
-
-          // Voice Button
-          if (widget.showVoiceButton && _isExpanded)
-            IconButton(
-              icon: const Icon(Icons.mic, size: 22),
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              onPressed: widget.onVoicePressed,
             ),
 
           // Filter Button
