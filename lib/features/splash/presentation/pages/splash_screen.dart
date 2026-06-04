@@ -89,8 +89,8 @@ class _SplashScreenState extends State<SplashScreen>
       if (!mounted) return;
 
       if (token == null || token.isEmpty) {
-        // Belum pernah login -> ke Onboarding
-        context.go(AppRouter.onboarding);
+        // Belum login atau token hilang -> arahkan ke halaman Login
+        context.go(AppRouter.login);
         return;
       }
 

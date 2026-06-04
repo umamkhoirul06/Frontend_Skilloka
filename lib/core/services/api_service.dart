@@ -1,14 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../navigation/app_router.dart';
 
 class ApiService {
   static const String baseUrl = 'https://skilloka.my.id/api';
   static const String storageUrl = 'https://skilloka.my.id/storage';
   static const String _tokenKey = 'access_token';
-  final _storage = const FlutterSecureStorage();
+
 
   // ── Konversi path relatif ke full URL ──────────────────────────────────
   static String toFullUrl(String? path) {
@@ -19,12 +19,21 @@ class ApiService {
   }
 
   // ── Token Helpers ───────────────────────────────────────────────────────
-  Future<void> saveToken(String token) async =>
-      await _storage.write(key: _tokenKey, value: token);
+  // ── Token Helpers ───────────────────────────────────────────────────────
+  Future<void> saveToken(String token) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_tokenKey, token);
+  }
 
-  Future<String?> getToken() async => await _storage.read(key: _tokenKey);
+  Future<String?> getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_tokenKey);
+  }
 
-  Future<void> removeToken() async => await _storage.delete(key: _tokenKey);
+  Future<void> removeToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_tokenKey);
+  }
 
   Future<void> logout() async {
     await removeToken();
