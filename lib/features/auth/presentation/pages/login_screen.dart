@@ -9,7 +9,6 @@ import '../../../../core/navigation/app_router.dart';
 import '../../../../core/widgets/atoms/animated_button.dart';
 import '../../../../core/widgets/atoms/input_field.dart';
 import '../../../../core/services/api_service.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:local_auth/local_auth.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -60,7 +59,7 @@ class _LoginScreenState extends State<LoginScreen>
     });
   }
 
-  Future<void> _sendOTP() async {
+  Future<void> _sendOTP([String channel = 'whatsapp']) async {
     if (!_isPhoneValid) return;
 
     setState(() => _isLoading = true);
@@ -73,7 +72,7 @@ class _LoginScreenState extends State<LoginScreen>
         phone = '0${phone.substring(2)}';
       }
       
-      final response = await _apiService.requestOtp(phone);
+      final response = await _apiService.requestOtp(phone, channel: channel);
       final success = response['success'] ?? false;
 
       if (mounted) {
@@ -160,32 +159,6 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
-  static bool _isGoogleSignInInitialized = false;
-
-  void _loginWithGoogle() async {
-    try {
-      if (!_isGoogleSignInInitialized) {
-        await GoogleSignIn.instance.initialize();
-        _isGoogleSignInInitialized = true;
-      }
-
-      final GoogleSignInAccount account = await GoogleSignIn.instance.authenticate();
-
-      // Jika dibutuhkan token untuk ke backend:
-      // final auth = account.authentication;
-      // final idToken = auth.idToken;
-
-      if (mounted) {
-        context.go(AppRouter.home);
-      }
-    } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Login Google gagal: $error')),
-        );
-      }
-    }
-  }
 
   void _loginWithBiometric() async {
     final LocalAuthentication auth = LocalAuthentication();
@@ -259,12 +232,12 @@ class _LoginScreenState extends State<LoginScreen>
                 ),
                 const SizedBox(height: 24),
                 AnimatedPrimaryButton(
-                  text: _showOTPInput ? 'Verifikasi' : 'Lanjutkan',
+                  text: _showOTPInput ? 'Verifikasi' : 'Kirim via WhatsApp',
                   isLoading: _isLoading,
                   isEnabled: _showOTPInput
                       ? _otpControllers.every((c) => c.text.isNotEmpty)
                       : _isPhoneValid,
-                  onPressed: _showOTPInput ? _verifyOTP : _sendOTP,
+                  onPressed: _showOTPInput ? _verifyOTP : () => _sendOTP('whatsapp'),
                 ),
                 if (_showOTPInput) ...[
                   const SizedBox(height: 16),
@@ -280,6 +253,12 @@ class _LoginScreenState extends State<LoginScreen>
                   Center(child: _ResendOTPButton(onResend: _sendOTP)),
                 ],
                 if (!_showOTPInput) ...[
+                  const SizedBox(height: 16),
+                  _SocialLoginButton(
+                    icon: Icons.telegram,
+                    label: 'Kirim via Telegram',
+                    onPressed: (_isPhoneValid && !_isLoading) ? () => _sendOTP('telegram') : null,
+                  ),
                   const SizedBox(height: 40),
                   Row(
                     children: [
@@ -298,15 +277,9 @@ class _LoginScreenState extends State<LoginScreen>
                   ),
                   const SizedBox(height: 24),
                   _SocialLoginButton(
-                    icon: Icons.g_mobiledata,
-                    label: 'Lanjutkan dengan Google',
-                    onPressed: _loginWithGoogle,
-                  ),
-                  const SizedBox(height: 12),
-                  _SocialLoginButton(
                     icon: Icons.fingerprint,
                     label: 'Masuk dengan Biometrik',
-                    onPressed: _loginWithBiometric,
+                    onPressed: _isLoading ? null : _loginWithBiometric,
                     isPrimary: true,
                   ),
                 ],
@@ -383,7 +356,7 @@ class _LoginScreenState extends State<LoginScreen>
 class _SocialLoginButton extends StatelessWidget {
   final IconData icon;
   final String label;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final bool isPrimary;
 
   const _SocialLoginButton({

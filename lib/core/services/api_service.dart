@@ -82,10 +82,10 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> requestOtp(String phone) async {
+  Future<Map<String, dynamic>> requestOtp(String phone, {String channel = 'whatsapp'}) async {
     try {
       final r = await http.post(Uri.parse('$baseUrl/auth/request-otp'),
-          headers: _publicHeaders, body: jsonEncode({'phone': phone}));
+          headers: _publicHeaders, body: jsonEncode({'phone': phone, 'channel': channel}));
       return _handleResponse(r);
     } catch (e) {
       return {'success': false, 'message': 'Koneksi gagal: $e'};
