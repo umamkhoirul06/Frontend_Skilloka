@@ -84,6 +84,18 @@ class _LoginScreenState extends State<LoginScreen>
         });
         if (success) {
           _otpFocusNodes[0].requestFocus();
+          // Debugging helper: Tampilkan OTP di layar selama masa development
+          final resData = response['data'] ?? {};
+          final innerData = resData['data'] ?? {};
+          if (innerData['dev_otp'] != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('OTP Dev: ${innerData['dev_otp']} \n(${resData['message'] ?? 'Berhasil'})'),
+                duration: const Duration(seconds: 10),
+                backgroundColor: AppColors.primary,
+              ),
+            );
+          }
         } else {
           final msg = (response['message'] ?? '').toString().toLowerCase();
           if (msg.contains('belum terdaftar') || msg.contains('404') || msg.contains('not found')) {
