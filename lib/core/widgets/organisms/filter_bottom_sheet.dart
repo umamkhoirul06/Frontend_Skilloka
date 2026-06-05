@@ -347,6 +347,7 @@ class FilterResult {
 /// Indramayu Kecamatan list
 class IndramayuKecamatan {
   static const List<String> list = [
+    'Semua',
     'Anjatan',
     'Arahan',
     'Balongan',

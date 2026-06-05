@@ -8,22 +8,44 @@ class HomeRepository {
 
   HomeRepository({required this.apiClient});
 
-  Future<List<CourseModel>> getCourses() async {
+  Future<List<CourseModel>> getCourses({
+    String? search,
+    String? category,
+  }) async {
     try {
-      final response = await apiClient.get('/courses');
+      final response = await apiClient.get(
+        '/courses',
+        queryParameters: {
+          if (search != null && search.isNotEmpty)
+            'search': search,
+
+          if (category != null && category.isNotEmpty)
+            'category': category,
+        },
+      );
+
       List<dynamic> data = [];
-      
+
       if (response.data is List) {
         data = response.data;
       } else if (response.data is Map) {
-        if (response.data['data'] is List) {
-          data = response.data['data'];
-        } else if (response.data['data'] is Map && response.data['data']['data'] is List) {
-          data = response.data['data']['data'];
-        }
-      }
-      
-      return data.map((json) => CourseModel.fromJson(json)).toList();
+  if (response.data['data'] is List) {
+    data = response.data['data'];
+  } else if (response.data['data'] is Map &&
+      response.data['data']['data'] is List) {
+    data = response.data['data']['data'];
+  }
+}
+
+print('========================');
+print('COURSES RAW RESPONSE:');
+print(response.data);
+print('COURSES PARSED LENGTH: ${data.length}');
+print('========================');
+
+return data
+    .map((json) => CourseModel.fromJson(json))
+    .toList();
     } on DioException catch (e) {
       print('DioException getCourses: ${e.message}');
       return [];
@@ -33,22 +55,49 @@ class HomeRepository {
     }
   }
 
-  Future<List<LpkModel>> getLpks() async {
+  Future<List<LpkModel>> getLpks({
+  String? search,
+  String? location,
+}) async {
     try {
-      final response = await apiClient.get('/lpks');
+      final response = await apiClient.get(
+  '/lpks',
+  queryParameters: {
+    if (search != null && search.isNotEmpty)
+      'search': search,
+
+    if (location != null &&
+        location.isNotEmpty &&
+        location != 'Semua')
+      'location': location,
+  },
+);
+
       List<dynamic> data = [];
-      
+
       if (response.data is List) {
         data = response.data;
       } else if (response.data is Map) {
         if (response.data['data'] is List) {
           data = response.data['data'];
-        } else if (response.data['data'] is Map && response.data['data']['data'] is List) {
+        } else if (response.data['data'] is Map &&
+            response.data['data']['data'] is List) {
           data = response.data['data']['data'];
         }
       }
-      
-      return data.map((json) => LpkModel.fromJson(json)).toList();
+
+      final result = <LpkModel>[];
+
+for (final item in data) {
+  try {
+    result.add(LpkModel.fromJson(item));
+  } catch (e) {
+    print('ERROR PARSING LPK: $e');
+    print(item);
+  }
+}
+
+return result;
     } on DioException catch (e) {
       print('DioException getLpks: ${e.message}');
       return [];

@@ -173,11 +173,17 @@ class _LPKCardState extends State<LPKCard> with SingleTickerProviderStateMixin {
                     fit: BoxFit.cover,
                     placeholder: (context, url) =>
                         const SkeletonLoader(width: 60, height: 60),
-                    errorWidget: (context, url, error) => const Icon(
-                      Icons.business,
-                      color: AppColors.textTertiary,
-                      size: 28,
-                    ),
+                    errorWidget: (context, url, error) {
+  debugPrint('IMAGE ERROR');
+  debugPrint('URL: $url');
+  debugPrint('ERROR: $error');
+
+  return const Icon(
+    Icons.business,
+    color: AppColors.textTertiary,
+    size: 28,
+  );
+},
                   ),
                 )
               : const Icon(

@@ -24,8 +24,9 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  String _searchQuery = '';
   String? _selectedCategory;
-  String _currentLocation = 'Indramayu';
+  String _currentLocation = 'Semua';
   bool _isLoading = true;
 
   List<LpkModel> _lpks = [];
@@ -33,13 +34,22 @@ class _HomeScreenState extends State<HomeScreen> {
   late final HomeRepository _homeRepository;
 
   final List<String> _categories = [
-    'Las',
-    'IT',
-    'Otomotif',
-    'Tata Busana',
-    'Tata Boga',
-    'Bahasa',
-  ];
+  'Las',
+  'IT',
+  'Otomotif',
+  'Tata Busana',
+  'Tata Boga',
+  'Bahasa',
+];
+
+final Map<String, String> _categorySlugMap = {
+  'Las': 'las',
+  'IT': 'it',
+  'Otomotif': 'otomotif',
+  'Tata Busana': 'tata-busana',
+  'Tata Boga': 'tata-boga',
+  'Bahasa': 'bahasa',
+};
 
   // Mock data
   final List<BannerItem> _banners = [
@@ -67,19 +77,34 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadData() async {
-    final responses = await Future.wait([
-      _homeRepository.getLpks(),
-      _homeRepository.getCourses(),
-    ]);
+  print('CATEGORY = $_selectedCategory');
 
-    if (mounted) {
-      setState(() {
-        _lpks = responses[0] as List<LpkModel>;
-        _courses = responses[1] as List<CourseModel>;
-        _isLoading = false;
-      });
-    }
+final responses = await Future.wait([
+  _homeRepository.getLpks(
+    search: _searchQuery,
+  ),
+  _homeRepository.getCourses(
+    search: _searchQuery,
+    category: _selectedCategory,
+  ),
+]);
+
+  List<LpkModel> lpks = responses[0] as List<LpkModel>;
+
+  if (_currentLocation != 'Semua') {
+    lpks = lpks.where((lpk) {
+      return lpk.locationName == _currentLocation;
+    }).toList();
   }
+
+  if (mounted) {
+    setState(() {
+      _lpks = lpks;
+      _courses = responses[1] as List<CourseModel>;
+      _isLoading = false;
+    });
+  }
+}
 
   void _openFilter() async {
     final result = await FilterBottomSheet.show(
@@ -91,15 +116,21 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     if (result != null) {
-      setState(() {
-        if (result.kecamatan != null) {
-          _currentLocation = result.kecamatan!;
-        }
-        if (result.categories.isNotEmpty) {
-          _selectedCategory = result.categories.first;
-        }
-      });
+  setState(() {
+    if (result.kecamatan != null) {
+      _currentLocation = result.kecamatan!;
     }
+
+    if (result.categories.isNotEmpty) {
+  _selectedCategory =
+      _categorySlugMap[result.categories.first];
+}
+
+    _isLoading = true;
+  });
+
+  await _loadData();
+}
   }
 
   @override
@@ -159,9 +190,14 @@ class _HomeScreenState extends State<HomeScreen> {
                             Expanded(
                               child: AppSearchBar(
                                 hint: 'Cari kursus atau LPK...',
-                                onSubmitted: (query) {
-                                  // TODO: Navigate to search results
-                                },
+                                onSubmitted: (query) async {
+  setState(() {
+    _searchQuery = query;
+    _isLoading = true;
+  });
+
+  await _loadData();
+},
                                 onFilterPressed: _openFilter,
                                 showFilterButton: true,
                               ),
@@ -196,9 +232,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   CategoryFilterChips(
                     categories: _categories,
                     selectedCategory: _selectedCategory,
-                    onSelected: (category) {
-                      setState(() => _selectedCategory = category);
-                    },
+                    onSelected: (category) async {
+  setState(() {
+    _selectedCategory = _categorySlugMap[category];
+    _isLoading = true;
+  });
+
+  await _loadData();
+},
                   ),
 
                   const SizedBox(height: 24),
@@ -269,7 +310,7 @@ class _HomeScreenState extends State<HomeScreen> {
             rating: lpk.rating,
             reviewCount: lpk.reviewCount,
             isVerified: lpk.isVerified,
-            onTap: () => context.push('${AppRouter.lpkDetail}${lpk.id}'),
+            onTap: () => context.push('/lpk/${lpk.id}'),
           );
         },
       ),
@@ -285,11 +326,11 @@ class _HomeScreenState extends State<HomeScreen> {
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          childAspectRatio: 0.68,
-        ),
+  crossAxisCount: 2,
+  crossAxisSpacing: 12,
+  mainAxisSpacing: 12,
+  childAspectRatio: 0.9,
+),
         itemCount: _courses.length,
         itemBuilder: (context, index) {
           final course = _courses[index];

@@ -328,8 +328,10 @@ class _LPKDetailScreenState extends State<LPKDetailScreen> {
                               (course['rating'] ?? 0).toDouble();
                           final courseReviews = course['rating_count'] ?? 0;
                           final coursePrice = (course['price'] ?? 0).toDouble();
-                          final courseCategory = course['category'] ??
-                              course['category_name'] ??
+                          final courseCategory =
+    course['category'] is Map
+        ? (course['category']['name'] ?? '')
+        : (course['category_name'] ?? '');
                               '';
 
                           return SizedBox(
