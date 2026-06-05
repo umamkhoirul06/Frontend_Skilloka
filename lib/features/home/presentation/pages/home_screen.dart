@@ -84,9 +84,9 @@ final responses = await Future.wait([
     search: _searchQuery,
   ),
   _homeRepository.getCourses(
-    search: _searchQuery,
-    category: _selectedCategory,
-  ),
+  search: _searchQuery,
+  category: null,
+),
 ]);
 
 print('COURSES = ${(responses[1] as List<CourseModel>).length}');
