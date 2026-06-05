@@ -89,6 +89,8 @@ final responses = await Future.wait([
   ),
 ]);
 
+print('COURSES = ${(responses[1] as List<CourseModel>).length}');
+
   List<LpkModel> lpks = responses[0] as List<LpkModel>;
 
   if (_currentLocation != 'Semua') {
@@ -233,8 +235,11 @@ final responses = await Future.wait([
                     categories: _categories,
                     selectedCategory: _selectedCategory,
                     onSelected: (category) async {
+  print('CLICK = $category');
+
   setState(() {
     _selectedCategory = _categorySlugMap[category];
+    print('SEND = $_selectedCategory');
     _isLoading = true;
   });
 
