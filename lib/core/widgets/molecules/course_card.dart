@@ -79,9 +79,8 @@ class _CourseCardState extends State<CourseCard>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _scaleAnimation,
-      builder:
-          (context, child) =>
-              Transform.scale(scale: _scaleAnimation.value, child: child),
+      builder: (context, child) =>
+          Transform.scale(scale: _scaleAnimation.value, child: child),
       child: Hero(
         tag: '${AppAnimations.heroTagCourse}${widget.id}',
         child: AnimatedContainer(
@@ -89,22 +88,21 @@ class _CourseCardState extends State<CourseCard>
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
             borderRadius: AppShapes.cardRadius,
-            boxShadow:
-                _isPressed
-                    ? [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.02),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
-                    : [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.08),
-                        blurRadius: 16,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
+            boxShadow: _isPressed
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.02),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 16,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
           ),
           child: Material(
             color: Colors.transparent,
@@ -168,7 +166,9 @@ class _CourseCardState extends State<CourseCard>
                               child: Text(
                                 widget.lpkName,
                                 style: AppTypography.bodySmall.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -196,7 +196,9 @@ class _CourseCardState extends State<CourseCard>
                               child: Text(
                                 '${widget.rating.toStringAsFixed(1)} (${widget.reviewCount})',
                                 style: AppTypography.labelSmall.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -221,31 +223,34 @@ class _CourseCardState extends State<CourseCard>
   }
 
   Widget _buildHeroImage() {
+    // 🔥 FIX: Jika imageUrl kosong/error dari parent, pakai gambar fallback
+    final safeImageUrl = widget.imageUrl.trim().isNotEmpty
+        ? widget.imageUrl
+        : 'https://ui-avatars.com/api/?name=Skilloka&background=random';
+
     return ClipRRect(
       borderRadius: BorderRadius.only(
         topLeft: Radius.circular(AppShapes.radiusLG),
         topRight: Radius.circular(AppShapes.radiusLG),
       ),
       child: CachedNetworkImage(
-        imageUrl: widget.imageUrl,
+        imageUrl: safeImageUrl,
         fit: BoxFit.cover,
-        placeholder:
-            (context, url) => const SkeletonLoader(
-              width: double.infinity,
-              height: double.infinity,
-              borderRadius: BorderRadius.zero,
+        placeholder: (context, url) => const SkeletonLoader(
+          width: double.infinity,
+          height: double.infinity,
+          borderRadius: BorderRadius.zero,
+        ),
+        errorWidget: (context, url, error) => Container(
+          color: AppColors.surfaceVariant,
+          child: Center(
+            child: Icon(
+              Icons.image_not_supported_outlined,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              size: 32,
             ),
-        errorWidget:
-            (context, url, error) => Container(
-              color: AppColors.surfaceVariant,
-              child: Center(
-                child: Icon(
-                  Icons.image_not_supported_outlined,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  size: 32,
-                ),
-              ),
-            ),
+          ),
+        ),
       ),
     );
   }
@@ -365,8 +370,7 @@ class _RollingPriceState extends State<RollingPrice>
       builder: (context, child) {
         return Text(
           _formatPrice(_priceAnimation.value),
-          style:
-              widget.style ??
+          style: widget.style ??
               AppTypography.priceTag.copyWith(color: AppColors.primary),
         );
       },

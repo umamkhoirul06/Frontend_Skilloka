@@ -45,6 +45,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
 
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
+
+        // Cek terminal/debug console kamu untuk melihat isi datanya!
+        debugPrint('DATA COURSE API: ${jsonResponse.toString()}');
+
         setState(() {
           // Sesuaikan dengan format BaseController Laravel (biasanya dibungkus 'data')
           courseData = jsonResponse['data'] ?? jsonResponse;
