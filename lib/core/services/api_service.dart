@@ -9,7 +9,6 @@ class ApiService {
   static const String storageUrl = 'https://skilloka.my.id/storage';
   static const String _tokenKey = 'access_token';
 
-
   // ── Konversi path relatif ke full URL ──────────────────────────────────
   static String toFullUrl(String? path) {
     if (path == null || path.isEmpty) return '';
@@ -288,11 +287,17 @@ class ApiService {
   // ── FAVORITES ─────────────────────────────────────────────────────────────
   Future<Map<String, dynamic>> getFavorites() async {
     try {
-      final r = await http.get(Uri.parse('$baseUrl/user/favorites'),
-          headers: await _authHeaders());
+      final r = await http.get(
+        Uri.parse('$baseUrl/favorites'),
+        headers: await _authHeaders(),
+      );
+
       return _handleResponse(r);
     } catch (e) {
-      return {'success': false, 'message': 'Koneksi gagal: $e'};
+      return {
+        'success': false,
+        'message': 'Koneksi gagal: $e',
+      };
     }
   }
 
@@ -301,12 +306,21 @@ class ApiService {
     required String itemType,
   }) async {
     try {
-      final r = await http.post(Uri.parse('$baseUrl/user/favorites/toggle'),
-          headers: await _authHeaders(),
-          body: jsonEncode({'item_id': itemId, 'item_type': itemType}));
+      final r = await http.post(
+        Uri.parse('$baseUrl/favorites/toggle'),
+        headers: await _authHeaders(),
+        body: jsonEncode({
+          'item_id': itemId,
+          'item_type': itemType,
+        }),
+      );
+
       return _handleResponse(r);
     } catch (e) {
-      return {'success': false, 'message': 'Koneksi gagal: $e'};
+      return {
+        'success': false,
+        'message': 'Koneksi gagal: $e',
+      };
     }
   }
 
