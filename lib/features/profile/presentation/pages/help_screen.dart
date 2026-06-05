@@ -144,23 +144,14 @@ class _HelpScreenState extends State<HelpScreen> {
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(
-                  child: _buildContactCard(
-                    icon: Icons.chat_bubble_outline,
-                    label: 'Live Chat',
-                    subtitle: 'Online 08.00–22.00',
-                    color: AppColors.success,
-                    onTap: () => _showComingSoon('Live Chat'),
-                  ),
-                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: _buildContactCard(
                     icon: Icons.phone_outlined,
                     label: 'Telepon',
-                    subtitle: '(0234) 123-4567',
+                    subtitle: '083800288090',
                     color: AppColors.primary,
-                    onTap: () => _launchPhone('02341234567'),
+                    onTap: () => _launchPhone('083800288090'),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -168,9 +159,9 @@ class _HelpScreenState extends State<HelpScreen> {
                   child: _buildContactCard(
                     icon: Icons.email_outlined,
                     label: 'Email',
-                    subtitle: 'cs@skilloka.id',
+                    subtitle: 'adminskilloka@gmail.com',
                     color: AppColors.secondary,
-                    onTap: () => _launchEmail('cs@skilloka.id'),
+                    onTap: () => _launchEmail('adminskilloka@gmail.com'),
                   ),
                 ),
               ],
@@ -210,7 +201,8 @@ class _HelpScreenState extends State<HelpScreen> {
               }),
               decoration: InputDecoration(
                 hintText: 'Cari pertanyaan...',
-                prefixIcon: const Icon(Icons.search, color: AppColors.textTertiary),
+                prefixIcon:
+                    const Icon(Icons.search, color: AppColors.textTertiary),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
                         icon: const Icon(Icons.close, size: 18),
@@ -319,8 +311,7 @@ class _HelpScreenState extends State<HelpScreen> {
                               ),
                             ),
                             onTap: () => setState(
-                              () => _expandedIndex =
-                                  isExpanded ? null : index,
+                              () => _expandedIndex = isExpanded ? null : index,
                             ),
                           ),
                           if (isExpanded)
@@ -428,9 +419,9 @@ class _HelpScreenState extends State<HelpScreen> {
   }
 
   void _launchWhatsApp() async {
-    const phone = '6281234567890';
+    const phone = '6283800288090';
     const msg = 'Halo, saya butuh bantuan dengan aplikasi Skilloka';
-    final url = Uri.parse('https://wa.me/$phone?text=${Uri.encodeFull(msg)}');
+    final url = Uri.parse('https://wa.me/qr/EBV7DJO2S5HEM1');
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     }

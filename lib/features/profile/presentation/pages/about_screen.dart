@@ -123,9 +123,7 @@ class AboutScreen extends StatelessWidget {
                       children: [
                         _buildStat('50+', 'LPK Mitra'),
                         _buildStatDivider(),
-                        _buildStat('200+', 'Kursus'),
-                        _buildStatDivider(),
-                        _buildStat('5.000+', 'Alumni'),
+                        _buildStat('20+', 'Kursus'),
                         _buildStatDivider(),
                         _buildStat('4.8', 'Rating'),
                       ],
@@ -148,7 +146,7 @@ class AboutScreen extends StatelessWidget {
                         ),
                         _buildInfoRow(
                           'Kontak Developer',
-                          'dev@skilloka.id',
+                          'adminskilloka@gmail.com',
                         ),
                         _buildInfoRow(
                           'Didukung oleh',
@@ -169,22 +167,22 @@ class AboutScreen extends StatelessWidget {
                           icon: Icons.privacy_tip_outlined,
                           title: 'Kebijakan Privasi',
                           onTap: () => _launchUrl(
-                            'https://skilloka.id/privacy-policy',
+                            'https://skilloka.my.id/privacy-policy.html',
                           ),
                         ),
                         const Divider(height: 1),
                         _buildLinkRow(
                           icon: Icons.gavel_outlined,
                           title: 'Syarat & Ketentuan',
-                          onTap: () =>
-                              _launchUrl('https://skilloka.id/terms'),
+                          onTap: () => _launchUrl(
+                              'https://skilloka.my.id/terms-and-conditions.html'),
                         ),
                         const Divider(height: 1),
                         _buildLinkRow(
                           icon: Icons.cookie_outlined,
                           title: 'Kebijakan Cookie',
-                          onTap: () =>
-                              _launchUrl('https://skilloka.id/cookies'),
+                          onTap: () => _launchUrl(
+                              'https://skilloka.my.id/cookie-policy.html'),
                         ),
                         const Divider(height: 1),
                         _buildLinkRow(
@@ -212,25 +210,14 @@ class AboutScreen extends StatelessWidget {
                           icon: Icons.language,
                           label: 'Website',
                           color: AppColors.primary,
-                          url: 'https://skilloka.id',
+                          url: 'https://skilloka.my.id',
                         ),
                         _buildSocialButton(
                           icon: Icons.camera_alt_outlined,
                           label: 'Instagram',
                           color: const Color(0xFFE4405F),
-                          url: 'https://instagram.com/skilloka_id',
-                        ),
-                        _buildSocialButton(
-                          icon: Icons.facebook,
-                          label: 'Facebook',
-                          color: const Color(0xFF1877F2),
-                          url: 'https://facebook.com/skilloka',
-                        ),
-                        _buildSocialButton(
-                          icon: Icons.play_circle_outline,
-                          label: 'YouTube',
-                          color: const Color(0xFFFF0000),
-                          url: 'https://youtube.com/@skilloka',
+                          url:
+                              'https://www.instagram.com/skilloka.id?igsh=MTQ0MXBhNjBwN3FtcQ%3D%3D',
                         ),
                       ],
                     ),
