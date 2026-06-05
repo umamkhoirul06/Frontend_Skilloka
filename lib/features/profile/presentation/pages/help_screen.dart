@@ -397,31 +397,29 @@ class _HelpScreenState extends State<HelpScreen> {
     );
   }
 
-  void _showComingSoon(String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$feature akan segera hadir'),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: AppShapes.borderRadiusMD),
-        margin: const EdgeInsets.all(16),
-      ),
-    );
-  }
-
   void _launchPhone(String number) async {
     final url = Uri.parse('tel:$number');
     if (await canLaunchUrl(url)) await launchUrl(url);
   }
 
   void _launchEmail(String email) async {
-    final url = Uri.parse('mailto:$email');
-    if (await canLaunchUrl(url)) await launchUrl(url);
+    final url = Uri.parse(
+      'mailto:$email?subject=Bantuan%20Skilloka&body=Halo%20Admin%20Skilloka,',
+    );
+
+    if (await canLaunchUrl(url)) {
+      await launchUrl(
+        url,
+        mode: LaunchMode.externalApplication,
+      );
+    }
   }
 
   void _launchWhatsApp() async {
     const phone = '6283800288090';
     const msg = 'Halo, saya butuh bantuan dengan aplikasi Skilloka';
-    final url = Uri.parse('https://wa.me/qr/EBV7DJO2S5HEM1');
+    final url =
+        Uri.parse('https://wa.me/$phone?text=${Uri.encodeComponent(msg)}');
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     }
