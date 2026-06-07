@@ -218,22 +218,47 @@ class _LPKDetailScreenState extends State<LPKDetailScreen> {
                               const SizedBox(width: 12),
                           itemBuilder: (_, index) {
                             final c = _courses[index];
+                            final courseId = c['id']?.toString() ?? '$index';
+
+                            // 🔥 FIX 1: Prioritaskan 'title' karena Laravel mengirimnya sebagai 'title', bukan 'name'
+                            final courseTitle =
+                                c['title'] ?? c['name'] ?? 'Kursus';
+
+                            // 🔥 FIX 2: Bongkar array 'images' dari Laravel untuk mengambil foto kursus
+                            String rawCourseImg = '';
+                            if (c['images'] != null &&
+                                c['images'] is List &&
+                                (c['images'] as List).isNotEmpty) {
+                              rawCourseImg = c['images'][0]
+                                  .toString(); // Ambil foto urutan pertama
+                            } else {
+                              rawCourseImg = c['image_url'] ?? c['image'] ?? '';
+                            }
+
+                            // 🔥 FIX 3: Ambil Kategori dengan aman (terkadang berbentuk Object/Map)
+                            String categoryName = 'General';
+                            if (c['category'] is Map) {
+                              categoryName = c['category']['name'] ?? 'General';
+                            } else if (c['category_name'] != null) {
+                              categoryName = c['category_name'].toString();
+                            }
+
                             return SizedBox(
-                                width: 180,
-                                child: CourseCard(
-                                  id: c['id'].toString(),
-                                  title: c['name'] ?? 'Kursus',
-                                  lpkName: name,
-                                  imageUrl: ApiService.toFullUrl(
-                                      c['image_url'] ?? c['image'] ?? ''),
-                                  rating: (c['rating'] ?? 0).toDouble(),
-                                  reviewCount: c['rating_count'] ?? 0,
-                                  distanceKm: 0,
-                                  price: (c['price'] ?? 0).toInt(),
-                                  category: c['category_name'] ?? 'General',
-                                  onTap: () =>
-                                      context.push('/course/${c['id']}'),
-                                ));
+                              width: 180,
+                              child: CourseCard(
+                                id: courseId,
+                                title: courseTitle,
+                                lpkName: name,
+                                imageUrl: ApiService.toFullUrl(
+                                    rawCourseImg), // Foto pasti muncul!
+                                rating: (c['rating'] ?? 0).toDouble(),
+                                reviewCount: c['rating_count'] ?? 0,
+                                distanceKm: 0,
+                                price: (c['price'] ?? 0).toInt(),
+                                category: categoryName,
+                                onTap: () => context.push('/course/$courseId'),
+                              ),
+                            );
                           },
                         )),
                     const SizedBox(height: 120),

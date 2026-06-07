@@ -223,25 +223,26 @@ class _CourseCardState extends State<CourseCard>
   }
 
   Widget _buildHeroImage() {
-    // 🔥 FIX: Jika imageUrl kosong/error dari parent, pakai gambar fallback
-    final safeImageUrl = widget.imageUrl.trim().isNotEmpty
-        ? widget.imageUrl
-        : 'https://ui-avatars.com/api/?name=Skilloka&background=random';
+    final String rawUrl = widget.imageUrl;
+
+    // Pengaman: Pastikan URL-nya benar-benar ada "http"-nya
+    final String safeImageUrl = rawUrl.startsWith('http')
+        ? rawUrl
+        : 'https://skilloka.my.id/storage/$rawUrl';
 
     return ClipRRect(
       borderRadius: BorderRadius.only(
         topLeft: Radius.circular(AppShapes.radiusLG),
         topRight: Radius.circular(AppShapes.radiusLG),
       ),
-      child: CachedNetworkImage(
-        imageUrl: safeImageUrl,
+      child: Image.network(
+        safeImageUrl,
         fit: BoxFit.cover,
-        placeholder: (context, url) => const SkeletonLoader(
-          width: double.infinity,
-          height: double.infinity,
-          borderRadius: BorderRadius.zero,
-        ),
-        errorWidget: (context, url, error) => Container(
+        // 🔥 SURAT IZIN UNTUK CHROME AGAR TIDAK DIBLOKIR CORS!
+        headers: const {
+          'Access-Control-Allow-Origin': '*',
+        },
+        errorBuilder: (context, error, stackTrace) => Container(
           color: AppColors.surfaceVariant,
           child: Center(
             child: Icon(

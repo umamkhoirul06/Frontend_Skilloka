@@ -12,6 +12,7 @@ import '../../../../core/widgets/organisms/filter_bottom_sheet.dart';
 import '../../../../core/widgets/skeleton/skeleton_loader.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/config/app_config.dart';
+import '../../../../core/services/api_service.dart'; // 🔥 Pastikan import ini ada
 import '../../data/repositories/home_repository.dart';
 import '../../data/models/lpk_model.dart';
 import '../../../course/data/models/course_model.dart';
@@ -34,22 +35,22 @@ class _HomeScreenState extends State<HomeScreen> {
   late final HomeRepository _homeRepository;
 
   final List<String> _categories = [
-  'Las',
-  'IT',
-  'Otomotif',
-  'Tata Busana',
-  'Tata Boga',
-  'Bahasa',
-];
+    'Las',
+    'IT',
+    'Otomotif',
+    'Tata Busana',
+    'Tata Boga',
+    'Bahasa',
+  ];
 
-final Map<String, String> _categorySlugMap = {
-  'Las': 'las',
-  'IT': 'it',
-  'Otomotif': 'otomotif',
-  'Tata Busana': 'tata-busana',
-  'Tata Boga': 'tata-boga',
-  'Bahasa': 'bahasa',
-};
+  final Map<String, String> _categorySlugMap = {
+    'Las': 'las',
+    'IT': 'it',
+    'Otomotif': 'otomotif',
+    'Tata Busana': 'tata-busana',
+    'Tata Boga': 'tata-boga',
+    'Bahasa': 'bahasa',
+  };
 
   // Mock data
   final List<BannerItem> _banners = [
@@ -77,36 +78,36 @@ final Map<String, String> _categorySlugMap = {
   }
 
   Future<void> _loadData() async {
-  print('CATEGORY = $_selectedCategory');
+    print('CATEGORY = $_selectedCategory');
 
-final responses = await Future.wait([
-  _homeRepository.getLpks(
-    search: _searchQuery,
-  ),
-   _homeRepository.getCourses(
-    search: _searchQuery,
-    category: _selectedCategory,
-  ),
-]);
+    final responses = await Future.wait([
+      _homeRepository.getLpks(
+        search: _searchQuery,
+      ),
+      _homeRepository.getCourses(
+        search: _searchQuery,
+        category: _selectedCategory,
+      ),
+    ]);
 
-print('COURSES = ${(responses[1] as List<CourseModel>).length}');
+    print('COURSES = ${(responses[1] as List<CourseModel>).length}');
 
-  List<LpkModel> lpks = responses[0] as List<LpkModel>;
+    List<LpkModel> lpks = responses[0] as List<LpkModel>;
 
-  if (_currentLocation != 'Semua') {
-    lpks = lpks.where((lpk) {
-      return lpk.locationName == _currentLocation;
-    }).toList();
+    if (_currentLocation != 'Semua') {
+      lpks = lpks.where((lpk) {
+        return lpk.locationName == _currentLocation;
+      }).toList();
+    }
+
+    if (mounted) {
+      setState(() {
+        _lpks = lpks;
+        _courses = responses[1] as List<CourseModel>;
+        _isLoading = false;
+      });
+    }
   }
-
-  if (mounted) {
-    setState(() {
-      _lpks = lpks;
-      _courses = responses[1] as List<CourseModel>;
-      _isLoading = false;
-    });
-  }
-}
 
   void _openFilter() async {
     final result = await FilterBottomSheet.show(
@@ -118,21 +119,20 @@ print('COURSES = ${(responses[1] as List<CourseModel>).length}');
     );
 
     if (result != null) {
-  setState(() {
-    if (result.kecamatan != null) {
-      _currentLocation = result.kecamatan!;
+      setState(() {
+        if (result.kecamatan != null) {
+          _currentLocation = result.kecamatan!;
+        }
+
+        if (result.categories.isNotEmpty) {
+          _selectedCategory = _categorySlugMap[result.categories.first];
+        }
+
+        _isLoading = true;
+      });
+
+      await _loadData();
     }
-
-    if (result.categories.isNotEmpty) {
-  _selectedCategory =
-      _categorySlugMap[result.categories.first];
-}
-
-    _isLoading = true;
-  });
-
-  await _loadData();
-}
   }
 
   @override
@@ -193,13 +193,13 @@ print('COURSES = ${(responses[1] as List<CourseModel>).length}');
                               child: AppSearchBar(
                                 hint: 'Cari kursus atau LPK...',
                                 onSubmitted: (query) async {
-  setState(() {
-    _searchQuery = query;
-    _isLoading = true;
-  });
+                                  setState(() {
+                                    _searchQuery = query;
+                                    _isLoading = true;
+                                  });
 
-  await _loadData();
-},
+                                  await _loadData();
+                                },
                                 onFilterPressed: _openFilter,
                                 showFilterButton: true,
                               ),
@@ -235,16 +235,16 @@ print('COURSES = ${(responses[1] as List<CourseModel>).length}');
                     categories: _categories,
                     selectedCategory: _selectedCategory,
                     onSelected: (category) async {
-  print('CLICK = $category');
+                      print('CLICK = $category');
 
-  setState(() {
-    _selectedCategory = _categorySlugMap[category];
-    print('SEND = $_selectedCategory');
-    _isLoading = true;
-  });
+                      setState(() {
+                        _selectedCategory = _categorySlugMap[category];
+                        print('SEND = $_selectedCategory');
+                        _isLoading = true;
+                      });
 
-  await _loadData();
-},
+                      await _loadData();
+                    },
                   ),
 
                   const SizedBox(height: 24),
@@ -307,10 +307,13 @@ print('COURSES = ${(responses[1] as List<CourseModel>).length}');
         separatorBuilder: (_, __) => const SizedBox(width: 12),
         itemBuilder: (context, index) {
           final lpk = _lpks[index];
+          // 🔥 Pastikan Logo URL LPK juga memakai URL Helper jika dibutuhkan
+          final logoSafe = ApiService.toFullUrl(lpk.logoUrl ?? '');
+
           return LPKCard(
             id: lpk.id.toString(),
             name: lpk.name,
-            logoUrl: lpk.logoUrl ?? 'https://via.placeholder.com/100',
+            logoUrl: logoSafe.isNotEmpty ? logoSafe : 'https://via.placeholder.com/100',
             address: lpk.address,
             rating: lpk.rating,
             reviewCount: lpk.reviewCount,
@@ -331,21 +334,28 @@ print('COURSES = ${(responses[1] as List<CourseModel>).length}');
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-  crossAxisCount: 2,
-  crossAxisSpacing: 12,
-  mainAxisSpacing: 12,
-  childAspectRatio: 0.9,
-),
+          crossAxisCount: 2,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 0.9,
+        ),
         itemCount: _courses.length,
         itemBuilder: (context, index) {
           final course = _courses[index];
-          String imageUrl = course.images.isNotEmpty
-              ? '${AppConfig.baseStorageUrl}${course.images.first}'
+          
+          // 🔥 FIX FOTO KURSUS: 
+          // Laravel sudah mengirim Full URL di dalam array, jadi tidak perlu ditambah BaseStorageUrl
+          String rawImg = '';
+          if (course.images.isNotEmpty) {
+            rawImg = course.images.first.toString();
+          }
+          final String imageUrl = rawImg.isNotEmpty 
+              ? ApiService.toFullUrl(rawImg)
               : 'https://via.placeholder.com/400';
 
           return CourseCard(
             id: course.id.toString(),
-            title: course.title,
+            title: course.title, // Pastikan model CourseModel kamu punya .title
             lpkName: course.lpk['name'] ?? 'LPK Tidak Diketahui',
             imageUrl: imageUrl,
             rating: 0.0,
@@ -354,7 +364,8 @@ print('COURSES = ${(responses[1] as List<CourseModel>).length}');
             price: course.price.toInt(),
             category: course.category['name'] ?? 'Umum',
             isVerified: true,
-            onTap: () => context.push('${AppRouter.courseDetail}${course.id}'),
+            // 🔥 FIX URL DETAIL: Pastikan rutenya '/course/:id' (Sama persis seperti di lpk_detail_screen)
+            onTap: () => context.push('/course/${course.id}'),
           );
         },
       ),

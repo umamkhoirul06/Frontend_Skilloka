@@ -39,7 +39,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   Future<void> _fetchCourseDetail() async {
     try {
       final response = await http.get(
-        Uri.parse('https://skilloka.my.id/api/v1/courses/${widget.courseId}'),
+        Uri.parse('https://skilloka.my.id/api/courses/${widget.courseId}'),
         headers: {'Accept': 'application/json'},
       );
 
