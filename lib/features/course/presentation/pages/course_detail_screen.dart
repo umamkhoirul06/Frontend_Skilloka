@@ -1,6 +1,9 @@
 /// Course Detail Screen with image gallery, syllabus, and booking CTA
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_shapes.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -8,7 +11,6 @@ import '../../../../core/animations/app_animations.dart';
 import '../../../../core/navigation/app_router.dart';
 import '../../../../core/widgets/atoms/animated_button.dart';
 import '../../../../core/widgets/molecules/course_card.dart';
-
 
 class CourseDetailScreen extends StatefulWidget {
   final String courseId;
@@ -23,13 +25,45 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   int _currentImageIndex = 0;
   bool _isFavorite = false;
 
-  // Mock data
-  final List<String> _images = [
-    'https://picsum.photos/800/500?random=1',
-    'https://picsum.photos/800/500?random=2',
-    'https://picsum.photos/800/500?random=3',
-  ];
+  // 🔥 VARIABEL UNTUK MENAMPUNG DATA DARI API LARAVEL
+  Map<String, dynamic>? courseData;
+  bool isLoading = true;
 
+  @override
+  void initState() {
+    super.initState();
+    _fetchCourseDetail(); // Panggil data saat halaman dibuka!
+  }
+
+  // 🔥 FUNGSI SAKTI MENYEDOT DATA DARI SERVER SKILLOKA
+  Future<void> _fetchCourseDetail() async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://skilloka.my.id/api/v1/courses/${widget.courseId}'),
+        headers: {'Accept': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+
+        // Cek terminal/debug console kamu untuk melihat isi datanya!
+        debugPrint('DATA COURSE API: ${jsonResponse.toString()}');
+
+        setState(() {
+          // Sesuaikan dengan format BaseController Laravel (biasanya dibungkus 'data')
+          courseData = jsonResponse['data'] ?? jsonResponse;
+          isLoading = false;
+        });
+      } else {
+        setState(() => isLoading = false);
+      }
+    } catch (e) {
+      debugPrint('Error fetching course: $e');
+      setState(() => isLoading = false);
+    }
+  }
+
+  // Dummy syllabus (Bisa kamu ganti nanti kalau API sudah punya fitur materi/silabus)
   final List<Map<String, dynamic>> _syllabus = [
     {
       'title': 'Modul 1: Pengenalan',
@@ -41,15 +75,45 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       'duration': '8 Jam',
       'items': ['Teknik dasar', 'Latihan terbimbing', 'Evaluasi awal'],
     },
-    {
-      'title': 'Modul 3: Praktik Lanjutan',
-      'duration': '16 Jam',
-      'items': ['Teknik lanjutan', 'Proyek mandiri', 'Ujian akhir'],
-    },
   ];
 
   @override
   Widget build(BuildContext context) {
+    // ⏳ TAMPILKAN LOADING JIKA DATA MASIH DIAMBIL
+    if (isLoading) {
+      return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: const Center(
+            child: CircularProgressIndicator(color: AppColors.primary)),
+      );
+    }
+
+    // ❌ JIKA DATA GAGAL DIAMBIL / KOSONG
+    if (courseData == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Detail Kursus')),
+        body: const Center(child: Text('Gagal memuat data kursus.')),
+      );
+    }
+
+    // Ekstrak data dari API agar mudah dipanggil
+    final String title = courseData!['title'] ?? 'Tanpa Judul';
+    final String description =
+        courseData!['description'] ?? 'Belum ada deskripsi untuk kursus ini.';
+    final int price = (courseData!['price'] ?? 0).toInt();
+    final String categoryName = courseData!['category']?['name'] ?? 'Umum';
+    final String duration = '${courseData!['duration_hours'] ?? 0} Jam';
+    final String lpkName = courseData!['lpk']?['name'] ?? 'LPK Tidak Diketahui';
+    final String? lpkLogo = courseData!['lpk']?['logo'];
+
+    // Siapkan List Gambar dari API
+    final List<dynamic> rawImages = courseData!['images'] ?? [];
+    final List<String> images = rawImages.isNotEmpty
+        ? rawImages.map((e) => e.toString()).toList()
+        : [
+            'https://ui-avatars.com/api/?name=Skilloka&background=random'
+          ]; // Gambar cadangan
+
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -86,27 +150,14 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                   setState(() => _isFavorite = !_isFavorite);
                 },
               ),
-              IconButton(
-                icon: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.3),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.share, color: Colors.white),
-                ),
-                onPressed: () {
-                  // TODO: Share course
-                },
-              ),
               const SizedBox(width: 8),
             ],
             flexibleSpace: FlexibleSpaceBar(
               background: Stack(
                 children: [
-                  // Image Gallery
+                  // 🔥 Image Gallery DARI API
                   PageView.builder(
-                    itemCount: _images.length,
+                    itemCount: images.length,
                     onPageChanged: (index) {
                       setState(() => _currentImageIndex = index);
                     },
@@ -114,36 +165,43 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                       return Hero(
                         tag: '${AppAnimations.heroTagCourse}${widget.courseId}',
                         child: Image.network(
-                          _images[index],
+                          images[index],
                           fit: BoxFit.cover,
                           width: double.infinity,
+                          errorBuilder: (context, error, stackTrace) =>
+                              Container(
+                            color: Colors.grey[300],
+                            child: const Icon(Icons.broken_image,
+                                size: 50, color: Colors.grey),
+                          ),
                         ),
                       );
                     },
                   ),
                   // Page Indicator
-                  Positioned(
-                    bottom: 16,
-                    left: 0,
-                    right: 0,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(_images.length, (index) {
-                        return AnimatedContainer(
-                          duration: AppAnimations.fast,
-                          margin: const EdgeInsets.symmetric(horizontal: 3),
-                          width: _currentImageIndex == index ? 24 : 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: _currentImageIndex == index
-                                ? Colors.white
-                                : Colors.white.withValues(alpha: 0.5),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        );
-                      }),
+                  if (images.length > 1)
+                    Positioned(
+                      bottom: 16,
+                      left: 0,
+                      right: 0,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(images.length, (index) {
+                          return AnimatedContainer(
+                            duration: AppAnimations.fast,
+                            margin: const EdgeInsets.symmetric(horizontal: 3),
+                            width: _currentImageIndex == index ? 24 : 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: _currentImageIndex == index
+                                  ? Colors.white
+                                  : Colors.white.withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          );
+                        }),
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -156,35 +214,37 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Category Badge
+                  // Category Badge (DARI API)
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppColors.categoryLas.withValues(alpha: 0.15),
+                      color: AppColors.primary.withValues(alpha: 0.15),
                       borderRadius: AppShapes.chipRadius,
                     ),
                     child: Text(
-                      'Las',
-                      style: AppTypography.badge.copyWith(
-                        color: AppColors.categoryLas,
-                      ),
+                      categoryName,
+                      style: AppTypography.badge
+                          .copyWith(color: AppColors.primary),
                     ),
                   ),
                   const SizedBox(height: 12),
 
-                  // Title
+                  // Title (DARI API)
                   Text(
-                    'Kursus Las Listrik untuk Pemula',
+                    title,
                     style: AppTypography.headlineSmall,
                   ),
                   const SizedBox(height: 8),
 
-                  // LPK Info
+                  // LPK Info (DARI API)
                   GestureDetector(
-                    onTap: () => context.push('${AppRouter.lpkDetail}lpk_1'),
+                    onTap: () {
+                      if (courseData!['lpk'] != null) {
+                        context.push(
+                            '${AppRouter.lpkDetail}${courseData!['lpk']['id']}');
+                      }
+                    },
                     child: Row(
                       children: [
                         Container(
@@ -194,44 +254,39 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                             color: AppColors.surfaceVariant,
                             borderRadius: AppShapes.borderRadiusSM,
                           ),
-                          child: const Icon(
-                            Icons.business,
-                            size: 18,
-                            color: AppColors.textTertiary,
-                          ),
+                          child: lpkLogo != null
+                              ? ClipRRect(
+                                  borderRadius: AppShapes.borderRadiusSM,
+                                  child: Image.network(lpkLogo,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (c, e, s) =>
+                                          const Icon(Icons.business, size: 18)))
+                              : const Icon(Icons.business,
+                                  size: 18, color: AppColors.textTertiary),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'LPK Mitra Kerja',
-                                style: AppTypography.labelMedium,
-                              ),
+                              Text(lpkName, style: AppTypography.labelMedium),
                               Row(
                                 children: [
-                                  const Icon(
-                                    Icons.verified,
-                                    size: 12,
-                                    color: AppColors.success,
-                                  ),
+                                  const Icon(Icons.verified,
+                                      size: 12, color: AppColors.success),
                                   const SizedBox(width: 4),
                                   Text(
                                     'Terverifikasi',
-                                    style: AppTypography.bodySmall.copyWith(
-                                      color: AppColors.success,
-                                    ),
+                                    style: AppTypography.bodySmall
+                                        .copyWith(color: AppColors.success),
                                   ),
                                 ],
                               ),
                             ],
                           ),
                         ),
-                        const Icon(
-                          Icons.chevron_right,
-                          color: AppColors.textTertiary,
-                        ),
+                        const Icon(Icons.chevron_right,
+                            color: AppColors.textTertiary),
                       ],
                     ),
                   ),
@@ -240,11 +295,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                   // Stats Row
                   Row(
                     children: [
-                      _buildStat(Icons.star, '4.8', '(128 rating)'),
+                      _buildStat(Icons.star, '4.8', '(0 rating)'), // Dummy
                       const SizedBox(width: 24),
-                      _buildStat(Icons.location_on_outlined, '2.5 km', null),
-                      const SizedBox(width: 24),
-                      _buildStat(Icons.schedule, '26 Jam', null),
+                      _buildStat(Icons.schedule, duration, null), // DARI API
                     ],
                   ),
 
@@ -252,22 +305,18 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                   const Divider(),
                   const SizedBox(height: 24),
 
-                  // Description
+                  // Description (DARI API)
                   Text('Deskripsi', style: AppTypography.titleMedium),
                   const SizedBox(height: 8),
                   Text(
-                    'Kursus ini dirancang untuk pemula yang ingin mempelajari teknik '
-                    'pengelasan listrik dari dasar hingga mahir. Anda akan belajar '
-                    'berbagai teknik pengelasan, keselamatan kerja, dan praktik langsung '
-                    'dengan peralatan standar industri.',
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
+                    description,
+                    style: AppTypography.bodyMedium
+                        .copyWith(color: AppColors.textSecondary),
                   ),
 
                   const SizedBox(height: 24),
 
-                  // Syllabus
+                  // Syllabus (Masih Dummy, nanti bisa diganti data dari API)
                   Text('Materi Kursus', style: AppTypography.titleMedium),
                   const SizedBox(height: 12),
                   ..._syllabus.asMap().entries.map((entry) {
@@ -286,7 +335,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
           ),
         ],
       ),
-      bottomSheet: _buildBottomSheet(),
+      bottomSheet: _buildBottomSheet(price),
     );
   }
 
@@ -300,16 +349,15 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
           const SizedBox(width: 2),
           Text(
             label,
-            style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textTertiary,
-            ),
+            style:
+                AppTypography.bodySmall.copyWith(color: AppColors.textTertiary),
           ),
         ],
       ],
     );
   }
 
-  Widget _buildBottomSheet() {
+  Widget _buildBottomSheet(int price) {
     return Container(
       padding: EdgeInsets.only(
         left: 16,
@@ -329,7 +377,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       ),
       child: Row(
         children: [
-          // Price
+          // Price (DARI API)
           Expanded(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -337,11 +385,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
               children: [
                 Text(
                   'Biaya Kursus',
-                  style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
+                  style: AppTypography.bodySmall
+                      .copyWith(color: AppColors.textSecondary),
                 ),
-                RollingPrice(price: 1500000),
+                RollingPrice(price: price),
               ],
             ),
           ),
@@ -409,9 +456,8 @@ class _SyllabusAccordionState extends State<_SyllabusAccordion> {
                     child: Center(
                       child: Text(
                         '${widget.index}',
-                        style: AppTypography.labelLarge.copyWith(
-                          color: AppColors.primary,
-                        ),
+                        style: AppTypography.labelLarge
+                            .copyWith(color: AppColors.primary),
                       ),
                     ),
                   ),
@@ -423,9 +469,8 @@ class _SyllabusAccordionState extends State<_SyllabusAccordion> {
                         Text(widget.title, style: AppTypography.labelMedium),
                         Text(
                           widget.duration,
-                          style: AppTypography.bodySmall.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
+                          style: AppTypography.bodySmall
+                              .copyWith(color: AppColors.textSecondary),
                         ),
                       ],
                     ),
@@ -472,9 +517,8 @@ class _SyllabusAccordionState extends State<_SyllabusAccordion> {
                         Expanded(
                           child: Text(
                             item,
-                            style: AppTypography.bodySmall.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
+                            style: AppTypography.bodySmall
+                                .copyWith(color: AppColors.textSecondary),
                           ),
                         ),
                       ],
