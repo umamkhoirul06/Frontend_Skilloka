@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import '../../../../core/network/api_client.dart';
 import '../models/lpk_model.dart';
 import '../../../course/data/models/course_model.dart';
+import '../../../../core/widgets/organisms/hero_banner.dart';
 
 class HomeRepository {
   final ApiClient apiClient;
@@ -103,6 +104,36 @@ return result;
       return [];
     } catch (e) {
       print('Exception getLpks: $e');
+      return [];
+    }
+  }
+
+  Future<List<BannerItem>> getBanners() async {
+    try {
+      final response = await apiClient.get('/banners');
+
+      List<dynamic> data = [];
+
+      if (response.data is Map &&
+          response.data['data'] is List) {
+        data = response.data['data'];
+      }
+
+      return data.map((item) {
+  print('====================');
+  print('BANNER RAW = ${item['image_url']}');
+  print('====================');
+
+  return BannerItem(
+    id: item['id'].toString(),
+    title: item['title'] ?? '',
+    subtitle: null,
+    imageUrl: item['image_url'] ?? '',
+    tag: 'Promo',
+  );
+}).toList();
+    } catch (e) {
+      print('ERROR GET BANNERS: $e');
       return [];
     }
   }

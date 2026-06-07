@@ -52,22 +52,7 @@ final Map<String, String> _categorySlugMap = {
 };
 
   // Mock data
-  final List<BannerItem> _banners = [
-    const BannerItem(
-      id: '1',
-      title: 'Diskon 50% untuk Kursus Las',
-      subtitle: 'Berlaku hingga akhir bulan',
-      imageUrl: 'https://picsum.photos/800/400?random=1',
-      tag: 'Promo',
-    ),
-    const BannerItem(
-      id: '2',
-      title: 'Sertifikasi IT Gratis',
-      subtitle: 'Program pemerintah',
-      imageUrl: 'https://picsum.photos/800/400?random=2',
-      tag: 'Baru',
-    ),
-  ];
+  List<BannerItem> _banners = [];
 
   @override
   void initState() {
@@ -83,10 +68,11 @@ final responses = await Future.wait([
   _homeRepository.getLpks(
     search: _searchQuery,
   ),
-   _homeRepository.getCourses(
+  _homeRepository.getCourses(
     search: _searchQuery,
     category: _selectedCategory,
   ),
+  _homeRepository.getBanners(),
 ]);
 
 print('COURSES = ${(responses[1] as List<CourseModel>).length}');
@@ -101,10 +87,11 @@ print('COURSES = ${(responses[1] as List<CourseModel>).length}');
 
   if (mounted) {
     setState(() {
-      _lpks = lpks;
-      _courses = responses[1] as List<CourseModel>;
-      _isLoading = false;
-    });
+  _lpks = lpks;
+  _courses = responses[1] as List<CourseModel>;
+  _banners = responses[2] as List<BannerItem>;
+  _isLoading = false;
+});
   }
 }
 
