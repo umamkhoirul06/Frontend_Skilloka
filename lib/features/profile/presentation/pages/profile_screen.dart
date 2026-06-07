@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_shapes.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../core/animations/app_animations.dart';
 import '../../../../core/navigation/app_router.dart';
 import '../../../../core/services/api_service.dart';
 
@@ -24,6 +25,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoading = true;
   String? _errorMessage;
 
+  // 🔥 TAMBAHAN VARIABEL BACKGROUND GALERI
+  List<String> _bgGallery = [];
+  int _currentBgIndex = 0;
+
   @override
   void initState() {
     super.initState();
@@ -32,7 +37,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // ── Fetch profil dari API ─────────────────────────────────────────────────
   Future<void> _fetchProfile() async {
-    if (mounted) setState(() { _isLoading = true; _errorMessage = null; });
+    if (mounted)
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
 
     try {
       final result = await _api.getProfile();
@@ -40,8 +49,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (result['success']) {
         final raw = result['data'];
-        // Handle Laravel wrapper: { status, data: { ... } } atau langsung { ... }
         final data = (raw is Map && raw['data'] != null) ? raw['data'] : raw;
+
+        // 🔥 MENCOBA MENGAMBIL GALERI JIKA DIA ADMIN LPK
+        List<String> extractedGallery = [];
+        if (data['lpk'] != null && data['lpk']['images'] != null) {
+          final imgs = data['lpk']['images'];
+          if (imgs is List) {
+            extractedGallery =
+                imgs.map((e) => ApiService.toFullUrl(e.toString())).toList();
+          }
+        }
 
         setState(() {
           _userName = data['name'] ?? 'Pengguna';
@@ -49,6 +67,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _userPhotoUrl = data['photo_url'] ?? data['avatar'] ?? data['photo'];
           _activeBookings = data['active_bookings_count'] ?? 0;
           _certificates = data['certificates_count'] ?? 0;
+          _bgGallery = extractedGallery; // Simpan galeri LPK sebagai Background
           _isLoading = false;
         });
       } else {
@@ -67,11 +86,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // ── Navigate ke Edit Profil & refresh setelah kembali ────────────────────
   Future<void> _navigateToEditProfile(BuildContext context) async {
     final updated = await context.push<bool>(AppRouter.editProfile);
     if (updated == true && mounted) {
-      _fetchProfile(); // Refresh data dari API
+      _fetchProfile();
     }
   }
 
@@ -95,7 +113,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 IconButton(
                   icon: const Icon(Icons.settings_outlined),
                   tooltip: 'Pengaturan Notifikasi',
-                  // FIXED: sekarang arahkan ke notifications (settings belum ada)
                   onPressed: () => context.push(AppRouter.notifications),
                 ),
               ],
@@ -137,7 +154,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // ── Loading Skeleton ──────────────────────────────────────────────────────
   Widget _buildLoadingSkeleton() {
     return Column(
       children: [
@@ -145,131 +161,197 @@ class _ProfileScreenState extends State<ProfileScreen> {
           width: double.infinity,
           height: 220,
           color: AppColors.primaryLight.withValues(alpha: 0.3),
-          child: const Center(child: CircularProgressIndicator(color: Colors.white)),
+          child: const Center(
+              child: CircularProgressIndicator(color: Colors.white)),
         ),
       ],
     );
   }
 
-  // ── Hero Header ───────────────────────────────────────────────────────────
+  // ── Hero Header (DENGAN GALERI BACKGROUND) ─────────────────────────────
   Widget _buildHeroHeader(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-      decoration: const BoxDecoration(gradient: AppColors.heroGradient),
-      child: Column(
-        children: [
-          // Avatar
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              Container(
-                width: 88,
-                height: 88,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF5EEAD4), Color(0xFF0D9488)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+    return Stack(
+      children: [
+        // 🔥 LAYER 1: Background Gradient ATAU Slider Gambar
+        Positioned.fill(
+          child: _bgGallery.isNotEmpty
+              ? PageView.builder(
+                  itemCount: _bgGallery.length,
+                  onPageChanged: (idx) => setState(() => _currentBgIndex = idx),
+                  itemBuilder: (ctx, idx) => Image.network(
+                    _bgGallery[idx],
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      decoration:
+                          const BoxDecoration(gradient: AppColors.heroGradient),
+                    ),
                   ),
-                  border: Border.all(color: Colors.white, width: 3),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.2),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
+                )
+              : Container(
+                  decoration:
+                      const BoxDecoration(gradient: AppColors.heroGradient),
+                ),
+        ),
+
+        // 🔥 LAYER 2: Overlay Hitam (Agar teks & avatar tetap jelas dibaca)
+        if (_bgGallery.isNotEmpty)
+          Positioned.fill(
+            child: Container(
+              color: Colors.black.withValues(alpha: 0.65),
+            ),
+          ),
+
+        // 🔥 LAYER 3: Konten Utama (Avatar, Nama, Tombol)
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(20, 30, 20, 28),
+          child: Column(
+            children: [
+              // Avatar
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  Container(
+                    width: 88,
+                    height: 88,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF5EEAD4), Color(0xFF0D9488)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      border: Border.all(color: Colors.white, width: 3),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.2),
+                          blurRadius: 16,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: ClipOval(
+                      child: _userPhotoUrl != null && _userPhotoUrl!.isNotEmpty
+                          ? Image.network(
+                              _userPhotoUrl!,
+                              fit: BoxFit.cover,
+                              width: 88,
+                              height: 88,
+                              errorBuilder: (_, __, ___) => const Icon(
+                                  Icons.person,
+                                  size: 44,
+                                  color: Colors.white),
+                            )
+                          : const Icon(Icons.person,
+                              size: 44, color: Colors.white),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: GestureDetector(
+                      onTap: () => _navigateToEditProfile(context),
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: AppColors.secondary,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        child: const Icon(Icons.edit,
+                            size: 14, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 12),
+
+              // Nama
+              Text(
+                _userName.isEmpty ? 'Pengguna' : _userName,
+                style: AppTypography.titleLarge.copyWith(color: Colors.white),
+              ),
+              const SizedBox(height: 4),
+
+              // Nomor HP
+              if (_errorMessage != null)
+                Container(
+                  margin: const EdgeInsets.only(top: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.2),
+                    borderRadius: AppShapes.chipRadius,
+                  ),
+                  child: Text(
+                    _errorMessage!,
+                    style:
+                        AppTypography.bodySmall.copyWith(color: Colors.white),
+                    textAlign: TextAlign.center,
+                  ),
+                )
+              else
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.phone_outlined,
+                        size: 14, color: Colors.white70),
+                    const SizedBox(width: 4),
+                    Text(
+                      _userPhone.isEmpty ? '-' : _userPhone,
+                      style: AppTypography.bodySmall.copyWith(
+                        color: Colors.white.withValues(alpha: 0.8),
+                      ),
                     ),
                   ],
                 ),
-                child: ClipOval(
-                  child: _userPhotoUrl != null && _userPhotoUrl!.isNotEmpty
-                      ? Image.network(
-                          _userPhotoUrl!,
-                          fit: BoxFit.cover,
-                          width: 88,
-                          height: 88,
-                          errorBuilder: (_, __, ___) =>
-                              const Icon(Icons.person, size: 44, color: Colors.white),
-                        )
-                      : const Icon(Icons.person, size: 44, color: Colors.white),
+
+              const SizedBox(height: 12),
+
+              // Tombol Edit Profil
+              OutlinedButton.icon(
+                onPressed: () => _navigateToEditProfile(context),
+                icon: const Icon(Icons.edit_outlined, size: 16),
+                label: const Text('Edit Profil'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  side: const BorderSide(color: Colors.white54),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: AppShapes.chipRadius),
                 ),
               ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: GestureDetector(
-                  onTap: () => _navigateToEditProfile(context),
-                  child: Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: AppColors.secondary,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                    ),
-                    child: const Icon(Icons.edit, size: 14, color: Colors.white),
+
+              // 🔥 INDICATOR DOTS JIKA GALERI LEBIH DARI 1
+              if (_bgGallery.length > 1)
+                Padding(
+                  padding: const EdgeInsets.only(top: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(_bgGallery.length, (index) {
+                      return AnimatedContainer(
+                        duration: AppAnimations.fast,
+                        margin: const EdgeInsets.symmetric(horizontal: 3),
+                        width: _currentBgIndex == index ? 24 : 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: _currentBgIndex == index
+                              ? Colors.white
+                              : Colors.white.withValues(alpha: 0.4),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      );
+                    }),
                   ),
                 ),
-              ),
             ],
           ),
-
-          const SizedBox(height: 12),
-
-          // Nama
-          Text(
-            _userName.isEmpty ? 'Pengguna' : _userName,
-            style: AppTypography.titleLarge.copyWith(color: Colors.white),
-          ),
-          const SizedBox(height: 4),
-
-          // Nomor HP
-          if (_errorMessage != null)
-            Container(
-              margin: const EdgeInsets.only(top: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.2),
-                borderRadius: AppShapes.chipRadius,
-              ),
-              child: Text(
-                _errorMessage!,
-                style: AppTypography.bodySmall.copyWith(color: Colors.white),
-                textAlign: TextAlign.center,
-              ),
-            )
-          else
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.phone_outlined, size: 14, color: Colors.white70),
-                const SizedBox(width: 4),
-                Text(
-                  _userPhone.isEmpty ? '-' : _userPhone,
-                  style: AppTypography.bodySmall.copyWith(
-                    color: Colors.white.withValues(alpha: 0.8),
-                  ),
-                ),
-              ],
-            ),
-
-          const SizedBox(height: 12),
-
-          // Tombol Edit Profil
-          OutlinedButton.icon(
-            onPressed: () => _navigateToEditProfile(context),
-            icon: const Icon(Icons.edit_outlined, size: 16),
-            label: const Text('Edit Profil'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.white,
-              side: const BorderSide(color: Colors.white54),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              shape: RoundedRectangleBorder(borderRadius: AppShapes.chipRadius),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -283,9 +365,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       child: Row(
         children: [
-          _buildStatCell('$_activeBookings', 'Kursus Aktif', Icons.school_outlined),
+          _buildStatCell(
+              '$_activeBookings', 'Kursus Aktif', Icons.school_outlined),
           _buildStatDivider(),
-          _buildStatCell('$_certificates', 'Sertifikat', Icons.workspace_premium_outlined),
+          _buildStatCell(
+              '$_certificates', 'Sertifikat', Icons.workspace_premium_outlined),
         ],
       ),
     );
@@ -300,8 +384,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Icon(icon, size: 20, color: AppColors.primary),
             const SizedBox(height: 6),
             Text(value,
-                style: AppTypography.headlineSmall.copyWith(
-                    color: AppColors.textPrimary, fontSize: 22)),
+                style: AppTypography.headlineSmall
+                    .copyWith(color: AppColors.textPrimary, fontSize: 22)),
             Text(label,
                 style: AppTypography.bodySmall
                     .copyWith(color: AppColors.textSecondary),
@@ -363,7 +447,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       decoration: BoxDecoration(
                         color: a.color.withValues(alpha: 0.1),
                         borderRadius: AppShapes.borderRadiusMD,
-                        border: Border.all(color: a.color.withValues(alpha: 0.2)),
+                        border:
+                            Border.all(color: a.color.withValues(alpha: 0.2)),
                       ),
                       child: Icon(a.icon, color: a.color, size: 26),
                     ),
@@ -463,7 +548,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               if (badge != null)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                       color: AppColors.secondary,
                       borderRadius: AppShapes.chipRadius),
@@ -480,8 +566,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildDivider() =>
-      const Divider(height: 1, indent: 72, endIndent: 16);
+  Widget _buildDivider() => const Divider(height: 1, indent: 72, endIndent: 16);
 
   // ── Logout ────────────────────────────────────────────────────────────────
   Widget _buildLogoutButton(BuildContext context) {
