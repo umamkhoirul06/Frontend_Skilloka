@@ -49,25 +49,28 @@ class _PendingBookingScreenState extends State<PendingBookingScreen> {
 
       if (response.statusCode == 200) {
         final data = response.data['data'] as Map<String, dynamic>;
-        final status = data['status'] as String? ?? 'pending';
+        // 🔥 Ubah ke huruf kecil semua agar lebih kebal terhadap typo/case sensitive
+        final status = (data['status'] as String? ?? 'pending').toLowerCase();
 
         if (!mounted) return;
 
-        if (status == 'confirmed') {
+        // 🔥 FIX 1: Ganti 'confirmed' menjadi 'selesai'
+        if (status == 'selesai') {
           _timer?.cancel();
           setState(() {
             _isApproved = true;
             _bookingData = data;
             _qrUrl = data['qr_code_url'] as String?;
           });
-        } else if (status == 'cancelled') {
+        // 🔥 FIX 2: Ganti 'cancelled' menjadi 'dibatalkan'
+        } else if (status == 'dibatalkan') {
           _timer?.cancel();
           setState(() {
             _isCancelled = true;
             _bookingData = data;
           });
         } else {
-          // Masih pending
+          // Masih pending / Menunggu
           setState(() {
             _bookingData = data;
             _statusLabel = 'Menunggu Persetujuan Admin LPK...';

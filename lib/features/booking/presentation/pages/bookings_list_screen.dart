@@ -61,12 +61,12 @@ class _BookingsListScreenState extends State<BookingsListScreen>
 
   List<BookingModel> _getFilteredBookings(int tabIndex) {
     switch (tabIndex) {
-      case 1:
-        return _bookings.where((b) => b.isPending).toList();
-      case 2:
-        return _bookings.where((b) => b.isConfirmed).toList();
-      case 3:
-        return _bookings.where((b) => b.isCompleted).toList();
+      case 1: // Menunggu
+        return _bookings.where((b) => b.status == 'Menunggu').toList();
+      case 2: // Aktif (Data yang sudah lunas/ACC)
+        return _bookings.where((b) => b.status == 'Selesai').toList();
+      case 3: // Selesai
+        return _bookings.where((b) => b.status == 'Selesai').toList();
       default:
         return _bookings;
     }
@@ -119,6 +119,43 @@ class _BookingsListScreenState extends State<BookingsListScreen>
         },
       ),
     );
+  }
+
+  Future<void> _showCancelConfirmation(
+      BuildContext context, String bookingId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Batalkan Booking?'),
+        content: const Text('Apakah Anda yakin ingin membatalkan pesanan ini?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Tidak')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Ya, Batalkan'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      try {
+        // Panggil API pembatalan
+        final api = ApiService();
+        final result = await api
+            .cancelBooking(bookingId); // Pastikan fungsi ini ada di ApiService
+        if (result['success']) {
+          _refresh(); // Refresh daftar booking
+          ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Booking dibatalkan')));
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Gagal: $e')));
+      }
+    }
   }
 
   Widget _buildError(BuildContext context, String error) {

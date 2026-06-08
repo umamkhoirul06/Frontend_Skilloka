@@ -20,7 +20,6 @@ class BookingModel {
   });
 
   factory BookingModel.fromJson(Map<String, dynamic> json) {
-    // 🔥 PINTARKAN BACA JSON: Coba baca 'course' dulu (dari Laravel), kalau gak ada baru 'schedule'
     final courseData = json['course'] ?? json['schedule'];
 
     return BookingModel(
@@ -37,20 +36,19 @@ class BookingModel {
     );
   }
 
-  bool get isPending => status == 'pending';
-  bool get isConfirmed => status == 'confirmed';
-  bool get isCancelled => status == 'cancelled';
-  bool get isCompleted => status == 'completed';
+  // 🔥 Ubah status ke Bahasa Indonesia (Kapital di awal)
+  bool get isPending => status == 'Menunggu';
+  bool get isConfirmed => status == 'Selesai';
+  bool get isCompleted => status == 'Selesai';
+  bool get isCancelled => status == 'Dibatalkan';
 
   String get statusLabel {
     switch (status) {
-      case 'pending':
+      case 'Menunggu':
         return 'Menunggu Pembayaran';
-      case 'confirmed':
-        return 'Dikonfirmasi (Lunas)';
-      case 'completed':
-        return 'Selesai';
-      case 'cancelled':
+      case 'Selesai':
+        return 'Lunas';
+      case 'Dibatalkan':
         return 'Dibatalkan';
       default:
         return status;
@@ -58,6 +56,7 @@ class BookingModel {
   }
 }
 
+// 🔥 KELAS INI HARUS BERDIRI SENDIRI DI LUAR BookingModel
 class BookingScheduleModel {
   final String id;
   final String? startDate;
@@ -81,7 +80,6 @@ class BookingScheduleModel {
     final lpk = json['lpk'] as Map<String, dynamic>?;
     final category = json['category'] as Map<String, dynamic>?;
 
-    // 🔥 PENGAMAN FOTO AGAR TAB PESANAN TIDAK CRASH
     String rawImg = '';
     if (json['images'] != null &&
         json['images'] is List &&
@@ -93,8 +91,9 @@ class BookingScheduleModel {
 
     return BookingScheduleModel(
       id: json['id'].toString(),
-      startDate: json['start_date'] ?? 'Belum ditentukan',
-      endDate: json['end_date'],
+      // 🔥 FIX FORMAT TANGGAL
+      startDate: json['date']?.toString() ?? 'Belum ditentukan',
+      endDate: json['end_date']?.toString(),
       courseTitle: json['title'] ?? json['name'] ?? 'Kursus',
       courseImageUrl: ApiService.toFullUrl(rawImg),
       lpkName: lpk?['name'] ?? 'LPK Tidak Diketahui',
