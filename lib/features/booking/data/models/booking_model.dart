@@ -1,13 +1,49 @@
-import '../../../../core/services/api_service.dart';
+class ScheduleInfo {
+  final String? id;
+  final String? courseId;
+  final String? courseTitle;
+  final String? courseImageUrl;
+  final String? lpkName;
+  final String? lpkLogoUrl;
+  final String? categoryName;
+  final String? startDate;
+  final String? endDate;
+
+  const ScheduleInfo({
+    this.id,
+    this.courseId,
+    this.courseTitle,
+    this.courseImageUrl,
+    this.lpkName,
+    this.lpkLogoUrl,
+    this.categoryName,
+    this.startDate,
+    this.endDate,
+  });
+
+  factory ScheduleInfo.fromJson(Map<String, dynamic> json) {
+    return ScheduleInfo(
+      id: json['id']?.toString(),
+      courseId: json['courseId']?.toString(),
+      courseTitle: json['courseTitle']?.toString(),
+      courseImageUrl: json['courseImageUrl']?.toString(),
+      lpkName: json['lpkName']?.toString(),
+      lpkLogoUrl: json['lpkLogoUrl']?.toString(),
+      categoryName: json['categoryName']?.toString(),
+      startDate: json['startDate']?.toString(),
+      endDate: json['endDate']?.toString(),
+    );
+  }
+}
 
 class BookingModel {
   final String id;
   final String code;
   final String status;
   final double amount;
-  final DateTime? expiresAt;
-  final DateTime createdAt;
-  final BookingScheduleModel? schedule;
+  final String? expiresAt;
+  final String? createdAt;
+  final ScheduleInfo? schedule;
 
   const BookingModel({
     required this.id,
@@ -15,89 +51,41 @@ class BookingModel {
     required this.status,
     required this.amount,
     this.expiresAt,
-    required this.createdAt,
+    this.createdAt,
     this.schedule,
   });
 
   factory BookingModel.fromJson(Map<String, dynamic> json) {
-    final courseData = json['course'] ?? json['schedule'];
-
     return BookingModel(
-      id: json['id'].toString(),
-      code: json['code'] ?? '',
-      status: json['status'] ?? 'pending',
+      id: json['id']?.toString() ?? '',
+      code: json['code']?.toString() ?? json['id']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'pending',
       amount: (json['amount'] ?? 0).toDouble(),
-      expiresAt: json['expires_at'] != null
-          ? DateTime.tryParse(json['expires_at'])
+      expiresAt: json['expires_at']?.toString(),
+      createdAt: json['created_at']?.toString(),
+      schedule: json['schedule'] != null
+          ? ScheduleInfo.fromJson(json['schedule'] as Map<String, dynamic>)
           : null,
-      createdAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
-      schedule:
-          courseData != null ? BookingScheduleModel.fromJson(courseData) : null,
     );
   }
 
-  // 🔥 Ubah status ke Bahasa Indonesia (Kapital di awal)
-  bool get isPending => status == 'Menunggu';
-  bool get isConfirmed => status == 'Selesai';
-  bool get isCompleted => status == 'Selesai';
-  bool get isCancelled => status == 'Dibatalkan';
+  bool get isPending => status == 'pending';
+  bool get isConfirmed => status == 'confirmed';
+  bool get isCompleted => status == 'completed';
+  bool get isCancelled => status == 'cancelled';
 
   String get statusLabel {
     switch (status) {
-      case 'Menunggu':
-        return 'Menunggu Pembayaran';
-      case 'Selesai':
-        return 'Lunas';
-      case 'Dibatalkan':
+      case 'pending':
+        return 'Menunggu';
+      case 'confirmed':
+        return 'Dikonfirmasi';
+      case 'completed':
+        return 'Selesai';
+      case 'cancelled':
         return 'Dibatalkan';
       default:
-        return status;
+        return 'Menunggu';
     }
-  }
-}
-
-// 🔥 KELAS INI HARUS BERDIRI SENDIRI DI LUAR BookingModel
-class BookingScheduleModel {
-  final String id;
-  final String? startDate;
-  final String? endDate;
-  final String? courseTitle;
-  final String? courseImageUrl;
-  final String? lpkName;
-  final String? categoryName;
-
-  const BookingScheduleModel({
-    required this.id,
-    this.startDate,
-    this.endDate,
-    this.courseTitle,
-    this.courseImageUrl,
-    this.lpkName,
-    this.categoryName,
-  });
-
-  factory BookingScheduleModel.fromJson(Map<String, dynamic> json) {
-    final lpk = json['lpk'] as Map<String, dynamic>?;
-    final category = json['category'] as Map<String, dynamic>?;
-
-    String rawImg = '';
-    if (json['images'] != null &&
-        json['images'] is List &&
-        (json['images'] as List).isNotEmpty) {
-      rawImg = json['images'][0].toString();
-    } else {
-      rawImg = json['image_url'] ?? '';
-    }
-
-    return BookingScheduleModel(
-      id: json['id'].toString(),
-      // 🔥 FIX FORMAT TANGGAL
-      startDate: json['date']?.toString() ?? 'Belum ditentukan',
-      endDate: json['end_date']?.toString(),
-      courseTitle: json['title'] ?? json['name'] ?? 'Kursus',
-      courseImageUrl: ApiService.toFullUrl(rawImg),
-      lpkName: lpk?['name'] ?? 'LPK Tidak Diketahui',
-      categoryName: category?['name'] ?? 'Umum',
-    );
   }
 }

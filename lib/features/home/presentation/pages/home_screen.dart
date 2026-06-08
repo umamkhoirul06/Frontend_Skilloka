@@ -32,6 +32,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<LpkModel> _lpks = [];
   List<CourseModel> _courses = [];
+  List<BannerItem> _banners = [];
+
+  // ✅ FIX: nama user dari API, bukan hardcoded
+  String _userName = 'Pengguna';
+  bool _isLoadingProfile = true;
+
   late final HomeRepository _homeRepository;
 
   final List<String> _categories = [
@@ -52,45 +58,83 @@ class _HomeScreenState extends State<HomeScreen> {
     'Bahasa': 'bahasa',
   };
 
-  // Mock data
-  List<BannerItem> _banners = [];
-
   @override
   void initState() {
     super.initState();
     _homeRepository = HomeRepository(apiClient: sl());
+    _loadProfile();
     _loadData();
   }
 
-  Future<void> _loadData() async {
-    debugPrint('CATEGORY = $_selectedCategory');
-
-final responses = await Future.wait([
-  _homeRepository.getLpks(
-    search: _searchQuery,
-  ),
-   _homeRepository.getCourses(
-    search: _searchQuery,
-    category: _selectedCategory,
-  ),
-]);
-
-    final courses = responses[1] as List<CourseModel>;
-    debugPrint('COURSES PARSED LENGTH: ${courses.length}');
-
-    List<LpkModel> lpks = responses[0] as List<LpkModel>;
-    if (_currentLocation != 'Semua') {
-      lpks = lpks.where((lpk) => lpk.locationName == _currentLocation).toList();
+  // ✅ FIX: Ambil nama user dari API /auth/me
+  Future<void> _loadProfile() async {
+    try {
+      final apiService = ApiService();
+      final result = await apiService.getProfile();
+      if (result['success'] == true) {
+        final data = result['data']['data'] ?? result['data'];
+        final name = data?['name']?.toString() ?? 'Pengguna';
+        if (mounted) {
+          setState(() {
+            _userName = name;
+            _isLoadingProfile = false;
+          });
+        }
+      } else {
+        if (mounted) setState(() => _isLoadingProfile = false);
+      }
+    } catch (e) {
+      debugPrint('Error loading profile: $e');
+      if (mounted) setState(() => _isLoadingProfile = false);
     }
-
-  if (mounted) {
-    setState(() {
-      _lpks = lpks;
-      _courses = responses[1] as List<CourseModel>;
-      _isLoading = false;
-    });
   }
-}
+
+  Future<void> _loadData() async {
+    try {
+      debugPrint('CATEGORY = $_selectedCategory');
+
+      final responses = await Future.wait([
+        _homeRepository.getLpks(search: _searchQuery),
+        _homeRepository.getCourses(
+          search: _searchQuery,
+          category: _selectedCategory,
+        ),
+      ]);
+
+      List<LpkModel> lpks = responses[0] as List<LpkModel>;
+      if (_currentLocation != 'Semua') {
+        lpks =
+            lpks.where((lpk) => lpk.locationName == _currentLocation).toList();
+      }
+
+      final courses = responses[1] as List<CourseModel>;
+      debugPrint('COURSES PARSED LENGTH: ${courses.length}');
+
+      // ✅ FIX: Banners dari LPK yang terverifikasi (fallback kalau tidak ada API banner)
+      final bannerItems = lpks
+          .where((lpk) => lpk.isVerified && (lpk.logoUrl?.isNotEmpty ?? false))
+          .take(5)
+          .map((lpk) => BannerItem(
+                imageUrl: ApiService.toFullUrl(lpk.logoUrl ?? ''),
+                title: lpk.name,
+                subtitle: lpk.address ?? '',
+                id: '',
+              ))
+          .toList();
+
+      if (mounted) {
+        setState(() {
+          _lpks = lpks;
+          _courses = courses;
+          _banners = bannerItems;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading home data: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   void _openFilter() async {
     final result = await FilterBottomSheet.show(
@@ -103,9 +147,7 @@ final responses = await Future.wait([
 
     if (result != null) {
       setState(() {
-        if (result.kecamatan != null) {
-          _currentLocation = result.kecamatan!;
-        }
+        if (result.kecamatan != null) _currentLocation = result.kecamatan!;
         if (result.categories.isNotEmpty) {
           _selectedCategory = _categorySlugMap[result.categories.first];
         }
@@ -121,7 +163,7 @@ final responses = await Future.wait([
       body: RefreshIndicator(
         onRefresh: () async {
           setState(() => _isLoading = true);
-          await _loadData();
+          await Future.wait([_loadProfile(), _loadData()]);
         },
         child: CustomScrollView(
           slivers: [
@@ -156,8 +198,9 @@ final responses = await Future.wait([
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // ✅ FIX: userName dari state (diisi oleh _loadProfile)
                         GreetingBanner(
-                          userName: 'Pengguna',
+                          userName: _isLoadingProfile ? '...' : _userName,
                           notificationCount: 3,
                           onNotificationTap: () {},
                         ),
@@ -197,9 +240,12 @@ final responses = await Future.wait([
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // ✅ FIX: Banner tampil dari data _banners yang sudah diisi
                   _isLoading
                       ? const SkeletonBanner()
-                      : HeroBanner(items: _banners),
+                      : _banners.isEmpty
+                          ? const SizedBox(height: 8)
+                          : HeroBanner(items: _banners),
                   const SizedBox(height: 24),
                   CategoryFilterChips(
                     categories: _categories,
@@ -215,18 +261,14 @@ final responses = await Future.wait([
                   const SizedBox(height: 24),
                   _buildSectionHeader(
                     title: 'LPK Terdekat',
-                    onSeeAll: () {
-                      // TODO: Navigate to all LPKs
-                    },
+                    onSeeAll: () {},
                   ),
                   const SizedBox(height: 12),
                   _isLoading ? const SkeletonLPKList() : _buildLPKList(),
                   const SizedBox(height: 24),
                   _buildSectionHeader(
                     title: 'Kursus Populer',
-                    onSeeAll: () {
-                      // TODO: Navigate to all courses
-                    },
+                    onSeeAll: () {},
                   ),
                   const SizedBox(height: 12),
                   _isLoading ? const SkeletonCourseGrid() : _buildCourseGrid(),
@@ -240,10 +282,7 @@ final responses = await Future.wait([
     );
   }
 
-  Widget _buildSectionHeader({
-    required String title,
-    VoidCallback? onSeeAll,
-  }) {
+  Widget _buildSectionHeader({required String title, VoidCallback? onSeeAll}) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
@@ -251,10 +290,7 @@ final responses = await Future.wait([
           Text(title, style: AppTypography.titleMedium),
           const Spacer(),
           if (onSeeAll != null)
-            TextButton(
-              onPressed: onSeeAll,
-              child: const Text('Lihat Semua'),
-            ),
+            TextButton(onPressed: onSeeAll, child: const Text('Lihat Semua')),
         ],
       ),
     );
@@ -267,7 +303,6 @@ final responses = await Future.wait([
         child: Center(child: Text('Belum ada LPK')),
       );
     }
-
     return SizedBox(
       height: 240,
       child: ListView.separated(
@@ -278,18 +313,16 @@ final responses = await Future.wait([
         itemBuilder: (context, index) {
           final lpk = _lpks[index];
           final logoSafe = ApiService.toFullUrl(lpk.logoUrl ?? '');
-
           return LPKCard(
             id: lpk.id.toString(),
             name: lpk.name,
             logoUrl: logoSafe.isNotEmpty
                 ? logoSafe
-                : 'https://via.placeholder.com/100',
+                : 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(lpk.name)}&background=random',
             address: lpk.address,
             rating: lpk.rating,
             reviewCount: lpk.reviewCount,
             isVerified: lpk.isVerified,
-            // ✅ BENAR: pakai helper method
             onTap: () =>
                 context.push(AppRouter.lpkDetailPath(lpk.id.toString())),
           );
@@ -305,7 +338,6 @@ final responses = await Future.wait([
         child: Center(child: Text('Belum ada Kursus')),
       );
     }
-
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: GridView.builder(
@@ -320,27 +352,24 @@ final responses = await Future.wait([
         itemCount: _courses.length,
         itemBuilder: (context, index) {
           final course = _courses[index];
-
-          String rawImg = '';
-          if (course.images.isNotEmpty) {
-            rawImg = course.images.first.toString();
-          }
+          String rawImg =
+              course.images.isNotEmpty ? course.images.first.toString() : '';
           final String imageUrl = rawImg.isNotEmpty
               ? ApiService.toFullUrl(rawImg)
-              : 'https://via.placeholder.com/400';
+              : 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(course.title)}&background=random&size=400';
 
           return CourseCard(
             id: course.id.toString(),
             title: course.title,
-            lpkName: course.lpk['name'] ?? 'LPK Tidak Diketahui',
+            // ✅ FIX: ambil lpkName dengan null-safety
+            lpkName: course.lpk['name']?.toString() ?? 'LPK Mitra',
             imageUrl: imageUrl,
             rating: 0.0,
             reviewCount: 0,
             distanceKm: 0.0,
             price: course.price.toInt(),
-            category: course.category['name'] ?? 'Umum',
+            category: course.category['name']?.toString() ?? 'Umum',
             isVerified: true,
-            // ✅ BENAR: pakai helper method, bukan string concat dengan constant
             onTap: () =>
                 context.push(AppRouter.courseDetailPath(course.id.toString())),
           );

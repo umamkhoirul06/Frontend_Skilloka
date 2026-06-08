@@ -1,4 +1,3 @@
-/// Bookings List Screen - Halaman Daftar Pesanan Saya
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -21,12 +20,10 @@ class _BookingsListScreenState extends State<BookingsListScreen>
   late Future<List<BookingModel>> _bookingsFuture;
   List<BookingModel> _bookings = [];
 
-  final List<String> _tabs = ['Semua', 'Menunggu', 'Aktif', 'Selesai'];
-
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: _tabs.length, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _bookingsFuture = _fetchBookings();
   }
 
@@ -34,8 +31,8 @@ class _BookingsListScreenState extends State<BookingsListScreen>
     try {
       final apiService = ApiService();
       final result = await apiService.getBookings();
-      if (result['success']) {
-        final List data = result['data']['data'] ?? [];
+      if (result['success'] == true) {
+        final List data = result['data']['data'] ?? result['data'] ?? [];
         _bookings = data.map((e) => BookingModel.fromJson(e)).toList();
         return _bookings;
       } else {
@@ -53,20 +50,18 @@ class _BookingsListScreenState extends State<BookingsListScreen>
   }
 
   Future<void> _refresh() async {
-    setState(() {
-      _bookingsFuture = _fetchBookings();
-    });
+    setState(() => _bookingsFuture = _fetchBookings());
     await _bookingsFuture;
   }
 
-  List<BookingModel> _getFilteredBookings(int tabIndex) {
+  List<BookingModel> _getFiltered(int tabIndex) {
     switch (tabIndex) {
-      case 1: // Menunggu
-        return _bookings.where((b) => b.status == 'Menunggu').toList();
-      case 2: // Aktif (Data yang sudah lunas/ACC)
-        return _bookings.where((b) => b.status == 'Selesai').toList();
-      case 3: // Selesai
-        return _bookings.where((b) => b.status == 'Selesai').toList();
+      case 1:
+        return _bookings.where((b) => b.isPending).toList();
+      case 2:
+        return _bookings.where((b) => b.isConfirmed || b.isCompleted).toList();
+      case 3:
+        return _bookings.where((b) => b.isCancelled).toList();
       default:
         return _bookings;
     }
@@ -78,32 +73,50 @@ class _BookingsListScreenState extends State<BookingsListScreen>
       appBar: AppBar(
         title: const Text('Pesanan Saya'),
         centerTitle: false,
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          tabAlignment: TabAlignment.start,
-          tabs: _tabs.map((t) => Tab(text: t)).toList(),
-          onTap: (_) => setState(() {}),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(48),
+          child: FutureBuilder<List<BookingModel>>(
+            future: _bookingsFuture,
+            builder: (context, snap) {
+              final data = snap.data ?? [];
+              final pendingCount = data.where((b) => b.isPending).length;
+              final aktifCount =
+                  data.where((b) => b.isConfirmed || b.isCompleted).length;
+              final riwayatCount = data.where((b) => b.isCancelled).length;
+              return TabBar(
+                controller: _tabController,
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                onTap: (_) => setState(() {}),
+                tabs: [
+                  const Tab(text: 'Semua'),
+                  Tab(
+                      text:
+                          'Menunggu${pendingCount > 0 ? ' ($pendingCount)' : ''}'),
+                  Tab(text: 'Aktif${aktifCount > 0 ? ' ($aktifCount)' : ''}'),
+                  Tab(
+                      text:
+                          'Riwayat${riwayatCount > 0 ? ' ($riwayatCount)' : ''}'),
+                ],
+              );
+            },
+          ),
         ),
       ),
       body: FutureBuilder<List<BookingModel>>(
         future: _bookingsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const _BookingListSkeleton();
+            return const Center(child: CircularProgressIndicator());
           }
-
           if (snapshot.hasError) {
-            return _buildError(context, snapshot.error.toString());
+            return _buildError(snapshot.error.toString());
           }
-
           return AnimatedBuilder(
             animation: _tabController,
             builder: (context, _) {
-              final filtered = _getFilteredBookings(_tabController.index);
-              if (filtered.isEmpty) {
-                return _buildEmpty(context);
-              }
+              final filtered = _getFiltered(_tabController.index);
+              if (filtered.isEmpty) return _buildEmpty();
               return RefreshIndicator(
                 onRefresh: _refresh,
                 child: ListView.separated(
@@ -121,79 +134,35 @@ class _BookingsListScreenState extends State<BookingsListScreen>
     );
   }
 
-  Future<void> _showCancelConfirmation(
-      BuildContext context, String bookingId) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Batalkan Booking?'),
-        content: const Text('Apakah Anda yakin ingin membatalkan pesanan ini?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Tidak')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Ya, Batalkan'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true && mounted) {
-      try {
-        // Panggil API pembatalan
-        final api = ApiService();
-        final result = await api
-            .cancelBooking(bookingId); // Pastikan fungsi ini ada di ApiService
-        if (result['success']) {
-          _refresh(); // Refresh daftar booking
-          ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Booking dibatalkan')));
-        }
-      } catch (e) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Gagal: $e')));
-      }
-    }
-  }
-
-  Widget _buildError(BuildContext context, String error) {
+  Widget _buildError(String error) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Icon(Icons.error_outline, size: 48, color: AppColors.error),
           const SizedBox(height: 16),
-          Text(error, style: AppTypography.bodyMedium),
+          Text(error,
+              style: AppTypography.bodyMedium, textAlign: TextAlign.center),
           const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: _refresh,
-            child: const Text('Coba Lagi'),
-          ),
+          ElevatedButton(onPressed: _refresh, child: const Text('Coba Lagi')),
         ],
       ),
     );
   }
 
-  Widget _buildEmpty(BuildContext context) {
+  Widget _buildEmpty() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.receipt_long_outlined,
-            size: 64,
-            color: AppColors.textTertiary,
-          ),
+          Icon(Icons.receipt_long_outlined,
+              size: 64, color: AppColors.textTertiary),
           const SizedBox(height: 16),
           Text('Belum ada pesanan', style: AppTypography.titleMedium),
           const SizedBox(height: 8),
-          Text(
-            'Daftarkan diri ke kursus favoritmu!',
-            style: AppTypography.bodyMedium
-                .copyWith(color: AppColors.textSecondary),
-          ),
+          Text('Daftarkan diri ke kursus favoritmu!',
+              style: AppTypography.bodyMedium
+                  .copyWith(color: AppColors.textSecondary)),
           const SizedBox(height: 24),
           FilledButton.icon(
             onPressed: () => context.go(AppRouter.home),
@@ -225,6 +194,10 @@ class _BookingCard extends StatelessWidget {
     }
   }
 
+  String _formatRupiah(double amount) {
+    return 'Rp ${amount.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -237,24 +210,20 @@ class _BookingCard extends StatelessWidget {
         color: Colors.transparent,
         borderRadius: AppShapes.cardRadius,
         child: InkWell(
-          onTap: () {
-            // Navigate ke detail booking (pending booking screen)
-            if (booking.isPending) {
-              context.push(AppRouter.pendingBookingPath(booking.id.toString()));
-            }
-          },
+          // ✅ FIX: Semua card bisa diklik
+          onTap: () => context.push(AppRouter.pendingBookingPath(booking.id)),
           borderRadius: AppShapes.cardRadius,
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header: Kode booking + status
+                // Header: kode + badge status
                 Row(
                   children: [
                     Expanded(
                       child: Text(
-                        booking.code,
+                        '#${booking.code.length > 8 ? booking.code.substring(0, 8) : booking.code}',
                         style: AppTypography.labelSmall.copyWith(
                           color: AppColors.textTertiary,
                           fontFamily: 'monospace',
@@ -280,16 +249,16 @@ class _BookingCard extends StatelessWidget {
                 const Divider(height: 1),
                 const SizedBox(height: 12),
 
-                // Nama kursus
+                // Nama kursus — ✅ FIX: dari schedule.courseTitle
                 Text(
                   booking.schedule?.courseTitle ?? 'Kursus',
                   style: AppTypography.titleSmall,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
 
-                // Nama LPK + Kategori
+                // LPK — ✅ FIX: dari schedule.lpkName
                 Row(
                   children: [
                     const Icon(Icons.business_outlined,
@@ -297,14 +266,14 @@ class _BookingCard extends StatelessWidget {
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
-                        booking.schedule?.lpkName ?? '',
+                        booking.schedule?.lpkName ?? 'LPK Mitra',
                         style: AppTypography.bodySmall
                             .copyWith(color: AppColors.textSecondary),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    if (booking.schedule?.categoryName != null) ...[
+                    if (booking.schedule?.categoryName != null)
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 2),
@@ -318,102 +287,69 @@ class _BookingCard extends StatelessWidget {
                               .copyWith(color: AppColors.primary),
                         ),
                       ),
-                    ],
+                  ],
+                ),
+
+                const SizedBox(height: 6),
+
+                // Jadwal
+                Row(
+                  children: [
+                    const Icon(Icons.calendar_today_outlined,
+                        size: 13, color: AppColors.textTertiary),
+                    const SizedBox(width: 4),
+                    Text(
+                      booking.schedule?.startDate != null
+                          ? '${booking.schedule!.startDate}'
+                              '${booking.schedule!.endDate != null ? ' – ${booking.schedule!.endDate}' : ''}'
+                          : 'Belum ditentukan',
+                      style: AppTypography.bodySmall.copyWith(
+                          color: AppColors.textTertiary, fontSize: 11),
+                    ),
                   ],
                 ),
 
                 const SizedBox(height: 12),
 
-                // Jadwal & Harga
+                // Harga + hint klik
                 Row(
                   children: [
-                    if (booking.schedule?.startDate != null) ...[
-                      const Icon(Icons.calendar_today_outlined,
-                          size: 14, color: AppColors.textTertiary),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${booking.schedule!.startDate} – ${booking.schedule!.endDate ?? ''}',
-                        style: AppTypography.bodySmall
-                            .copyWith(color: AppColors.textSecondary),
-                      ),
-                    ],
-                    const Spacer(),
                     Text(
-                      'Rp ${booking.amount.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}',
+                      _formatRupiah(booking.amount),
                       style: AppTypography.labelMedium.copyWith(
                         color: AppColors.primary,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
+                    const Spacer(),
+                    Text('Lihat detail',
+                        style: AppTypography.bodySmall
+                            .copyWith(color: AppColors.primary, fontSize: 11)),
+                    const Icon(Icons.chevron_right,
+                        size: 16, color: AppColors.primary),
                   ],
                 ),
 
-                // ✅ FIX: Tombol aksi untuk status pending — sudah ada navigasi!
+                // Tombol untuk pending
                 if (booking.isPending) ...[
                   const SizedBox(height: 12),
                   const Divider(height: 1),
                   const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () {
-                            // TODO: Tambah konfirmasi dialog sebelum batalkan
-                            // Contoh: _showCancelDialog(context, booking.id)
-                          },
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.error,
-                            side: const BorderSide(color: AppColors.error),
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                          ),
-                          child: const Text('Batalkan'),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: FilledButton(
-                          // ✅ FIX: Navigate ke PendingBookingScreen dengan bookingId.
-                          //         PendingBookingScreen sudah ada tombol "Bayar" yang
-                          //         membawa ke PaymentScreen dengan data yang lengkap.
-                          onPressed: () {
-                            context.push(
-                              AppRouter.pendingBookingPath(
-                                  booking.id.toString()),
-                            );
-                          },
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                          ),
-                          child: const Text('Bayar Sekarang'),
-                        ),
-                      ),
-                    ],
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      icon: const Icon(Icons.info_outline, size: 16),
+                      label: const Text('Cek Status & Bayar'),
+                      onPressed: () => context
+                          .push(AppRouter.pendingBookingPath(booking.id)),
+                      style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 10)),
+                    ),
                   ),
                 ],
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _BookingListSkeleton extends StatelessWidget {
-  const _BookingListSkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: 3,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (context, _) => Container(
-        height: 160,
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: AppShapes.cardRadius,
-          boxShadow: AppShapes.shadowSM,
         ),
       ),
     );

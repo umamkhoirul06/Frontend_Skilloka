@@ -94,16 +94,18 @@ class _BookingSuccessScreenState extends State<BookingSuccessScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Theme.of(context)
+          .scaffoldBackgroundColor, // Pastikan background konsisten
       body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            SliverFillRemaining(
-              hasScrollBody: false,
-              child: Padding(
+        child: Column(
+          children: [
+            // ─── 1. KONTEN UTAMA (BISA DI-SCROLL JIKA LAYAR KECIL) ───
+            Expanded(
+              child: SingleChildScrollView(
                 padding: const EdgeInsets.all(24),
                 child: Column(
                   children: [
-                    const Spacer(),
+                    const SizedBox(height: 20), // Pengganti top Spacer()
 
                     // Success Icon
                     ScaleTransition(
@@ -230,22 +232,39 @@ class _BookingSuccessScreenState extends State<BookingSuccessScreen>
                               ),
                       ),
                     ),
-
-                    const SizedBox(height: 32),
-                    const Spacer(),
-
-                    // Actions
-                    AnimatedPrimaryButton(
-                      text: 'Lihat Pesanan Saya',
-                      onPressed: () => context.go(AppRouter.bookings),
-                    ),
-                    const SizedBox(height: 12),
-                    TextButton(
-                      onPressed: () => context.go(AppRouter.home),
-                      child: const Text('Kembali ke Beranda'),
-                    ),
+                    const SizedBox(
+                        height: 40), // Jarak lega ke bagian bawah scroll
                   ],
                 ),
+              ),
+            ),
+
+            // ─── 2. TOMBOL BAWAH (DIPAKU AGAR TIDAK HILANG) ───
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, -5), // Efek bayangan halus ke atas
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AnimatedPrimaryButton(
+                    text: 'Lihat Pesanan Saya',
+                    onPressed: () => context.go(AppRouter.bookings),
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: () => context.go(AppRouter.home),
+                    child: const Text('Kembali ke Beranda'),
+                  ),
+                ],
               ),
             ),
           ],
@@ -283,8 +302,7 @@ class _BookingSuccessScreenState extends State<BookingSuccessScreen>
         color: AppColors.surfaceVariant,
         borderRadius: AppShapes.borderRadiusSM,
       ),
-      child:
-          const Icon(Icons.qr_code, size: 60, color: AppColors.textTertiary),
+      child: const Icon(Icons.qr_code, size: 60, color: AppColors.textTertiary),
     );
   }
 }
