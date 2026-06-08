@@ -52,22 +52,8 @@ class _HomeScreenState extends State<HomeScreen> {
     'Bahasa': 'bahasa',
   };
 
-  final List<BannerItem> _banners = [
-    const BannerItem(
-      id: '1',
-      title: 'Diskon 50% untuk Kursus Las',
-      subtitle: 'Berlaku hingga akhir bulan',
-      imageUrl: 'https://picsum.photos/800/400?random=1',
-      tag: 'Promo',
-    ),
-    const BannerItem(
-      id: '2',
-      title: 'Sertifikasi IT Gratis',
-      subtitle: 'Program pemerintah',
-      imageUrl: 'https://picsum.photos/800/400?random=2',
-      tag: 'Baru',
-    ),
-  ];
+  // Mock data
+  List<BannerItem> _banners = [];
 
   @override
   void initState() {
@@ -79,13 +65,15 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadData() async {
     debugPrint('CATEGORY = $_selectedCategory');
 
-    final responses = await Future.wait([
-      _homeRepository.getLpks(search: _searchQuery),
-      _homeRepository.getCourses(
-        search: _searchQuery,
-        category: _selectedCategory,
-      ),
-    ]);
+final responses = await Future.wait([
+  _homeRepository.getLpks(
+    search: _searchQuery,
+  ),
+   _homeRepository.getCourses(
+    search: _searchQuery,
+    category: _selectedCategory,
+  ),
+]);
 
     final courses = responses[1] as List<CourseModel>;
     debugPrint('COURSES PARSED LENGTH: ${courses.length}');
@@ -95,14 +83,14 @@ class _HomeScreenState extends State<HomeScreen> {
       lpks = lpks.where((lpk) => lpk.locationName == _currentLocation).toList();
     }
 
-    if (mounted) {
-      setState(() {
-        _lpks = lpks;
-        _courses = courses;
-        _isLoading = false;
-      });
-    }
+  if (mounted) {
+    setState(() {
+      _lpks = lpks;
+      _courses = responses[1] as List<CourseModel>;
+      _isLoading = false;
+    });
   }
+}
 
   void _openFilter() async {
     final result = await FilterBottomSheet.show(

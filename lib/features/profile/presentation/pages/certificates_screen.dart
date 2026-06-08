@@ -41,6 +41,10 @@ class _CertificatesScreenState extends State<CertificatesScreen>
     });
     try {
       final result = await _api.getCertificates();
+      debugPrint('====================');
+debugPrint('CERTIFICATE RESULT');
+debugPrint(result.toString());
+debugPrint('====================');
       if (!mounted) return;
       if (result['success']) {
         final raw = result['data'];
@@ -74,18 +78,23 @@ class _CertificatesScreenState extends State<CertificatesScreen>
           _isLoading = false;
         });
       } else {
-        setState(() {
-          _error = result['message'];
-          _isLoading = false;
-        });
-      }
+  setState(() {
+    _active = [];
+    _expired = [];
+    _isLoading = false;
+    _error = null;
+  });
+}
     } catch (e) {
-      if (mounted)
-        setState(() {
-          _error = e.toString();
-          _isLoading = false;
-        });
-    }
+  if (mounted) {
+    setState(() {
+      _active = [];
+      _expired = [];
+      _error = null;
+      _isLoading = false;
+    });
+  }
+}
   }
 
   @override

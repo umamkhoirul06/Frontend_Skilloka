@@ -80,7 +80,8 @@ class _HeroBannerState extends State<HeroBanner> {
                 animation: _pageController,
                 builder: (context, child) {
                   double parallaxOffset = 0;
-                  if (_pageController.position.haveDimensions) {
+                  if (_pageController.hasClients &&
+    _pageController.position.haveDimensions) {
                     final page = _pageController.page ?? 0;
                     parallaxOffset = (index - page) * 30;
                   }
@@ -125,6 +126,9 @@ class _BannerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print('====================');
+print('BANNER URL = ${item.imageUrl}');
+print('====================');
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 4),
       child: ClipRRect(
@@ -153,7 +157,7 @@ class _BannerCard extends StatelessWidget {
                   end: Alignment.bottomCenter,
                   colors: [
                     Colors.transparent,
-                    Colors.black.withValues(alpha: 0.7),
+                    Colors.black.withOpacity(0.7)
                   ],
                 ),
               ),
@@ -198,7 +202,7 @@ class _BannerCard extends StatelessWidget {
                       child: Text(
                         item.subtitle!,
                         style: AppTypography.bodySmall.copyWith(
-                          color: Colors.white.withValues(alpha: 0.9),
+                          color: Colors.white.withOpacity(0.9),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -298,40 +302,45 @@ class GreetingBanner extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  IconButton(
-                    onPressed: onNotificationTap,
-                    icon: const Icon(Icons.notifications_outlined),
-                    style: IconButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                      padding: const EdgeInsets.all(12),
-                    ),
-                  ),
-              if (notificationCount > 0)
-                Positioned(
-                  right: 4,
-                  top: 4,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: AppColors.error,
-                      shape: BoxShape.circle,
-                    ),
-                    constraints: const BoxConstraints(
-                      minWidth: 18,
-                      minHeight: 18,
-                    ),
-                    child: Text(
-                      notificationCount > 99 ? '99+' : '$notificationCount',
-                      style: AppTypography.badge.copyWith(color: Colors.white),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-            ],
+Stack(
+  clipBehavior: Clip.none,
+  children: [
+    IconButton(
+      onPressed: onNotificationTap,
+      icon: const Icon(Icons.notifications_outlined),
+      style: IconButton.styleFrom(
+        backgroundColor:
+            Theme.of(context).colorScheme.surfaceContainerHighest,
+        padding: const EdgeInsets.all(12),
+      ),
+    ),
+    if (notificationCount > 0)
+      Positioned(
+        right: 4,
+        top: 4,
+        child: Container(
+          padding: const EdgeInsets.all(4),
+          decoration: const BoxDecoration(
+            color: AppColors.error,
+            shape: BoxShape.circle,
           ),
+          constraints: const BoxConstraints(
+            minWidth: 18,
+            minHeight: 18,
+          ),
+          child: Text(
+            notificationCount > 99
+                ? '99+'
+                : '$notificationCount',
+            style: AppTypography.badge.copyWith(
+              color: Colors.white,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ),
+  ],
+),
             ],
           ),
         ],

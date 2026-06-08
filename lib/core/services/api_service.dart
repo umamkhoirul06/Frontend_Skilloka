@@ -315,14 +315,12 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> toggleFavorite({
-    required String itemId,
-    required String itemType,
+    required String courseId,
   }) async {
     try {
       final r = await http.post(
-        Uri.parse('$baseUrl/favorites/toggle'),
+        Uri.parse('$baseUrl/favorites/$courseId'),
         headers: await _authHeaders(),
-        body: jsonEncode({'item_id': itemId, 'item_type': itemType}),
       );
       return _handleResponse(r);
     } catch (e) {

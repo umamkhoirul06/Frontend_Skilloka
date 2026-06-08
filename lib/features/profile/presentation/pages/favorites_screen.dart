@@ -96,7 +96,10 @@ class _FavoritesScreenState extends State<FavoritesScreen>
   }
 
   Future<void> _removeFromFav(String id, String type) async {
-    await _api.toggleFavorite(itemId: id, itemType: type);
+    await _api.toggleFavorite(
+      courseId: id,
+    );
+
     setState(() {
       if (type == 'course') {
         _favCourses.removeWhere((e) => e['id'].toString() == id);
@@ -104,12 +107,6 @@ class _FavoritesScreenState extends State<FavoritesScreen>
         _favLPKs.removeWhere((e) => e['id'].toString() == id);
       }
     });
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Dihapus dari favorit'),
-        behavior: SnackBarBehavior.floating,
-      ));
-    }
   }
 
   @override

@@ -112,8 +112,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               actions: [
                 IconButton(
                   icon: const Icon(Icons.settings_outlined),
-                  tooltip: 'Pengaturan Notifikasi',
-                  onPressed: () => context.push(AppRouter.notifications),
+                  tooltip: 'Pengaturan',
+                  onPressed: () => context.push(AppRouter.settings),
                 ),
               ],
             ),

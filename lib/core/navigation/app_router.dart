@@ -21,6 +21,7 @@ import '../../features/profile/presentation/pages/notifications_screen.dart';
 import '../../features/profile/presentation/pages/help_screen.dart';
 import '../../features/profile/presentation/pages/about_screen.dart';
 import '../../features/component_gallery/presentation/pages/component_gallery_screen.dart';
+import '../../features/profile/presentation/pages/settings_screen.dart';
 
 class AppRouter {
   AppRouter._();
@@ -81,7 +82,12 @@ class AppRouter {
         pageBuilder: (context, state) => CustomTransitionPage(
           key: state.pageKey,
           child: const OnboardingScreen(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          transitionsBuilder: (
+            context,
+            animation,
+            secondaryAnimation,
+            child,
+          ) {
             return FadeTransition(opacity: animation, child: child);
           },
         ),
@@ -249,14 +255,13 @@ class AppRouter {
         ),
       ),
       GoRoute(
-        path: settings,
-        pageBuilder: (context, state) => CustomTransitionPage(
-          key: state.pageKey,
-          child: const NotificationsScreen(),
-          transitionsBuilder: _slideRightTransition,
-        ),
-      ),
-
+  path: settings,
+  pageBuilder: (context, state) => CustomTransitionPage(
+    key: state.pageKey,
+    child: const NotificationsScreen(), // sementara pakai NotificationsScreen
+    transitionsBuilder: _slideRightTransition,
+  ),
+),
       // Component Gallery (Development)
       GoRoute(
         path: componentGallery,
