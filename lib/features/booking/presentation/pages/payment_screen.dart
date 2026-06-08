@@ -1,4 +1,3 @@
-/// Payment Screen with method selection and countdown
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -14,8 +13,15 @@ import 'package:url_launcher/url_launcher.dart';
 
 class PaymentScreen extends StatefulWidget {
   final String courseId;
+  final String? bookingId; // ✅ FIX: Tambah bookingId (dari BookingScreen)
+  final String? amount;
 
-  const PaymentScreen({super.key, required this.courseId});
+  const PaymentScreen({
+    super.key,
+    required this.courseId,
+    this.bookingId, // ✅ FIX: Terima bookingId
+    this.amount,
+  });
 
   @override
   State<PaymentScreen> createState() => _PaymentScreenState();
@@ -31,17 +37,29 @@ class _PaymentScreenState extends State<PaymentScreen> {
     {
       'name': 'BCA Virtual Account',
       'icon': Icons.account_balance,
-      'type': 'va',
+      'type': 'va'
     },
     {
       'name': 'Mandiri Virtual Account',
       'icon': Icons.account_balance,
-      'type': 'va',
+      'type': 'va'
     },
     {'name': 'GoPay', 'icon': Icons.qr_code, 'type': 'ewallet'},
     {'name': 'OVO', 'icon': Icons.qr_code, 'type': 'ewallet'},
     {'name': 'DANA', 'icon': Icons.qr_code, 'type': 'ewallet'},
   ];
+
+  // ✅ FIX: Pembersih courseId kalau masih ada artefak ':courseId'
+  String get _safeCourseId {
+    return widget.courseId.replaceAll(':courseId', '').replaceAll(':', '');
+  }
+
+  // ✅ FIX: Getter bookingId yang bersih
+  String? get _safeBookingId {
+    final id = widget.bookingId;
+    if (id == null || id.isEmpty) return null;
+    return id.replaceAll(':', '');
+  }
 
   @override
   void initState() {
@@ -80,46 +98,63 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   Future<void> _processPayment() async {
     if (_selectedMethodIndex == null) return;
-
     setState(() => _isProcessing = true);
 
     try {
       final apiClient = sl<ApiClient>();
+
+      // Membersihkan format harga (menghapus titik)
+      final String rawAmount = widget.amount ?? '1505000';
+      final double amountValue =
+          double.tryParse(rawAmount.replaceAll('.', '')) ?? 0;
+
+      // ✅ FIX: Nembak API Create Transaction, sertakan bookingId kalau ada
       final response = await apiClient.post(
         '/payment/create-transaction',
         data: {
-          'order_id': 'ORDER-${DateTime.now().millisecondsSinceEpoch}',
-          'gross_amount': 1505000,
+          'course_id': _safeCourseId,
+          if (_safeBookingId != null) 'booking_id': _safeBookingId,
+          'amount': amountValue,
+          'payment_method': _paymentMethods[_selectedMethodIndex!]['name'],
         },
       );
 
-      final snapToken = response.data['snap_token'];
+      final snapToken = response.data['data']?['snap_token'];
+
+      // ✅ FIX: Ambil bookingId dari response API (prioritas utama),
+      //         fallback ke widget.bookingId yang diteruskan dari BookingScreen
+      final String? bookingIdFromResponse =
+          response.data['data']?['booking_id']?.toString() ??
+              response.data['data']?['id']?.toString();
+
+      final String finalBookingId =
+          bookingIdFromResponse ?? _safeBookingId ?? _safeCourseId;
+
       if (snapToken != null) {
-        final url = Uri.parse('https://app.sandbox.midtrans.com/snap/v2/vtweb/$snapToken');
+        final url = Uri.parse(
+            'https://app.sandbox.midtrans.com/snap/v2/vtweb/$snapToken');
         if (await canLaunchUrl(url)) {
           await launchUrl(url, mode: LaunchMode.externalApplication);
           if (mounted) {
-            context.push('${AppRouter.bookingSuccess}${widget.courseId}');
+            // ✅ FIX: Pakai bookingSuccessPath(bookingId), BUKAN string concatenation
+            context.push(AppRouter.bookingSuccessPath(finalBookingId));
           }
-        } else {
-          throw Exception('Gagal membuka halaman pembayaran');
         }
       } else {
-        throw Exception('Token pembayaran tidak valid');
+        throw Exception('Snap Token tidak ditemukan di response API');
       }
     } catch (e) {
+      debugPrint("Error Payment: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal memuat pembayaran: ${e.toString()}'),
+            content: Text('Gagal memproses pembayaran. Coba lagi.'),
             backgroundColor: AppColors.error,
           ),
         );
       }
     } finally {
-      if (mounted) {
-        setState(() => _isProcessing = false);
-      }
+      if (mounted) setState(() => _isProcessing = false);
     }
   }
 
@@ -138,20 +173,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
               children: [
                 const Icon(Icons.timer, color: AppColors.warning),
                 const SizedBox(width: 12),
-                Text(
-                  'Selesaikan pembayaran dalam',
-                  style: AppTypography.bodyMedium,
-                ),
+                Text('Selesaikan pembayaran dalam',
+                    style: AppTypography.bodyMedium),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AppColors.warning,
-                    borderRadius: AppShapes.chipRadius,
-                  ),
+                      color: AppColors.warning,
+                      borderRadius: AppShapes.chipRadius),
                   child: Text(
                     _formatCountdown(),
                     style: AppTypography.labelLarge.copyWith(
@@ -174,32 +204,25 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: AppColors.surfaceVariant,
-                      borderRadius: AppShapes.borderRadiusMD,
-                    ),
+                        color: AppColors.surfaceVariant,
+                        borderRadius: AppShapes.borderRadiusMD),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Ringkasan Pesanan',
-                          style: AppTypography.titleSmall,
-                        ),
+                        Text('Ringkasan Pesanan',
+                            style: AppTypography.titleSmall),
                         const SizedBox(height: 12),
-                        _buildOrderRow('Kursus Las Listrik untuk Pemula'),
-                        _buildOrderRow('Jadwal: 15 Feb 2025, 08:00 - 12:00'),
+                        _buildOrderRow('Kursus Terpilih'),
                         const Divider(height: 24),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
+                            Text('Total Pembayaran',
+                                style: AppTypography.labelLarge),
                             Text(
-                              'Total Pembayaran',
-                              style: AppTypography.labelLarge,
-                            ),
-                            Text(
-                              'Rp 1.505.000',
-                              style: AppTypography.titleMedium.copyWith(
-                                color: AppColors.primary,
-                              ),
+                              'Rp ${widget.amount ?? '1.505.000'}',
+                              style: AppTypography.titleMedium
+                                  .copyWith(color: AppColors.primary),
                             ),
                           ],
                         ),
@@ -209,54 +232,33 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
                   const SizedBox(height: 24),
 
-                  // Payment Methods
-                  Text(
-                    'Pilih Metode Pembayaran',
-                    style: AppTypography.titleMedium,
-                  ),
+                  Text('Pilih Metode Pembayaran',
+                      style: AppTypography.titleMedium),
                   const SizedBox(height: 12),
 
-                  // Virtual Account Section
-                  Text(
-                    'Transfer Bank',
-                    style: AppTypography.labelMedium.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
+                  // Transfer Bank
+                  Text('Transfer Bank',
+                      style: AppTypography.labelMedium
+                          .copyWith(color: AppColors.textSecondary)),
                   const SizedBox(height: 8),
                   ..._paymentMethods
                       .asMap()
                       .entries
                       .where((e) => e.value['type'] == 'va')
-                      .map(
-                        (entry) =>
-                            _buildPaymentMethodTile(entry.key, entry.value),
-                      ),
+                      .map((e) => _buildPaymentMethodTile(e.key, e.value)),
 
                   const SizedBox(height: 16),
 
-                  // E-Wallet Section
-                  Text(
-                    'E-Wallet',
-                    style: AppTypography.labelMedium.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
+                  // E-Wallet
+                  Text('E-Wallet',
+                      style: AppTypography.labelMedium
+                          .copyWith(color: AppColors.textSecondary)),
                   const SizedBox(height: 8),
                   ..._paymentMethods
                       .asMap()
                       .entries
                       .where((e) => e.value['type'] == 'ewallet')
-                      .map(
-                        (entry) =>
-                            _buildPaymentMethodTile(entry.key, entry.value),
-                      ),
-
-                  // Payment Instructions (if method selected)
-                  if (_selectedMethodIndex != null) ...[
-                    const SizedBox(height: 24),
-                    _buildPaymentInstructions(),
-                  ],
+                      .map((e) => _buildPaymentMethodTile(e.key, e.value)),
 
                   const SizedBox(height: 32),
                 ],
@@ -266,20 +268,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
           // Pay Button
           Container(
-            padding: EdgeInsets.only(
-              left: 16,
-              right: 16,
-              top: 16,
-              bottom: MediaQuery.of(context).padding.bottom + 16,
-            ),
+            padding: EdgeInsets.fromLTRB(
+                16, 16, 16, MediaQuery.of(context).padding.bottom + 16),
             decoration: BoxDecoration(
               color: Theme.of(context).scaffoldBackgroundColor,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 10,
-                  offset: const Offset(0, -4),
-                ),
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, -4))
               ],
             ),
             child: AnimatedPrimaryButton(
@@ -301,12 +298,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
         children: [
           const Icon(Icons.check, size: 16, color: AppColors.success),
           const SizedBox(width: 8),
-          Text(
-            text,
-            style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ),
+          Text(text,
+              style: AppTypography.bodySmall
+                  .copyWith(color: AppColors.textSecondary)),
         ],
       ),
     );
@@ -328,96 +322,26 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 : AppColors.surfaceVariant,
             borderRadius: AppShapes.borderRadiusMD,
             border: Border.all(
-              color: isSelected ? AppColors.primary : Colors.transparent,
-              width: 2,
-            ),
+                color: isSelected ? AppColors.primary : Colors.transparent,
+                width: 2),
           ),
           child: Row(
             children: [
-              Icon(
-                method['icon'],
-                color: isSelected ? AppColors.primary : AppColors.textSecondary,
-              ),
+              Icon(method['icon'],
+                  color:
+                      isSelected ? AppColors.primary : AppColors.textSecondary),
               const SizedBox(width: 12),
               Text(method['name'], style: AppTypography.labelLarge),
               const Spacer(),
               Icon(
-                isSelected
-                    ? Icons.radio_button_checked
-                    : Icons.radio_button_off,
-                color: isSelected ? AppColors.primary : AppColors.textTertiary,
-              ),
+                  isSelected
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_off,
+                  color:
+                      isSelected ? AppColors.primary : AppColors.textTertiary),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildPaymentInstructions() {
-    final vaNumber = '8806 0812 3456 7890';
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.infoContainer,
-        borderRadius: AppShapes.borderRadiusMD,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Instruksi Pembayaran', style: AppTypography.titleSmall),
-          const SizedBox(height: 12),
-          Text(
-            'Transfer ke Virtual Account berikut:',
-            style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: AppShapes.borderRadiusSM,
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    vaNumber,
-                    style: AppTypography.titleMedium.copyWith(
-                      fontFamily: 'monospace',
-                      letterSpacing: 2,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.copy),
-                  onPressed: () {
-                    Clipboard.setData(
-                      ClipboardData(text: vaNumber.replaceAll(' ', '')),
-                    );
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Nomor VA disalin')),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            '1. Buka aplikasi mobile banking Anda\n'
-            '2. Pilih menu Transfer > Virtual Account\n'
-            '3. Masukkan nomor VA di atas\n'
-            '4. Konfirmasi pembayaran',
-            style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textSecondary,
-              height: 1.6,
-            ),
-          ),
-        ],
       ),
     );
   }

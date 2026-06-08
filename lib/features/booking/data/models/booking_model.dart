@@ -1,4 +1,5 @@
-/// Model untuk data Booking dari API
+import '../../../../core/services/api_service.dart';
+
 class BookingModel {
   final String id;
   final String code;
@@ -19,6 +20,9 @@ class BookingModel {
   });
 
   factory BookingModel.fromJson(Map<String, dynamic> json) {
+    // 🔥 PINTARKAN BACA JSON: Coba baca 'course' dulu (dari Laravel), kalau gak ada baru 'schedule'
+    final courseData = json['course'] ?? json['schedule'];
+
     return BookingModel(
       id: json['id'].toString(),
       code: json['code'] ?? '',
@@ -28,9 +32,8 @@ class BookingModel {
           ? DateTime.tryParse(json['expires_at'])
           : null,
       createdAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
-      schedule: json['schedule'] != null
-          ? BookingScheduleModel.fromJson(json['schedule'])
-          : null,
+      schedule:
+          courseData != null ? BookingScheduleModel.fromJson(courseData) : null,
     );
   }
 
@@ -41,11 +44,16 @@ class BookingModel {
 
   String get statusLabel {
     switch (status) {
-      case 'pending':    return 'Menunggu Konfirmasi';
-      case 'confirmed':  return 'Dikonfirmasi';
-      case 'cancelled':  return 'Dibatalkan';
-      case 'completed':  return 'Selesai';
-      default:           return status;
+      case 'pending':
+        return 'Menunggu Pembayaran';
+      case 'confirmed':
+        return 'Dikonfirmasi (Lunas)';
+      case 'completed':
+        return 'Selesai';
+      case 'cancelled':
+        return 'Dibatalkan';
+      default:
+        return status;
     }
   }
 }
@@ -54,42 +62,43 @@ class BookingScheduleModel {
   final String id;
   final String? startDate;
   final String? endDate;
-  final String? courseId;
   final String? courseTitle;
   final String? courseImageUrl;
   final String? lpkName;
-  final String? lpkLogoUrl;
   final String? categoryName;
 
   const BookingScheduleModel({
     required this.id,
     this.startDate,
     this.endDate,
-    this.courseId,
     this.courseTitle,
     this.courseImageUrl,
     this.lpkName,
-    this.lpkLogoUrl,
     this.categoryName,
   });
 
   factory BookingScheduleModel.fromJson(Map<String, dynamic> json) {
-    final course = json['course'] as Map<String, dynamic>?;
-    final lpk = course?['lpk'] as Map<String, dynamic>?;
-    final category = course?['category'] as Map<String, dynamic>?;
+    final lpk = json['lpk'] as Map<String, dynamic>?;
+    final category = json['category'] as Map<String, dynamic>?;
+
+    // 🔥 PENGAMAN FOTO AGAR TAB PESANAN TIDAK CRASH
+    String rawImg = '';
+    if (json['images'] != null &&
+        json['images'] is List &&
+        (json['images'] as List).isNotEmpty) {
+      rawImg = json['images'][0].toString();
+    } else {
+      rawImg = json['image_url'] ?? '';
+    }
 
     return BookingScheduleModel(
       id: json['id'].toString(),
-      startDate: json['start_date'],
+      startDate: json['start_date'] ?? 'Belum ditentukan',
       endDate: json['end_date'],
-      courseId: course?['id']?.toString(),
-      courseTitle: course?['title'],
-      courseImageUrl: (course?['images'] as List?)?.isNotEmpty == true
-          ? course!['images'][0] as String?
-          : null,
-      lpkName: lpk?['name'],
-      lpkLogoUrl: lpk?['logo'],
-      categoryName: category?['name'],
+      courseTitle: json['title'] ?? json['name'] ?? 'Kursus',
+      courseImageUrl: ApiService.toFullUrl(rawImg),
+      lpkName: lpk?['name'] ?? 'LPK Tidak Diketahui',
+      categoryName: category?['name'] ?? 'Umum',
     );
   }
 }

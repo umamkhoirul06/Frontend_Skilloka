@@ -25,17 +25,15 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   int _currentImageIndex = 0;
   bool _isFavorite = false;
 
-  // 🔥 VARIABEL UNTUK MENAMPUNG DATA DARI API LARAVEL
   Map<String, dynamic>? courseData;
   bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _fetchCourseDetail(); // Panggil data saat halaman dibuka!
+    _fetchCourseDetail();
   }
 
-  // 🔥 FUNGSI SAKTI MENYEDOT DATA DARI SERVER SKILLOKA
   Future<void> _fetchCourseDetail() async {
     try {
       final response = await http.get(
@@ -45,12 +43,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
 
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
-
-        // Cek terminal/debug console kamu untuk melihat isi datanya!
         debugPrint('DATA COURSE API: ${jsonResponse.toString()}');
 
         setState(() {
-          // Sesuaikan dengan format BaseController Laravel (biasanya dibungkus 'data')
           courseData = jsonResponse['data'] ?? jsonResponse;
           isLoading = false;
         });
@@ -63,7 +58,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     }
   }
 
-  // Dummy syllabus (Bisa kamu ganti nanti kalau API sudah punya fitur materi/silabus)
   final List<Map<String, dynamic>> _syllabus = [
     {
       'title': 'Modul 1: Pengenalan',
@@ -79,7 +73,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ⏳ TAMPILKAN LOADING JIKA DATA MASIH DIAMBIL
     if (isLoading) {
       return Scaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -88,7 +81,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       );
     }
 
-    // ❌ JIKA DATA GAGAL DIAMBIL / KOSONG
     if (courseData == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Detail Kursus')),
@@ -96,7 +88,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       );
     }
 
-    // Ekstrak data dari API agar mudah dipanggil
     final String title = courseData!['title'] ?? 'Tanpa Judul';
     final String description =
         courseData!['description'] ?? 'Belum ada deskripsi untuk kursus ini.';
@@ -106,13 +97,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     final String lpkName = courseData!['lpk']?['name'] ?? 'LPK Tidak Diketahui';
     final String? lpkLogo = courseData!['lpk']?['logo'];
 
-    // Siapkan List Gambar dari API
     final List<dynamic> rawImages = courseData!['images'] ?? [];
     final List<String> images = rawImages.isNotEmpty
         ? rawImages.map((e) => e.toString()).toList()
-        : [
-            'https://ui-avatars.com/api/?name=Skilloka&background=random'
-          ]; // Gambar cadangan
+        : ['https://ui-avatars.com/api/?name=Skilloka&background=random'];
 
     return Scaffold(
       body: CustomScrollView(
@@ -155,7 +143,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
             flexibleSpace: FlexibleSpaceBar(
               background: Stack(
                 children: [
-                  // 🔥 Image Gallery DARI API
                   PageView.builder(
                     itemCount: images.length,
                     onPageChanged: (index) {
@@ -178,7 +165,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                       );
                     },
                   ),
-                  // Page Indicator
                   if (images.length > 1)
                     Positioned(
                       bottom: 16,
@@ -214,7 +200,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Category Badge (DARI API)
+                  // Category Badge
                   Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -230,19 +216,18 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Title (DARI API)
-                  Text(
-                    title,
-                    style: AppTypography.headlineSmall,
-                  ),
+                  // Title
+                  Text(title, style: AppTypography.headlineSmall),
                   const SizedBox(height: 8),
 
-                  // LPK Info (DARI API)
+                  // LPK Info
                   GestureDetector(
                     onTap: () {
-                      if (courseData!['lpk'] != null) {
+                      final lpk = courseData!['lpk'];
+                      if (lpk != null && lpk['id'] != null) {
+                        // ✅ FIX: Pakai lpkDetailPath() helper, BUKAN string concatenation
                         context.push(
-                            '${AppRouter.lpkDetail}${courseData!['lpk']['id']}');
+                            AppRouter.lpkDetailPath(lpk['id'].toString()));
                       }
                     },
                     child: Row(
@@ -295,9 +280,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                   // Stats Row
                   Row(
                     children: [
-                      _buildStat(Icons.star, '4.8', '(0 rating)'), // Dummy
+                      _buildStat(Icons.star, '4.8', '(0 rating)'),
                       const SizedBox(width: 24),
-                      _buildStat(Icons.schedule, duration, null), // DARI API
+                      _buildStat(Icons.schedule, duration, null),
                     ],
                   ),
 
@@ -305,7 +290,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                   const Divider(),
                   const SizedBox(height: 24),
 
-                  // Description (DARI API)
+                  // Description
                   Text('Deskripsi', style: AppTypography.titleMedium),
                   const SizedBox(height: 8),
                   Text(
@@ -316,7 +301,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
 
                   const SizedBox(height: 24),
 
-                  // Syllabus (Masih Dummy, nanti bisa diganti data dari API)
+                  // Syllabus
                   Text('Materi Kursus', style: AppTypography.titleMedium),
                   const SizedBox(height: 12),
                   ..._syllabus.asMap().entries.map((entry) {
@@ -347,11 +332,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
         Text(value, style: AppTypography.labelMedium),
         if (label != null) ...[
           const SizedBox(width: 2),
-          Text(
-            label,
-            style:
-                AppTypography.bodySmall.copyWith(color: AppColors.textTertiary),
-          ),
+          Text(label,
+              style: AppTypography.bodySmall
+                  .copyWith(color: AppColors.textTertiary)),
         ],
       ],
     );
@@ -377,7 +360,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       ),
       child: Row(
         children: [
-          // Price (DARI API)
           Expanded(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -393,12 +375,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
             ),
           ),
           const SizedBox(width: 16),
-          // Book Button
           Expanded(
             child: AnimatedPrimaryButton(
               text: 'Daftar Sekarang',
               onPressed: () {
-                context.push('${AppRouter.booking}${widget.courseId}');
+                // ✅ FIX: Pakai bookingPath() helper, BUKAN string concatenation
+                context.push(AppRouter.bookingPath(widget.courseId));
               },
             ),
           ),
@@ -438,7 +420,6 @@ class _SyllabusAccordionState extends State<_SyllabusAccordion> {
       ),
       child: Column(
         children: [
-          // Header
           InkWell(
             onTap: () => setState(() => _isExpanded = !_isExpanded),
             borderRadius: AppShapes.borderRadiusMD,
@@ -487,7 +468,6 @@ class _SyllabusAccordionState extends State<_SyllabusAccordion> {
               ),
             ),
           ),
-          // Content
           AnimatedCrossFade(
             duration: AppAnimations.fast,
             crossFadeState: _isExpanded

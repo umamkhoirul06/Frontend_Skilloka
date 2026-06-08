@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../navigation/app_router.dart';
@@ -7,7 +8,17 @@ import '../navigation/app_router.dart';
 class ApiService {
   static const String baseUrl = 'https://skilloka.my.id/api';
   static const String storageUrl = 'https://skilloka.my.id/storage';
+
+  // ✅ KEY HARUS SAMA dengan SecureStorageServiceImpl
   static const String _tokenKey = 'access_token';
+
+  // ✅ FIX: Pakai FlutterSecureStorage — sama persis dengan yang dipakai ApiClient
+  static const _secureStorage = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    iOptions: IOSOptions(
+      accessibility: KeychainAccessibility.first_unlock_this_device,
+    ),
+  );
 
   // ── Konversi path relatif ke full URL ──────────────────────────────────
   static String toFullUrl(String? path) {
@@ -18,20 +29,19 @@ class ApiService {
   }
 
   // ── Token Helpers ───────────────────────────────────────────────────────
-  // ── Token Helpers ───────────────────────────────────────────────────────
+  // ✅ FIX: Simpan ke FlutterSecureStorage (bukan SharedPreferences)
   Future<void> saveToken(String token) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_tokenKey, token);
+    await _secureStorage.write(key: _tokenKey, value: token);
   }
 
+  // ✅ FIX: Baca dari FlutterSecureStorage
   Future<String?> getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_tokenKey);
+    return await _secureStorage.read(key: _tokenKey);
   }
 
+  // ✅ FIX: Hapus dari FlutterSecureStorage
   Future<void> removeToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_tokenKey);
+    await _secureStorage.delete(key: _tokenKey);
   }
 
   Future<void> logout() async {
@@ -110,8 +120,15 @@ class ApiService {
       final result = _handleResponse(r);
       if (result['success']) {
         final d = result['data'];
-        final token = d['token'] ?? d['access_token'] ?? d['data']?['token'];
-        if (token != null) await saveToken(token);
+        // ✅ FIX: Ambil token dari berbagai kemungkinan struktur response
+        final token = d['token'] ??
+            d['access_token'] ??
+            d['data']?['token'] ??
+            d['data']?['access_token'];
+        if (token != null) {
+          // ✅ FIX: Simpan ke SecureStorage — ApiClient bisa baca!
+          await saveToken(token);
+        }
       }
       return result;
     } catch (e) {
@@ -240,7 +257,7 @@ class ApiService {
   // ── BOOKINGS ──────────────────────────────────────────────────────────────
   Future<Map<String, dynamic>> getBookings() async {
     try {
-      final r = await http.get(Uri.parse('$baseUrl/user/bookings'),
+      final r = await http.get(Uri.parse('$baseUrl/bookings'),
           headers: await _authHeaders());
       return _handleResponse(r);
     } catch (e) {
@@ -291,13 +308,9 @@ class ApiService {
         Uri.parse('$baseUrl/favorites'),
         headers: await _authHeaders(),
       );
-
       return _handleResponse(r);
     } catch (e) {
-      return {
-        'success': false,
-        'message': 'Koneksi gagal: $e',
-      };
+      return {'success': false, 'message': 'Koneksi gagal: $e'};
     }
   }
 
@@ -309,18 +322,11 @@ class ApiService {
       final r = await http.post(
         Uri.parse('$baseUrl/favorites/toggle'),
         headers: await _authHeaders(),
-        body: jsonEncode({
-          'item_id': itemId,
-          'item_type': itemType,
-        }),
+        body: jsonEncode({'item_id': itemId, 'item_type': itemType}),
       );
-
       return _handleResponse(r);
     } catch (e) {
-      return {
-        'success': false,
-        'message': 'Koneksi gagal: $e',
-      };
+      return {'success': false, 'message': 'Koneksi gagal: $e'};
     }
   }
 

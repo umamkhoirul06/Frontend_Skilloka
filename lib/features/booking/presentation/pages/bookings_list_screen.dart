@@ -6,8 +6,6 @@ import '../../../../core/theme/app_shapes.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/navigation/app_router.dart';
 import '../../data/models/booking_model.dart';
-import '../../data/repositories/booking_repository.dart';
-import '../../../../core/di/injection_container.dart' as di;
 import '../../../../core/services/api_service.dart';
 
 class BookingsListScreen extends StatefulWidget {
@@ -203,7 +201,10 @@ class _BookingCard extends StatelessWidget {
         borderRadius: AppShapes.cardRadius,
         child: InkWell(
           onTap: () {
-            // TODO: Navigate to booking detail
+            // Navigate ke detail booking (pending booking screen)
+            if (booking.isPending) {
+              context.push(AppRouter.pendingBookingPath(booking.id.toString()));
+            }
           },
           borderRadius: AppShapes.cardRadius,
           child: Padding(
@@ -225,18 +226,15 @@ class _BookingCard extends StatelessWidget {
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
+                          horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: _statusColor.withValues(alpha: 0.12),
                         borderRadius: AppShapes.chipRadius,
                       ),
                       child: Text(
                         booking.statusLabel,
-                        style: AppTypography.badge.copyWith(
-                          color: _statusColor,
-                        ),
+                        style:
+                            AppTypography.badge.copyWith(color: _statusColor),
                       ),
                     ),
                   ],
@@ -257,18 +255,14 @@ class _BookingCard extends StatelessWidget {
                 // Nama LPK + Kategori
                 Row(
                   children: [
-                    const Icon(
-                      Icons.business_outlined,
-                      size: 14,
-                      color: AppColors.textTertiary,
-                    ),
+                    const Icon(Icons.business_outlined,
+                        size: 14, color: AppColors.textTertiary),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
                         booking.schedule?.lpkName ?? '',
-                        style: AppTypography.bodySmall.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
+                        style: AppTypography.bodySmall
+                            .copyWith(color: AppColors.textSecondary),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -276,18 +270,15 @@ class _BookingCard extends StatelessWidget {
                     if (booking.schedule?.categoryName != null) ...[
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
+                            horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
                           color: AppColors.primaryContainer,
                           borderRadius: AppShapes.chipRadius,
                         ),
                         child: Text(
                           booking.schedule!.categoryName!,
-                          style: AppTypography.badge.copyWith(
-                            color: AppColors.primary,
-                          ),
+                          style: AppTypography.badge
+                              .copyWith(color: AppColors.primary),
                         ),
                       ),
                     ],
@@ -300,17 +291,13 @@ class _BookingCard extends StatelessWidget {
                 Row(
                   children: [
                     if (booking.schedule?.startDate != null) ...[
-                      const Icon(
-                        Icons.calendar_today_outlined,
-                        size: 14,
-                        color: AppColors.textTertiary,
-                      ),
+                      const Icon(Icons.calendar_today_outlined,
+                          size: 14, color: AppColors.textTertiary),
                       const SizedBox(width: 4),
                       Text(
                         '${booking.schedule!.startDate} – ${booking.schedule!.endDate ?? ''}',
-                        style: AppTypography.bodySmall.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
+                        style: AppTypography.bodySmall
+                            .copyWith(color: AppColors.textSecondary),
                       ),
                     ],
                     const Spacer(),
@@ -324,7 +311,7 @@ class _BookingCard extends StatelessWidget {
                   ],
                 ),
 
-                // Tombol aksi untuk status pending
+                // ✅ FIX: Tombol aksi untuk status pending — sudah ada navigasi!
                 if (booking.isPending) ...[
                   const SizedBox(height: 12),
                   const Divider(height: 1),
@@ -333,7 +320,10 @@ class _BookingCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: OutlinedButton(
-                          onPressed: () {},
+                          onPressed: () {
+                            // TODO: Tambah konfirmasi dialog sebelum batalkan
+                            // Contoh: _showCancelDialog(context, booking.id)
+                          },
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.error,
                             side: const BorderSide(color: AppColors.error),
@@ -345,7 +335,15 @@ class _BookingCard extends StatelessWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: FilledButton(
-                          onPressed: () {},
+                          // ✅ FIX: Navigate ke PendingBookingScreen dengan bookingId.
+                          //         PendingBookingScreen sudah ada tombol "Bayar" yang
+                          //         membawa ke PaymentScreen dengan data yang lengkap.
+                          onPressed: () {
+                            context.push(
+                              AppRouter.pendingBookingPath(
+                                  booking.id.toString()),
+                            );
+                          },
                           style: FilledButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 10),
                           ),

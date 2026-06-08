@@ -12,7 +12,7 @@ import '../../../../core/widgets/organisms/filter_bottom_sheet.dart';
 import '../../../../core/widgets/skeleton/skeleton_loader.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/config/app_config.dart';
-import '../../../../core/services/api_service.dart'; // 🔥 Pastikan import ini ada
+import '../../../../core/services/api_service.dart';
 import '../../data/repositories/home_repository.dart';
 import '../../data/models/lpk_model.dart';
 import '../../../course/data/models/course_model.dart';
@@ -52,7 +52,6 @@ class _HomeScreenState extends State<HomeScreen> {
     'Bahasa': 'bahasa',
   };
 
-  // Mock data
   final List<BannerItem> _banners = [
     const BannerItem(
       id: '1',
@@ -78,32 +77,28 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadData() async {
-    print('CATEGORY = $_selectedCategory');
+    debugPrint('CATEGORY = $_selectedCategory');
 
     final responses = await Future.wait([
-      _homeRepository.getLpks(
-        search: _searchQuery,
-      ),
+      _homeRepository.getLpks(search: _searchQuery),
       _homeRepository.getCourses(
         search: _searchQuery,
         category: _selectedCategory,
       ),
     ]);
 
-    print('COURSES = ${(responses[1] as List<CourseModel>).length}');
+    final courses = responses[1] as List<CourseModel>;
+    debugPrint('COURSES PARSED LENGTH: ${courses.length}');
 
     List<LpkModel> lpks = responses[0] as List<LpkModel>;
-
     if (_currentLocation != 'Semua') {
-      lpks = lpks.where((lpk) {
-        return lpk.locationName == _currentLocation;
-      }).toList();
+      lpks = lpks.where((lpk) => lpk.locationName == _currentLocation).toList();
     }
 
     if (mounted) {
       setState(() {
         _lpks = lpks;
-        _courses = responses[1] as List<CourseModel>;
+        _courses = courses;
         _isLoading = false;
       });
     }
@@ -123,14 +118,11 @@ class _HomeScreenState extends State<HomeScreen> {
         if (result.kecamatan != null) {
           _currentLocation = result.kecamatan!;
         }
-
         if (result.categories.isNotEmpty) {
           _selectedCategory = _categorySlugMap[result.categories.first];
         }
-
         _isLoading = true;
       });
-
       await _loadData();
     }
   }
@@ -164,9 +156,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   border: Border(
                     bottom: BorderSide(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.outline.withAlpha(50),
+                      color:
+                          Theme.of(context).colorScheme.outline.withAlpha(50),
                       width: 1,
                     ),
                   ),
@@ -177,16 +168,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Greeting Banner
                         GreetingBanner(
                           userName: 'Pengguna',
                           notificationCount: 3,
-                          onNotificationTap: () {
-                            // TODO: Open notifications
-                          },
+                          onNotificationTap: () {},
                         ),
                         const SizedBox(height: 16),
-                        // Search Bar
                         Row(
                           children: [
                             Expanded(
@@ -197,7 +184,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                     _searchQuery = query;
                                     _isLoading = true;
                                   });
-
                                   await _loadData();
                                 },
                                 onFilterPressed: _openFilter,
@@ -205,7 +191,6 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ),
                             const SizedBox(width: 12),
-                            // Location Chip
                             LocationChip(
                               location: _currentLocation,
                               onTap: _openFilter,
@@ -215,41 +200,31 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                   ),
-                ), // SafeArea
-              ), // Container (flexibleSpace)
-            ), // SliverAppBar
+                ),
+              ),
+            ),
+
             // Content
             SliverToBoxAdapter(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Hero Banner
                   _isLoading
                       ? const SkeletonBanner()
                       : HeroBanner(items: _banners),
-
                   const SizedBox(height: 24),
-
-                  // Category Filter
                   CategoryFilterChips(
                     categories: _categories,
                     selectedCategory: _selectedCategory,
                     onSelected: (category) async {
-                      print('CLICK = $category');
-
                       setState(() {
                         _selectedCategory = _categorySlugMap[category];
-                        print('SEND = $_selectedCategory');
                         _isLoading = true;
                       });
-
                       await _loadData();
                     },
                   ),
-
                   const SizedBox(height: 24),
-
-                  // LPK Terdekat Section
                   _buildSectionHeader(
                     title: 'LPK Terdekat',
                     onSeeAll: () {
@@ -258,10 +233,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 12),
                   _isLoading ? const SkeletonLPKList() : _buildLPKList(),
-
                   const SizedBox(height: 24),
-
-                  // Kursus Populer Section
                   _buildSectionHeader(
                     title: 'Kursus Populer',
                     onSeeAll: () {
@@ -270,7 +242,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 12),
                   _isLoading ? const SkeletonCourseGrid() : _buildCourseGrid(),
-
                   const SizedBox(height: 100),
                 ],
               ),
@@ -281,7 +252,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildSectionHeader({required String title, VoidCallback? onSeeAll}) {
+  Widget _buildSectionHeader({
+    required String title,
+    VoidCallback? onSeeAll,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
@@ -289,14 +263,22 @@ class _HomeScreenState extends State<HomeScreen> {
           Text(title, style: AppTypography.titleMedium),
           const Spacer(),
           if (onSeeAll != null)
-            TextButton(onPressed: onSeeAll, child: const Text('Lihat Semua')),
+            TextButton(
+              onPressed: onSeeAll,
+              child: const Text('Lihat Semua'),
+            ),
         ],
       ),
     );
   }
 
   Widget _buildLPKList() {
-    if (_lpks.isEmpty) return const Center(child: Text("Belum ada LPK"));
+    if (_lpks.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16),
+        child: Center(child: Text('Belum ada LPK')),
+      );
+    }
 
     return SizedBox(
       height: 240,
@@ -307,18 +289,21 @@ class _HomeScreenState extends State<HomeScreen> {
         separatorBuilder: (_, __) => const SizedBox(width: 12),
         itemBuilder: (context, index) {
           final lpk = _lpks[index];
-          // 🔥 Pastikan Logo URL LPK juga memakai URL Helper jika dibutuhkan
           final logoSafe = ApiService.toFullUrl(lpk.logoUrl ?? '');
 
           return LPKCard(
             id: lpk.id.toString(),
             name: lpk.name,
-            logoUrl: logoSafe.isNotEmpty ? logoSafe : 'https://via.placeholder.com/100',
+            logoUrl: logoSafe.isNotEmpty
+                ? logoSafe
+                : 'https://via.placeholder.com/100',
             address: lpk.address,
             rating: lpk.rating,
             reviewCount: lpk.reviewCount,
             isVerified: lpk.isVerified,
-            onTap: () => context.push('/lpk/${lpk.id}'),
+            // ✅ BENAR: pakai helper method
+            onTap: () =>
+                context.push(AppRouter.lpkDetailPath(lpk.id.toString())),
           );
         },
       ),
@@ -326,7 +311,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildCourseGrid() {
-    if (_courses.isEmpty) return const Center(child: Text("Belum ada Kursus"));
+    if (_courses.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16),
+        child: Center(child: Text('Belum ada Kursus')),
+      );
+    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -342,20 +332,18 @@ class _HomeScreenState extends State<HomeScreen> {
         itemCount: _courses.length,
         itemBuilder: (context, index) {
           final course = _courses[index];
-          
-          // 🔥 FIX FOTO KURSUS: 
-          // Laravel sudah mengirim Full URL di dalam array, jadi tidak perlu ditambah BaseStorageUrl
+
           String rawImg = '';
           if (course.images.isNotEmpty) {
             rawImg = course.images.first.toString();
           }
-          final String imageUrl = rawImg.isNotEmpty 
+          final String imageUrl = rawImg.isNotEmpty
               ? ApiService.toFullUrl(rawImg)
               : 'https://via.placeholder.com/400';
 
           return CourseCard(
             id: course.id.toString(),
-            title: course.title, // Pastikan model CourseModel kamu punya .title
+            title: course.title,
             lpkName: course.lpk['name'] ?? 'LPK Tidak Diketahui',
             imageUrl: imageUrl,
             rating: 0.0,
@@ -364,8 +352,9 @@ class _HomeScreenState extends State<HomeScreen> {
             price: course.price.toInt(),
             category: course.category['name'] ?? 'Umum',
             isVerified: true,
-            // 🔥 FIX URL DETAIL: Pastikan rutenya '/course/:id' (Sama persis seperti di lpk_detail_screen)
-            onTap: () => context.push('/course/${course.id}'),
+            // ✅ BENAR: pakai helper method, bukan string concat dengan constant
+            onTap: () =>
+                context.push(AppRouter.courseDetailPath(course.id.toString())),
           );
         },
       ),

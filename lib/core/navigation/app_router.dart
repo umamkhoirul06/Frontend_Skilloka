@@ -10,8 +10,8 @@ import '../../features/home/presentation/pages/home_screen.dart';
 import '../../features/course/presentation/pages/course_detail_screen.dart';
 import '../../features/course/presentation/pages/lpk_detail_screen.dart';
 import '../../features/booking/presentation/pages/booking_screen.dart';
+import '../../features/booking/presentation/pages/pending_booking_screen.dart';
 import '../../features/booking/presentation/pages/bookings_list_screen.dart';
-import '../../features/booking/presentation/pages/payment_screen.dart';
 import '../../features/booking/presentation/pages/booking_success_screen.dart';
 import '../../features/profile/presentation/pages/profile_screen.dart';
 import '../../features/profile/presentation/pages/edit_profile_screen.dart';
@@ -37,9 +37,16 @@ class AppRouter {
   static const String search = '/search';
   static const String courseDetail = '/course/:id';
   static const String lpkDetail = '/lpk/:id';
+
+  // ✅ FIX: booking hanya pakai courseId (tidak dobel)
   static const String booking = '/booking/:courseId';
-  static const String payment = '/payment/:bookingId';
+
+  // ✅ FIX: pendingBooking sudah didefinisikan dengan benar
+  static const String pendingBooking = '/pending-booking/:bookingId';
+
+  // ✅ FIX: bookingSuccess pakai bookingId
   static const String bookingSuccess = '/booking-success/:bookingId';
+
   static const String bookings = '/bookings';
   static const String profile = '/profile';
   static const String editProfile = '/profile/edit';
@@ -50,6 +57,15 @@ class AppRouter {
   static const String help = '/profile/help';
   static const String about = '/profile/about';
   static const String componentGallery = '/components';
+
+  // ✅ Helper untuk navigasi yang aman (mengganti :param dengan nilai asli)
+  static String bookingPath(String courseId) => '/booking/$courseId';
+  static String pendingBookingPath(String bookingId) =>
+      '/pending-booking/$bookingId';
+  static String bookingSuccessPath(String bookingId) =>
+      '/booking-success/$bookingId';
+  static String courseDetailPath(String id) => '/course/$id';
+  static String lpkDetailPath(String id) => '/lpk/$id';
 
   static final GoRouter router = GoRouter(
     navigatorKey: _rootNavigatorKey,
@@ -62,39 +78,31 @@ class AppRouter {
       // Onboarding
       GoRoute(
         path: onboarding,
-        pageBuilder:
-            (context, state) => CustomTransitionPage(
-              key: state.pageKey,
-              child: const OnboardingScreen(),
-              transitionsBuilder: (
-                context,
-                animation,
-                secondaryAnimation,
-                child,
-              ) {
-                return FadeTransition(opacity: animation, child: child);
-              },
-            ),
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const OnboardingScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+        ),
       ),
 
       // Auth
       GoRoute(
         path: login,
-        pageBuilder:
-            (context, state) => CustomTransitionPage(
-              key: state.pageKey,
-              child: const LoginScreen(),
-              transitionsBuilder: _slideUpTransition,
-            ),
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const LoginScreen(),
+          transitionsBuilder: _slideUpTransition,
+        ),
       ),
       GoRoute(
         path: register,
-        pageBuilder:
-            (context, state) => CustomTransitionPage(
-              key: state.pageKey,
-              child: const RegisterScreen(),
-              transitionsBuilder: _slideUpTransition,
-            ),
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const RegisterScreen(),
+          transitionsBuilder: _slideUpTransition,
+        ),
       ),
 
       // Main Shell (Bottom Navigation)
@@ -104,27 +112,24 @@ class AppRouter {
         routes: [
           GoRoute(
             path: home,
-            pageBuilder:
-                (context, state) => NoTransitionPage(
-                  key: state.pageKey,
-                  child: const HomeScreen(),
-                ),
+            pageBuilder: (context, state) => NoTransitionPage(
+              key: state.pageKey,
+              child: const HomeScreen(),
+            ),
           ),
           GoRoute(
             path: bookings,
-            pageBuilder:
-                (context, state) => NoTransitionPage(
-                  key: state.pageKey,
-                  child: const BookingsListScreen(),
-                ),
+            pageBuilder: (context, state) => NoTransitionPage(
+              key: state.pageKey,
+              child: const BookingsListScreen(),
+            ),
           ),
           GoRoute(
             path: profile,
-            pageBuilder:
-                (context, state) => NoTransitionPage(
-                  key: state.pageKey,
-                  child: const ProfileScreen(),
-                ),
+            pageBuilder: (context, state) => NoTransitionPage(
+              key: state.pageKey,
+              child: const ProfileScreen(),
+            ),
           ),
         ],
       ),
@@ -155,7 +160,7 @@ class AppRouter {
         },
       ),
 
-      // Booking Flow
+      // ✅ FIX: Booking — path langsung pakai constant (tidak dobel /:courseId)
       GoRoute(
         path: booking,
         pageBuilder: (context, state) {
@@ -168,25 +173,27 @@ class AppRouter {
         },
       ),
 
+      // ✅ FIX: Pending Booking — path sudah include /:bookingId di constant
       GoRoute(
-        path: payment,
+        path: pendingBooking,
         pageBuilder: (context, state) {
-          final courseId = state.pathParameters['bookingId']!;
+          final bookingId = state.pathParameters['bookingId']!;
           return CustomTransitionPage(
             key: state.pageKey,
-            child: PaymentScreen(courseId: courseId),
+            child: PendingBookingScreen(bookingId: bookingId),
             transitionsBuilder: _slideRightTransition,
           );
         },
       ),
 
+      // ✅ FIX: Booking Success — pakai bookingId, path sudah include /:bookingId
       GoRoute(
         path: bookingSuccess,
         pageBuilder: (context, state) {
-          final courseId = state.pathParameters['bookingId']!;
+          final bookingId = state.pathParameters['bookingId']!;
           return CustomTransitionPage(
             key: state.pageKey,
-            child: BookingSuccessScreen(courseId: courseId),
+            child: BookingSuccessScreen(bookingId: bookingId),
             transitionsBuilder: _fadeScaleTransition,
           );
         },
@@ -241,15 +248,15 @@ class AppRouter {
           transitionsBuilder: _slideRightTransition,
         ),
       ),
-
       GoRoute(
-  path: settings,
-  pageBuilder: (context, state) => CustomTransitionPage(
-    key: state.pageKey,
-    child: const NotificationsScreen(), // sementara pakai NotificationsScreen
-    transitionsBuilder: _slideRightTransition,
-  ),
-),
+        path: settings,
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const NotificationsScreen(),
+          transitionsBuilder: _slideRightTransition,
+        ),
+      ),
+
       // Component Gallery (Development)
       GoRoute(
         path: componentGallery,
@@ -310,7 +317,6 @@ class AppRouter {
 /// Main Shell with Bottom Navigation
 class MainShell extends StatelessWidget {
   final Widget child;
-
   const MainShell({super.key, required this.child});
 
   @override
@@ -351,7 +357,6 @@ class MainBottomNavigation extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selectedIndex = _calculateSelectedIndex(context);
-
     return NavigationBar(
       selectedIndex: selectedIndex,
       onDestinationSelected: (index) => _onItemTapped(context, index),
@@ -375,4 +380,3 @@ class MainBottomNavigation extends StatelessWidget {
     );
   }
 }
-

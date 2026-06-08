@@ -24,14 +24,13 @@ class SecureStorageServiceImpl implements SecureStorageService {
   static const String _keyUserId = 'user_id';
 
   SecureStorageServiceImpl({FlutterSecureStorage? storage})
-    : _storage =
-          storage ??
-          const FlutterSecureStorage(
-            aOptions: AndroidOptions(encryptedSharedPreferences: true),
-            iOptions: IOSOptions(
-              accessibility: KeychainAccessibility.first_unlock_this_device,
-            ),
-          );
+      : _storage = storage ??
+            const FlutterSecureStorage(
+              aOptions: AndroidOptions(encryptedSharedPreferences: true),
+              iOptions: IOSOptions(
+                accessibility: KeychainAccessibility.first_unlock_this_device,
+              ),
+            );
 
   @override
   Future<void> saveAccessToken(String token) async {
