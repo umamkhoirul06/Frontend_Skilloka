@@ -11,6 +11,7 @@ import '../../../../core/animations/app_animations.dart';
 import '../../../../core/navigation/app_router.dart';
 import '../../../../core/widgets/atoms/animated_button.dart';
 import '../../../../core/widgets/molecules/course_card.dart';
+import '../../../../core/services/api_service.dart';
 
 class CourseDetailScreen extends StatefulWidget {
   final String courseId;
@@ -25,7 +26,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   int _currentImageIndex = 0;
   bool _isFavorite = false;
 
-  // 🔥 VARIABEL UNTUK MENAMPUNG DATA DARI API LARAVEL
+  final _api = ApiService();
+
   Map<String, dynamic>? courseData;
   bool isLoading = true;
 
@@ -146,8 +148,16 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                     color: _isFavorite ? AppColors.error : Colors.white,
                   ),
                 ),
-                onPressed: () {
-                  setState(() => _isFavorite = !_isFavorite);
+                onPressed: () async {
+                  final result = await _api.toggleFavorite(
+                    courseId: widget.courseId,
+                  );
+
+                  if (result['success']) {
+                    setState(() {
+                      _isFavorite = !_isFavorite;
+                    });
+                  }
                 },
               ),
               const SizedBox(width: 8),
