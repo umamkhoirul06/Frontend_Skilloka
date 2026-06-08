@@ -21,6 +21,7 @@ import '../../features/profile/presentation/pages/notifications_screen.dart';
 import '../../features/profile/presentation/pages/help_screen.dart';
 import '../../features/profile/presentation/pages/about_screen.dart';
 import '../../features/component_gallery/presentation/pages/component_gallery_screen.dart';
+import '../../features/profile/presentation/pages/settings_screen.dart';
 
 class AppRouter {
   AppRouter._();
@@ -62,39 +63,36 @@ class AppRouter {
       // Onboarding
       GoRoute(
         path: onboarding,
-        pageBuilder:
-            (context, state) => CustomTransitionPage(
-              key: state.pageKey,
-              child: const OnboardingScreen(),
-              transitionsBuilder: (
-                context,
-                animation,
-                secondaryAnimation,
-                child,
-              ) {
-                return FadeTransition(opacity: animation, child: child);
-              },
-            ),
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const OnboardingScreen(),
+          transitionsBuilder: (
+            context,
+            animation,
+            secondaryAnimation,
+            child,
+          ) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+        ),
       ),
 
       // Auth
       GoRoute(
         path: login,
-        pageBuilder:
-            (context, state) => CustomTransitionPage(
-              key: state.pageKey,
-              child: const LoginScreen(),
-              transitionsBuilder: _slideUpTransition,
-            ),
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const LoginScreen(),
+          transitionsBuilder: _slideUpTransition,
+        ),
       ),
       GoRoute(
         path: register,
-        pageBuilder:
-            (context, state) => CustomTransitionPage(
-              key: state.pageKey,
-              child: const RegisterScreen(),
-              transitionsBuilder: _slideUpTransition,
-            ),
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const RegisterScreen(),
+          transitionsBuilder: _slideUpTransition,
+        ),
       ),
 
       // Main Shell (Bottom Navigation)
@@ -104,27 +102,24 @@ class AppRouter {
         routes: [
           GoRoute(
             path: home,
-            pageBuilder:
-                (context, state) => NoTransitionPage(
-                  key: state.pageKey,
-                  child: const HomeScreen(),
-                ),
+            pageBuilder: (context, state) => NoTransitionPage(
+              key: state.pageKey,
+              child: const HomeScreen(),
+            ),
           ),
           GoRoute(
             path: bookings,
-            pageBuilder:
-                (context, state) => NoTransitionPage(
-                  key: state.pageKey,
-                  child: const BookingsListScreen(),
-                ),
+            pageBuilder: (context, state) => NoTransitionPage(
+              key: state.pageKey,
+              child: const BookingsListScreen(),
+            ),
           ),
           GoRoute(
             path: profile,
-            pageBuilder:
-                (context, state) => NoTransitionPage(
-                  key: state.pageKey,
-                  child: const ProfileScreen(),
-                ),
+            pageBuilder: (context, state) => NoTransitionPage(
+              key: state.pageKey,
+              child: const ProfileScreen(),
+            ),
           ),
         ],
       ),
@@ -243,13 +238,13 @@ class AppRouter {
       ),
 
       GoRoute(
-  path: settings,
-  pageBuilder: (context, state) => CustomTransitionPage(
-    key: state.pageKey,
-    child: const NotificationsScreen(), // sementara pakai NotificationsScreen
-    transitionsBuilder: _slideRightTransition,
-  ),
-),
+        path: settings,
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const SettingsScreen(),
+          transitionsBuilder: _slideRightTransition,
+        ),
+      ),
       // Component Gallery (Development)
       GoRoute(
         path: componentGallery,
@@ -375,4 +370,3 @@ class MainBottomNavigation extends StatelessWidget {
     );
   }
 }
-

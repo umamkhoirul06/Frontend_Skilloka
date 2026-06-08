@@ -387,10 +387,14 @@ class AboutScreen extends StatelessWidget {
     );
   }
 
-  void _launchUrl(String url) async {
-    await launchUrl(
-      Uri.parse(url),
+  Future<void> _launchUrl(String url) async {
+    final uri = Uri.parse(url);
+
+    final result = await launchUrl(
+      uri,
       mode: LaunchMode.externalApplication,
     );
+
+    print('RESULT = $result');
   }
 }
