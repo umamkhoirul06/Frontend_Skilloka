@@ -1,4 +1,4 @@
-/// API Client configuration with Dio
+// API Client configuration with Dio
 import 'package:dio/dio.dart';
 import '../error/exceptions.dart';
 import '../security/secure_storage.dart';
@@ -145,10 +145,13 @@ class ApiClient {
       '/auth/login',
       '/auth/register',
       '/auth/forgot-password',
+      '/auth/request-otp',
       '/auth/verify-otp',
       '/courses',
       '/lpk',
       '/categories',
+      '/locations',
+      '/banners',
     ];
     return publicEndpoints.any((endpoint) => path.startsWith(endpoint));
   }

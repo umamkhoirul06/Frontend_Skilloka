@@ -54,16 +54,25 @@ class _PendingBookingScreenState extends State<PendingBookingScreen> {
 
         if (!mounted) return;
 
-        // 🔥 FIX 1: Ganti 'confirmed' menjadi 'selesai'
-        if (status == 'selesai') {
+        // ✅ FIX: Tangani status dari Laravel (confirmed/completed = disetujui)
+        final isApproved = [
+          'confirmed', 'approved', 'completed',
+          'selesai', 'disetujui', 'dikonfirmasi',
+        ].contains(status);
+
+        final isCancelled = [
+          'cancelled', 'canceled', 'rejected',
+          'dibatalkan', 'ditolak',
+        ].contains(status);
+
+        if (isApproved) {
           _timer?.cancel();
           setState(() {
             _isApproved = true;
             _bookingData = data;
             _qrUrl = data['qr_code_url'] as String?;
           });
-        // 🔥 FIX 2: Ganti 'cancelled' menjadi 'dibatalkan'
-        } else if (status == 'dibatalkan') {
+        } else if (isCancelled) {
           _timer?.cancel();
           setState(() {
             _isCancelled = true;

@@ -1,13 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_shapes.dart';
 import '../../../../core/theme/app_typography.dart';
-import '../../../../core/animations/app_animations.dart';
 import '../../../../core/navigation/app_router.dart';
-import '../../../../core/widgets/atoms/animated_button.dart';
-import '../../../../core/widgets/atoms/input_field.dart';
 import '../../../../core/services/api_service.dart';
 import 'package:local_auth/local_auth.dart';
 
@@ -21,396 +18,856 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
   final _phoneController = TextEditingController();
-  final _formKey = GlobalKey<FormState>();
   bool _isPhoneValid = false;
   bool _isLoading = false;
   bool _showOTPInput = false;
+  String? _devOtpHint;
 
-  // UBAH KE 4 DIGIT (Sesuai Dummy API Backend)
-  final List<TextEditingController> _otpControllers = List.generate(
-    4,
-    (_) => TextEditingController(),
-  );
-  final List<FocusNode> _otpFocusNodes = List.generate(4, (_) => FocusNode());
+  final List<TextEditingController> _otpControllers =
+      List.generate(4, (_) => TextEditingController());
+  final List<FocusNode> _otpFocusNodes =
+      List.generate(4, (_) => FocusNode());
   final ApiService _apiService = ApiService();
+
+  late AnimationController _animController;
+  late Animation<double> _fadeAnim;
+  late Animation<Offset> _slideAnim;
 
   @override
   void initState() {
     super.initState();
     _phoneController.addListener(_validatePhone);
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _fadeAnim =
+        CurvedAnimation(parent: _animController, curve: Curves.easeOut);
+    _slideAnim = Tween<Offset>(
+      begin: const Offset(0, 0.06),
+      end: Offset.zero,
+    ).animate(
+        CurvedAnimation(parent: _animController, curve: Curves.easeOut));
+    _animController.forward();
   }
 
   @override
   void dispose() {
     _phoneController.dispose();
-    for (final controller in _otpControllers) {
-      controller.dispose();
-    }
-    for (final focusNode in _otpFocusNodes) {
-      focusNode.dispose();
-    }
+    _animController.dispose();
+    for (final c in _otpControllers) { c.dispose(); }
+    for (final f in _otpFocusNodes) { f.dispose(); }
     super.dispose();
   }
 
   void _validatePhone() {
-    final phone = _phoneController.text.replaceAll(RegExp(r'\D'), '');
-    setState(() {
-      _isPhoneValid = phone.length >= 10 && phone.length <= 13;
-    });
+    final digits = _phoneController.text.replaceAll(RegExp(r'\D'), '');
+    setState(() => _isPhoneValid = digits.length >= 9 && digits.length <= 15);
   }
 
-  Future<void> _sendOTP([String channel = 'whatsapp']) async {
-    if (!_isPhoneValid) return;
+  String _normalizePhone(String raw) {
+    String digits = raw.replaceAll(RegExp(r'\D'), '');
+    if (digits.startsWith('62')) {
+      digits = '0${digits.substring(2)}';
+    } else if (!digits.startsWith('0')) {
+      digits = '0$digits';
+    }
+    return digits;
+  }
 
-    setState(() => _isLoading = true);
+  Future<void> _sendOTP(String channel) async {
+    if (!_isPhoneValid || _isLoading) return;
+    setState(() {
+      _isLoading = true;
+      _devOtpHint = null;
+    });
 
     try {
-      String phone = _phoneController.text.replaceAll(RegExp(r'\D'), '');
-      if (phone.startsWith('8')) {
-        phone = '0$phone';
-      } else if (phone.startsWith('62')) {
-        phone = '0${phone.substring(2)}';
-      }
-      
+      final phone = _normalizePhone(_phoneController.text);
       final response = await _apiService.requestOtp(phone, channel: channel);
-      final success = response['success'] ?? false;
 
-      if (mounted) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      final bool success = response['success'] == true;
+
+      if (success) {
+        final outer = response['data'];
+        String? devOtp;
+        if (outer is Map) {
+          final inner = outer['data'];
+          if (inner is Map && inner['dev_otp'] != null) {
+            devOtp = inner['dev_otp'].toString();
+          } else if (outer['dev_otp'] != null) {
+            devOtp = outer['dev_otp'].toString();
+          }
+        }
+
         setState(() {
-          _isLoading = false;
-          if (success) {
-            _showOTPInput = true;
-          }
+          _showOTPInput = true;
+          _devOtpHint = devOtp;
         });
-        if (success) {
-          _otpFocusNodes[0].requestFocus();
-          // Debugging helper: Tampilkan OTP di layar selama masa development
-          final resData = response['data'] ?? {};
-          final innerData = resData['data'] ?? {};
-          if (innerData['dev_otp'] != null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('OTP Dev: ${innerData['dev_otp']} \n(${resData['message'] ?? 'Berhasil'})'),
-                duration: const Duration(seconds: 10),
-                backgroundColor: AppColors.primary,
-              ),
-            );
-          }
+
+        _animController.reset();
+        _animController.forward();
+
+        final channelName = channel == 'whatsapp' ? 'WhatsApp' : 'Telegram';
+        _showSuccess('Kode OTP berhasil dikirim via $channelName.');
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _otpFocusNodes[0].requestFocus();
+        });
+      } else {
+        final msg = (response['message'] ?? '').toString().toLowerCase();
+        if (msg.contains('belum terdaftar') ||
+            msg.contains('404') ||
+            msg.contains('not found')) {
+          if (mounted) context.push(AppRouter.register);
         } else {
-          final msg = (response['message'] ?? '').toString().toLowerCase();
-          if (msg.contains('belum terdaftar') || msg.contains('404') || msg.contains('not found')) {
-            context.push(AppRouter.register);
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(response['message'] ?? 'Gagal mengirim OTP.')),
-            );
-          }
+          _showError(response['message'] ?? 'Gagal mengirim OTP. Coba lagi.');
         }
       }
     } catch (e) {
-      // INI KUNCI OPTIMASINYA: Matikan loading kalau ada error!
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
-        );
+        _showError('Tidak dapat terhubung ke server.');
       }
     }
   }
 
   Future<void> _verifyOTP() async {
     final otp = _otpControllers.map((c) => c.text).join();
-    if (otp.length != 4) return;
-
+    if (otp.length != 4 || _isLoading) return;
     setState(() => _isLoading = true);
 
     try {
-      String phone = _phoneController.text.replaceAll(RegExp(r'\D'), '');
-      if (phone.startsWith('8')) {
-        phone = '0$phone';
-      } else if (phone.startsWith('62')) {
-        phone = '0${phone.substring(2)}';
-      }
-      
+      final phone = _normalizePhone(_phoneController.text);
       final response = await _apiService.verifyOtp(phone, otp);
-      final success = response['success'] ?? false;
 
-      if (mounted) {
-        setState(() => _isLoading = false);
-        if (success) {
-          context.go(AppRouter.home);
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(response['message'] ?? 'OTP Salah')),
-          );
-        }
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      if (response['success'] == true) {
+        _checkAndNavigate();
+      } else {
+        _showError(response['message'] ?? 'Kode OTP salah atau kedaluwarsa.');
+        for (final c in _otpControllers) { c.clear(); }
+        if (mounted) { _otpFocusNodes[0].requestFocus(); }
       }
     } catch (e) {
-      // Matikan loading kalau server error
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
-        );
+        _showError('Tidak dapat terhubung ke server.');
       }
     }
   }
 
+  Future<void> _checkAndNavigate() async {
+    if (!mounted) return;
+    try {
+      final profile = await _apiService.getProfile();
+      if (!mounted) return;
+      final data = profile['data'] is Map
+          ? (profile['data']['data'] ?? profile['data'])
+          : null;
+      final hasEducation = data != null &&
+          (data['education_profile'] != null ||
+              data['education_level'] != null ||
+              data['major'] != null);
+      if (!mounted) return;
+      context.go(
+          hasEducation ? AppRouter.home : AppRouter.educationOnboarding);
+    } catch (_) {
+      if (mounted) context.go(AppRouter.home);
+    }
+  }
+
   void _handleOTPInput(String value, int index) {
-    // UBAH LOGIKA PINDAH KOTAK KE 4 DIGIT (index < 3)
+    final digits = value.replaceAll(RegExp(r'\D'), '');
+    if (digits.length > 1) {
+      for (int i = 0; i < digits.length && i < 4; i++) {
+        _otpControllers[i].text = digits[i];
+      }
+      setState(() {});
+      if (digits.length >= 4) {
+        _verifyOTP();
+      } else {
+        _otpFocusNodes[digits.length].requestFocus();
+      }
+      return;
+    }
+
     if (value.isNotEmpty && index < 3) {
       _otpFocusNodes[index + 1].requestFocus();
     } else if (value.isEmpty && index > 0) {
       _otpFocusNodes[index - 1].requestFocus();
     }
-
-    // Auto verify when complete
+    setState(() {});
     final otp = _otpControllers.map((c) => c.text).join();
-    if (otp.length == 4) {
-      _verifyOTP();
-    }
+    if (otp.length == 4) _verifyOTP();
   }
 
+  void _showSuccess(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_outline_rounded,
+                color: Colors.white, size: 18),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: AppColors.primary,
+        behavior: SnackBarBehavior.floating,
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
 
-  void _loginWithBiometric() async {
-    final LocalAuthentication auth = LocalAuthentication();
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline_rounded,
+                color: Colors.white, size: 18),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  Future<void> _loginWithBiometric() async {
+    final auth = LocalAuthentication();
     try {
-      final bool canAuthenticateWithBiometrics = await auth.canCheckBiometrics;
-      final bool canAuthenticate =
-          canAuthenticateWithBiometrics || await auth.isDeviceSupported();
-
-      if (!canAuthenticate) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Biometrik tidak didukung di perangkat ini')),
-          );
-        }
+      final supported =
+          await auth.canCheckBiometrics || await auth.isDeviceSupported();
+      if (!supported) {
+        _showError('Biometrik tidak didukung di perangkat ini.');
         return;
       }
-
-      final bool didAuthenticate = await auth.authenticate(
-        localizedReason: 'Silakan autentikasi untuk masuk',
+      final ok = await auth.authenticate(
+        localizedReason: 'Autentikasi untuk masuk ke Skilloka',
         options: const AuthenticationOptions(
-          biometricOnly: true,
-          stickyAuth: true,
-        ),
+            biometricOnly: true, stickyAuth: true),
       );
-
-      if (didAuthenticate && mounted) {
-        context.go(AppRouter.home);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error biometrik: ${e.toString()}')),
-        );
-      }
+      if (ok && mounted) context.go(AppRouter.home);
+    } catch (_) {
+      _showError('Autentikasi biometrik gagal.');
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 32),
-                Text(
-                  _showOTPInput ? 'Verifikasi OTP' : 'Masuk ke Skilloka',
-                  style: AppTypography.headlineMedium,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _showOTPInput
-                      ? 'Masukkan kode 4 digit yang dikirim ke nomor Anda'
-                      : 'Masukkan nomor telepon untuk melanjutkan',
-                  style: AppTypography.bodyLarge.copyWith(
-                    color: AppColors.textSecondary,
+        child: FadeTransition(
+          opacity: _fadeAnim,
+          child: SlideTransition(
+            position: _slideAnim,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 48),
+                  _buildBrand(),
+                  const SizedBox(height: 40),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 280),
+                    child: _showOTPInput
+                        ? _buildOTPHeader(key: const ValueKey('h_otp'))
+                        : _buildPhoneHeader(key: const ValueKey('h_phone')),
                   ),
-                ),
-                const SizedBox(height: 40),
-                AnimatedCrossFade(
-                  duration: AppAnimations.medium,
-                  crossFadeState: _showOTPInput
-                      ? CrossFadeState.showSecond
-                      : CrossFadeState.showFirst,
-                  firstChild: _buildPhoneInput(),
-                  secondChild: _buildOTPInput(),
-                ),
-                const SizedBox(height: 24),
-                AnimatedPrimaryButton(
-                  text: _showOTPInput ? 'Verifikasi' : 'Kirim via WhatsApp',
-                  isLoading: _isLoading,
-                  isEnabled: _showOTPInput
-                      ? _otpControllers.every((c) => c.text.isNotEmpty)
-                      : _isPhoneValid,
-                  onPressed: _showOTPInput ? _verifyOTP : () => _sendOTP('whatsapp'),
-                ),
-                if (_showOTPInput) ...[
-                  const SizedBox(height: 16),
-                  Center(
-                    child: TextButton(
-                      onPressed: () {
-                        setState(() => _showOTPInput = false);
-                      },
-                      child: const Text('Ganti nomor telepon'),
+                  const SizedBox(height: 32),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 350),
+                    transitionBuilder: (child, anim) => FadeTransition(
+                      opacity: anim,
+                      child: SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(0.04, 0),
+                          end: Offset.zero,
+                        ).animate(anim),
+                        child: child,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Center(child: _ResendOTPButton(onResend: _sendOTP)),
-                ],
-                if (!_showOTPInput) ...[
-                  const SizedBox(height: 16),
-                  _SocialLoginButton(
-                    icon: Icons.telegram,
-                    label: 'Kirim via Telegram',
-                    onPressed: (_isPhoneValid && !_isLoading) ? () => _sendOTP('telegram') : null,
+                    child: _showOTPInput
+                        ? _buildOTPSection(
+                            key: const ValueKey('s_otp'), isDark: isDark)
+                        : _buildPhoneSection(
+                            key: const ValueKey('s_phone'), isDark: isDark),
                   ),
                   const SizedBox(height: 40),
-                  Row(
-                    children: [
-                      const Expanded(child: Divider()),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'atau masuk dengan',
-                          style: AppTypography.bodySmall.copyWith(
-                            color: AppColors.textTertiary,
+                  Center(
+                    child: Text(
+                      'Dengan melanjutkan, Anda menyetujui\nSyarat & Ketentuan dan Kebijakan Privasi',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.textTertiaryFor(context),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBrand() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Row(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Image.asset(
+            'assets/icons/app_icon.png',
+            width: 40,
+            height: 40,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: const Color(0xFF0F172A),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.school, color: Colors.white, size: 22),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        RichText(
+          text: TextSpan(
+            children: [
+              TextSpan(
+                text: 'Skill',
+                style: TextStyle(
+                  fontFamily: 'Outfit',
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const TextSpan(
+                text: 'oka',
+                style: TextStyle(
+                  fontFamily: 'Outfit',
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFFF59E0B),
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPhoneHeader({Key? key}) {
+    return Column(
+      key: key,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Masuk ke Skilloka', style: AppTypography.headlineMedium),
+        const SizedBox(height: 6),
+        Text(
+          'Masukkan nomor HP untuk mendapatkan kode OTP',
+          style: AppTypography.bodyMedium
+              .copyWith(color: AppColors.textSecondaryFor(context)),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOTPHeader({Key? key}) {
+    return Column(
+      key: key,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Masukkan Kode OTP', style: AppTypography.headlineMedium),
+        const SizedBox(height: 6),
+        RichText(
+          text: TextSpan(
+            style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.textSecondaryFor(context)),
+            children: [
+              const TextSpan(text: 'Kode 4 digit dikirim ke '),
+              TextSpan(
+                text: _normalizePhone(_phoneController.text),
+                style: const TextStyle(
+                    fontWeight: FontWeight.w600, color: AppColors.primary),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPhoneSection({Key? key, required bool isDark}) {
+    return Column(
+      key: key,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _PhoneInput(controller: _phoneController, isDark: isDark),
+        const SizedBox(height: 20),
+        _PrimaryBtn(
+          label: 'Kirim OTP via WhatsApp',
+          icon: Icons.chat_bubble_rounded,
+          iconColor: const Color(0xFF25D366),
+          isLoading: _isLoading,
+          enabled: _isPhoneValid,
+          onTap: () => _sendOTP('whatsapp'),
+        ),
+        const SizedBox(height: 12),
+        _SecondaryBtn(
+          label: 'Kirim OTP via Telegram',
+          icon: Icons.telegram_rounded,
+          iconColor: const Color(0xFF0088CC),
+          enabled: _isPhoneValid && !_isLoading,
+          onTap: () => _sendOTP('telegram'),
+        ),
+        const SizedBox(height: 28),
+        Row(children: [
+          Expanded(
+              child: Divider(
+                  color:
+                      AppColors.textTertiaryFor(context).withAlpha(60))),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Text('atau',
+                style: AppTypography.bodySmall
+                    .copyWith(color: AppColors.textTertiaryFor(context))),
+          ),
+          Expanded(
+              child: Divider(
+                  color:
+                      AppColors.textTertiaryFor(context).withAlpha(60))),
+        ]),
+        const SizedBox(height: 20),
+        _SecondaryBtn(
+          label: 'Masuk dengan Biometrik',
+          icon: Icons.fingerprint_rounded,
+          iconColor: AppColors.primary,
+          enabled: !_isLoading,
+          onTap: _loginWithBiometric,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOTPSection({Key? key, required bool isDark}) {
+    final otpComplete =
+        _otpControllers.every((c) => c.text.isNotEmpty);
+    return Column(
+      key: key,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_devOtpHint != null) ...[
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? AppColors.primaryDark.withAlpha(50)
+                  : AppColors.primaryContainer,
+              borderRadius: BorderRadius.circular(10),
+              border:
+                  Border.all(color: AppColors.primary.withAlpha(100)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.bug_report_rounded,
+                    color: AppColors.primary, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: RichText(
+                    text: TextSpan(
+                      style: AppTypography.bodySmall.copyWith(
+                          color: AppColors.textPrimaryFor(context)),
+                      children: [
+                        const TextSpan(text: 'Dev OTP: '),
+                        TextSpan(
+                          text: _devOtpHint,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 18,
+                            color: AppColors.primary,
+                            letterSpacing: 4,
                           ),
                         ),
-                      ),
-                      const Expanded(child: Divider()),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  _SocialLoginButton(
-                    icon: Icons.fingerprint,
-                    label: 'Masuk dengan Biometrik',
-                    onPressed: _isLoading ? null : _loginWithBiometric,
-                    isPrimary: true,
-                  ),
-                ],
-                const SizedBox(height: 40),
-                Center(
-                  child: Text(
-                    'Dengan melanjutkan, Anda menyetujui\nSyarat & Ketentuan dan Kebijakan Privasi',
-                    style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.textTertiary,
+                      ],
                     ),
-                    textAlign: TextAlign.center,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () {
+                    if (_devOtpHint == null ||
+                        _devOtpHint!.length != 4) { return; }
+                    for (int i = 0; i < 4; i++) {
+                      _otpControllers[i].text = _devOtpHint![i];
+                    }
+                    setState(() {});
+                    _verifyOTP();
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      'Isi Otomatis',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
           ),
+          const SizedBox(height: 24),
+        ],
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: List.generate(
+              4,
+              (i) => _OTPBox(
+                    controller: _otpControllers[i],
+                    focusNode: _otpFocusNodes[i],
+                    isDark: isDark,
+                    onChanged: (v) => _handleOTPInput(v, i),
+                  )),
         ),
-      ),
-    );
-  }
-
-  Widget _buildPhoneInput() {
-    return PhoneInputField(
-      controller: _phoneController,
-      validator: (value) {
-        final phone = value?.replaceAll(RegExp(r'\D'), '') ?? '';
-        if (phone.isEmpty) return 'Nomor telepon wajib diisi';
-        if (phone.length < 10) return 'Nomor telepon tidak valid';
-        return null;
-      },
-    );
-  }
-
-  Widget _buildOTPInput() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      // UBAH GENERATE LOOP KE 4 KOTAK
-      children: List.generate(4, (index) {
-        return SizedBox(
-          width: 56, // Sedikit dilebarkan biar lebih proporsional untuk 4 kotak
-          child: TextField(
-            controller: _otpControllers[index],
-            focusNode: _otpFocusNodes[index],
-            textAlign: TextAlign.center,
-            keyboardType: TextInputType.number,
-            maxLength: 1,
-            style: AppTypography.headlineMedium,
-            decoration: InputDecoration(
-              counterText: '',
-              contentPadding: const EdgeInsets.symmetric(vertical: 16),
-              filled: true,
-              fillColor: AppColors.surfaceVariant,
-              border: OutlineInputBorder(
-                borderRadius: AppShapes.borderRadiusMD,
-                borderSide: BorderSide.none,
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: AppShapes.borderRadiusMD,
-                borderSide: const BorderSide(
-                  color: AppColors.primary,
-                  width: 2,
-                ),
-              ),
+        const SizedBox(height: 28),
+        _PrimaryBtn(
+          label: 'Verifikasi & Masuk',
+          icon: Icons.verified_user_rounded,
+          iconColor: Colors.white,
+          isLoading: _isLoading,
+          enabled: otpComplete,
+          onTap: _verifyOTP,
+        ),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            TextButton.icon(
+              onPressed: () => setState(() {
+                _showOTPInput = false;
+                _devOtpHint = null;
+                for (final c in _otpControllers) { c.clear(); }
+              }),
+              icon: const Icon(Icons.arrow_back_rounded, size: 16),
+              label: const Text('Ganti nomor'),
+              style: TextButton.styleFrom(
+                  foregroundColor: AppColors.textSecondaryFor(context)),
             ),
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            onChanged: (value) => _handleOTPInput(value, index),
-          ),
-        );
-      }),
+            _ResendBtn(onResend: () => _sendOTP('whatsapp')),
+          ],
+        ),
+      ],
     );
   }
 }
 
-class _SocialLoginButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback? onPressed;
-  final bool isPrimary;
+// â”€â”€â”€ OTP Box â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+class _OTPBox extends StatelessWidget {
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final bool isDark;
+  final ValueChanged<String> onChanged;
 
-  const _SocialLoginButton({
-    required this.icon,
-    required this.label,
-    required this.onPressed,
-    this.isPrimary = false,
+  const _OTPBox({
+    required this.controller,
+    required this.focusNode,
+    required this.isDark,
+    required this.onChanged,
   });
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton.icon(
-        onPressed: onPressed,
-        icon: Icon(icon, size: 24),
-        label: Text(label),
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          side: BorderSide(
-            color: isPrimary ? AppColors.primary : AppColors.outline,
+      width: 64,
+      height: 64,
+      child: TextField(
+        controller: controller,
+        focusNode: focusNode,
+        textAlign: TextAlign.center,
+        keyboardType: TextInputType.number,
+        maxLength: 4,
+        buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
+        style: AppTypography.headlineSmall.copyWith(
+          fontWeight: FontWeight.w700,
+          color: AppColors.textPrimaryFor(context),
+          letterSpacing: 0,
+        ),
+        decoration: InputDecoration(
+          counterText: '',
+          contentPadding: EdgeInsets.zero,
+          filled: true,
+          fillColor: isDark
+              ? AppColors.surfaceVariantDark
+              : AppColors.surfaceVariant,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide.none,
           ),
-          foregroundColor:
-              isPrimary ? AppColors.primary : AppColors.textPrimary,
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(
+              color: isDark ? AppColors.outlineDark : AppColors.outline,
+              width: 1.5,
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide:
+                const BorderSide(color: AppColors.primary, width: 2.5),
+          ),
+        ),
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        onChanged: onChanged,
+      ),
+    );
+  }
+}
+
+// ─── Phone Input ─────────────────────────────────────────────────────────────
+class _PhoneInput extends StatelessWidget {
+  final TextEditingController controller;
+  final bool isDark;
+  const _PhoneInput({required this.controller, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      keyboardType: TextInputType.phone,
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'[0-9+\-\s()]'))
+      ],
+      style: AppTypography.bodyLarge.copyWith(
+        color: AppColors.textPrimaryFor(context),
+        fontWeight: FontWeight.w500,
+        letterSpacing: 0.5,
+      ),
+      decoration: InputDecoration(
+        labelText: 'Nomor Telepon',
+        hintText: '08xxxxxxxxxx',
+        prefixIcon: Container(
+          width: 78,
+          margin: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+          decoration: BoxDecoration(
+            color: isDark
+                ? AppColors.surfaceDark
+                : Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isDark ? AppColors.outlineDark : AppColors.outline,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(2),
+                child: Container(
+                  width: 20,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.black26, width: 0.5),
+                  ),
+                  child: Column(
+                    children: [
+                      Expanded(child: Container(color: const Color(0xFFED1C24))),
+                      Expanded(child: Container(color: Colors.white)),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 5),
+              Text(
+                '+62',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimaryFor(context),
+                ),
+              ),
+            ],
+          ),
+        ),
+        filled: true,
+        fillColor: isDark
+            ? AppColors.surfaceVariantDark
+            : AppColors.surfaceVariant,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(
+            color: isDark ? AppColors.outlineDark : AppColors.outline,
+            width: 1.5,
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      ),
+    );
+  }
+}
+
+// â”€â”€â”€ Primary Button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+class _PrimaryBtn extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color iconColor;
+  final bool isLoading;
+  final bool enabled;
+  final VoidCallback? onTap;
+
+  const _PrimaryBtn({
+    required this.label,
+    required this.icon,
+    required this.iconColor,
+    this.isLoading = false,
+    this.enabled = true,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 54,
+      child: ElevatedButton(
+        onPressed: (enabled && !isLoading) ? onTap : null,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: AppColors.primary.withAlpha(80),
+          disabledForegroundColor: Colors.white60,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14)),
+        ),
+        child: isLoading
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2.5, color: Colors.white),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, size: 20, color: iconColor),
+                  const SizedBox(width: 10),
+                  Text(label,
+                      style: const TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.w600)),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+// â”€â”€â”€ Secondary Button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+class _SecondaryBtn extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color iconColor;
+  final bool enabled;
+  final VoidCallback? onTap;
+
+  const _SecondaryBtn({
+    required this.label,
+    required this.icon,
+    required this.iconColor,
+    this.enabled = true,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return SizedBox(
+      height: 54,
+      child: OutlinedButton(
+        onPressed: enabled ? onTap : null,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.textPrimaryFor(context),
+          side: BorderSide(
+              color: isDark ? AppColors.outlineDark : AppColors.outline,
+              width: 1.5),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon,
+                size: 20,
+                color: enabled
+                    ? iconColor
+                    : AppColors.textDisabledFor(context)),
+            const SizedBox(width: 10),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: enabled
+                        ? AppColors.textPrimaryFor(context)
+                        : AppColors.textDisabledFor(context))),
+          ],
         ),
       ),
     );
   }
 }
 
-class _ResendOTPButton extends StatefulWidget {
+// â”€â”€â”€ Resend OTP Button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+class _ResendBtn extends StatefulWidget {
   final VoidCallback onResend;
-
-  const _ResendOTPButton({required this.onResend});
+  const _ResendBtn({required this.onResend});
 
   @override
-  State<_ResendOTPButton> createState() => _ResendOTPButtonState();
+  State<_ResendBtn> createState() => _ResendBtnState();
 }
 
-class _ResendOTPButtonState extends State<_ResendOTPButton> {
+class _ResendBtnState extends State<_ResendBtn> {
   int _countdown = 60;
-  bool _canResend = false;
+  Timer? _timer;
 
   @override
   void initState() {
@@ -419,34 +876,45 @@ class _ResendOTPButtonState extends State<_ResendOTPButton> {
   }
 
   void _startCountdown() {
-    Future.doWhile(() async {
-      await Future.delayed(const Duration(seconds: 1));
-      if (!mounted) return false;
-      setState(() => _countdown--);
-      if (_countdown <= 0) {
-        setState(() => _canResend = true);
-        return false;
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) {
+        t.cancel();
+        return;
       }
-      return true;
+      setState(() => _countdown--);
+      if (_countdown <= 0) t.cancel();
     });
   }
 
   @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final canResend = _countdown <= 0;
     return TextButton(
-      onPressed: _canResend
+      onPressed: canResend
           ? () {
-              setState(() {
-                _countdown = 60;
-                _canResend = false;
-              });
+              setState(() => _countdown = 60);
               _startCountdown();
               widget.onResend();
             }
           : null,
+      style: TextButton.styleFrom(
+        foregroundColor: AppColors.primary,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      ),
       child: Text(
-        _canResend ? 'Kirim ulang kode' : 'Kirim ulang dalam $_countdown detik',
+        canResend ? 'Kirim ulang' : 'Kirim ulang ($_countdown)',
+        style:
+            const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
       ),
     );
+
   }
 }
+

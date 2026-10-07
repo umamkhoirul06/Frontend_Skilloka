@@ -126,9 +126,6 @@ class _BannerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    print('====================');
-print('BANNER URL = ${item.imageUrl}');
-print('====================');
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 4),
       child: ClipRRect(
@@ -139,15 +136,17 @@ print('====================');
             // Background Image with Parallax
             Transform.translate(
               offset: Offset(parallaxOffset, 0),
-              child: CachedNetworkImage(
-                imageUrl: item.imageUrl,
-                fit: BoxFit.cover,
-                placeholder: (context, url) =>
-                    Container(color: AppColors.surfaceVariant),
-                errorWidget: (context, url, error) => Container(
-                  decoration: BoxDecoration(gradient: AppColors.heroGradient),
-                ),
-              ),
+              child: item.imageUrl.isNotEmpty
+                  ? CachedNetworkImage(
+                      imageUrl: item.imageUrl,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) =>
+                          Container(decoration: BoxDecoration(gradient: AppColors.heroGradient)),
+                      errorWidget: (context, url, error) => Container(
+                        decoration: BoxDecoration(gradient: AppColors.heroGradient),
+                      ),
+                    )
+                  : Container(decoration: BoxDecoration(gradient: AppColors.heroGradient)),
             ),
             // Gradient Overlay
             Container(
@@ -157,7 +156,7 @@ print('====================');
                   end: Alignment.bottomCenter,
                   colors: [
                     Colors.transparent,
-                    Colors.black.withOpacity(0.7)
+                    Colors.black.withValues(alpha: 0.7)
                   ],
                 ),
               ),
@@ -202,7 +201,7 @@ print('====================');
                       child: Text(
                         item.subtitle!,
                         style: AppTypography.bodySmall.copyWith(
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withValues(alpha: 0.9),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

@@ -409,22 +409,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
         onTap: () => context.go(AppRouter.bookings),
       ),
       _QuickAction(
+        icon: Icons.menu_book_outlined,
+        label: 'Kursus Saya',
+        color: AppColors.info,
+        onTap: () => context.go(AppRouter.myCourses),
+      ),
+      _QuickAction(
         icon: Icons.workspace_premium_outlined,
         label: 'Sertifikat',
         color: AppColors.warning,
         onTap: () => context.push(AppRouter.certificates),
       ),
       _QuickAction(
-        icon: Icons.favorite_outline,
-        label: 'Favorit',
-        color: AppColors.error,
-        onTap: () => context.push(AppRouter.favorites),
-      ),
-      _QuickAction(
-        icon: Icons.notifications_outlined,
-        label: 'Notifikasi',
-        color: AppColors.secondary,
-        onTap: () => context.push(AppRouter.notifications),
+        icon: Icons.smart_toy_outlined,
+        label: 'Asisten AI',
+        color: AppColors.primary,
+        onTap: () => context.push(AppRouter.chatbot),
       ),
     ];
 

@@ -104,8 +104,8 @@ class _SplashScreenState extends State<SplashScreen>
         } else {
           // Token expired/invalid -> hapus dan ke Login
           await apiService.removeToken();
-          context.go(
-              AppRouter.login); // Pastikan AppRouter.login sudah didefinisikan
+          if (!mounted) return; // FIX: mounted check setelah async gap
+          context.go(AppRouter.login);
         }
       } catch (e) {
         // Koneksi gagal (misal tidak ada internet) -> coba tetap masuk kalau ada token
@@ -226,40 +226,56 @@ class _Logo extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Logo Icon
+        // Real Logo Icon
         Container(
           width: 100,
           height: 100,
           decoration: BoxDecoration(
-            color: Colors.white,
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.2),
+                color: Colors.black.withValues(alpha: 0.35),
                 blurRadius: 30,
-                offset: const Offset(0, 10),
+                offset: const Offset(0, 12),
               ),
             ],
           ),
-          child: const Center(
-            child: Text(
-              'S',
-              style: TextStyle(
-                fontSize: 56,
-                fontWeight: FontWeight.bold,
-                color: AppColors.primary,
-              ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: Image.asset(
+              'assets/icons/app_icon.png',
+              width: 100,
+              height: 100,
+              fit: BoxFit.cover,
             ),
           ),
         ),
         const SizedBox(height: 24),
-        // App Name
-        Text(
-          'Skilloka',
-          style: AppTypography.displaySmall.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 2,
+        // App Name (Matching Web Tipografi)
+        RichText(
+          text: const TextSpan(
+            children: [
+              TextSpan(
+                text: 'Skill',
+                style: TextStyle(
+                  fontFamily: 'Outfit',
+                  fontSize: 36,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                  letterSpacing: 1,
+                ),
+              ),
+              TextSpan(
+                text: 'oka',
+                style: TextStyle(
+                  fontFamily: 'Outfit',
+                  fontSize: 36,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFFF59E0B), // Web Amber Gold
+                  letterSpacing: 1,
+                ),
+              ),
+            ],
           ),
         ),
       ],

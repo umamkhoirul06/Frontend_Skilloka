@@ -6,9 +6,15 @@ import '../../features/splash/presentation/pages/splash_screen.dart';
 import '../../features/auth/presentation/pages/onboarding_screen.dart';
 import '../../features/auth/presentation/pages/login_screen.dart';
 import '../../features/auth/presentation/pages/register_screen.dart';
+import '../../features/auth/presentation/pages/education_onboarding_screen.dart';
 import '../../features/home/presentation/pages/home_screen.dart';
 import '../../features/course/presentation/pages/course_detail_screen.dart';
 import '../../features/course/presentation/pages/lpk_detail_screen.dart';
+import '../../features/course/presentation/pages/my_courses_screen.dart';
+import '../../features/course/presentation/pages/course_learning_screen.dart';
+import '../../features/course/presentation/pages/search_screen.dart';
+import '../../features/course/presentation/pages/chatbot_screen.dart';
+import '../../features/course/presentation/pages/review_screen.dart';
 import '../../features/booking/presentation/pages/booking_screen.dart';
 import '../../features/booking/presentation/pages/pending_booking_screen.dart';
 import '../../features/booking/presentation/pages/bookings_list_screen.dart';
@@ -22,6 +28,7 @@ import '../../features/profile/presentation/pages/help_screen.dart';
 import '../../features/profile/presentation/pages/about_screen.dart';
 import '../../features/component_gallery/presentation/pages/component_gallery_screen.dart';
 import '../../features/profile/presentation/pages/settings_screen.dart';
+import '../../core/widgets/chatbot_avatar_3d.dart';
 
 class AppRouter {
   AppRouter._();
@@ -34,8 +41,13 @@ class AppRouter {
   static const String onboarding = '/onboarding';
   static const String login = '/login';
   static const String register = '/register';
+  static const String educationOnboarding = '/education-onboarding';
   static const String home = '/home';
   static const String search = '/search';
+  static const String myCourses = '/my-courses';
+  static const String chatbot = '/chatbot';
+  static const String courseContent = '/my-course/:courseId';
+  static const String courseReview = '/review/:courseId';
   static const String courseDetail = '/course/:id';
   static const String lpkDetail = '/lpk/:id';
 
@@ -67,6 +79,8 @@ class AppRouter {
       '/booking-success/$bookingId';
   static String courseDetailPath(String id) => '/course/$id';
   static String lpkDetailPath(String id) => '/lpk/$id';
+  static String courseContentPath(String courseId) => '/my-course/$courseId';
+  static String courseReviewPath(String courseId) => '/review/$courseId';
 
   static final GoRouter router = GoRouter(
     navigatorKey: _rootNavigatorKey,
@@ -76,7 +90,7 @@ class AppRouter {
       // Splash Screen
       GoRoute(path: splash, builder: (context, state) => const SplashScreen()),
 
-      // Onboarding
+      // Onboarding (intro app)
       GoRoute(
         path: onboarding,
         pageBuilder: (context, state) => CustomTransitionPage(
@@ -90,6 +104,16 @@ class AppRouter {
           ) {
             return FadeTransition(opacity: animation, child: child);
           },
+        ),
+      ),
+
+      // Education Onboarding (setelah login pertama)
+      GoRoute(
+        path: educationOnboarding,
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const EducationOnboardingScreen(),
+          transitionsBuilder: _slideUpTransition,
         ),
       ),
 
@@ -124,6 +148,13 @@ class AppRouter {
             ),
           ),
           GoRoute(
+            path: myCourses,
+            pageBuilder: (context, state) => NoTransitionPage(
+              key: state.pageKey,
+              child: const MyCourseScreen(),
+            ),
+          ),
+          GoRoute(
             path: bookings,
             pageBuilder: (context, state) => NoTransitionPage(
               key: state.pageKey,
@@ -140,6 +171,30 @@ class AppRouter {
         ],
       ),
 
+      // Search
+      GoRoute(
+        path: search,
+        pageBuilder: (context, state) {
+          final q = state.uri.queryParameters['q'];
+          final cat = state.uri.queryParameters['category'];
+          return CustomTransitionPage(
+            key: state.pageKey,
+            child: SearchScreen(initialQuery: q, initialCategory: cat),
+            transitionsBuilder: _slideRightTransition,
+          );
+        },
+      ),
+
+      // Chatbot
+      GoRoute(
+        path: chatbot,
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const ChatbotScreen(),
+          transitionsBuilder: _slideRightTransition,
+        ),
+      ),
+
       // Course Detail
       GoRoute(
         path: courseDetail,
@@ -148,6 +203,37 @@ class AppRouter {
           return CustomTransitionPage(
             key: state.pageKey,
             child: CourseDetailScreen(courseId: courseId),
+            transitionsBuilder: _slideRightTransition,
+          );
+        },
+      ),
+
+      // Course Learning (Materi, Absensi, Sertifikat)
+      GoRoute(
+        path: courseContent,
+        pageBuilder: (context, state) {
+          final courseId = state.pathParameters['courseId']!;
+          return CustomTransitionPage(
+            key: state.pageKey,
+            child: CourseLearningScreen(courseId: courseId),
+            transitionsBuilder: _slideRightTransition,
+          );
+        },
+      ),
+
+      // Course Review
+      GoRoute(
+        path: courseReview,
+        pageBuilder: (context, state) {
+          final courseId = state.pathParameters['courseId']!;
+          final extra = state.extra as Map<String, dynamic>?;
+          return CustomTransitionPage(
+            key: state.pageKey,
+            child: ReviewScreen(
+              courseId: courseId,
+              courseTitle: extra?['title'] ?? 'Kursus',
+              lpkName: extra?['lpkName'],
+            ),
             transitionsBuilder: _slideRightTransition,
           );
         },
@@ -255,13 +341,13 @@ class AppRouter {
         ),
       ),
       GoRoute(
-  path: settings,
-  pageBuilder: (context, state) => CustomTransitionPage(
-    key: state.pageKey,
-    child: const NotificationsScreen(), // sementara pakai NotificationsScreen
-    transitionsBuilder: _slideRightTransition,
-  ),
-),
+        path: settings,
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const SettingsScreen(), // ✅ FIX: pakai SettingsScreen yang benar
+          transitionsBuilder: _slideRightTransition,
+        ),
+      ),
       // Component Gallery (Development)
       GoRoute(
         path: componentGallery,
@@ -327,21 +413,35 @@ class MainShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: child,
+      body: Stack(
+        children: [
+          child,
+          Positioned(
+            right: 0,
+            bottom: 6,
+            child: SafeArea(
+              child: FloatingChatBotWidget(
+                onTap: () => context.push(AppRouter.chatbot),
+              ),
+            ),
+          ),
+        ],
+      ),
       bottomNavigationBar: const MainBottomNavigation(),
     );
   }
 }
 
-/// Bottom Navigation Bar
+/// Bottom Navigation Bar — 4 tab sesuai PRD 8.2
 class MainBottomNavigation extends StatelessWidget {
   const MainBottomNavigation({super.key});
 
   int _calculateSelectedIndex(BuildContext context) {
     final location = GoRouterState.of(context).uri.path;
     if (location.startsWith('/home')) return 0;
-    if (location.startsWith('/bookings')) return 1;
-    if (location.startsWith('/profile')) return 2;
+    if (location.startsWith('/my-courses')) return 1;
+    if (location.startsWith('/bookings')) return 2;
+    if (location.startsWith('/profile')) return 3;
     return 0;
   }
 
@@ -351,9 +451,12 @@ class MainBottomNavigation extends StatelessWidget {
         context.go(AppRouter.home);
         break;
       case 1:
-        context.go(AppRouter.bookings);
+        context.go(AppRouter.myCourses);
         break;
       case 2:
+        context.go(AppRouter.bookings);
+        break;
+      case 3:
         context.go(AppRouter.profile);
         break;
     }
@@ -362,26 +465,48 @@ class MainBottomNavigation extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selectedIndex = _calculateSelectedIndex(context);
-    return NavigationBar(
-      selectedIndex: selectedIndex,
-      onDestinationSelected: (index) => _onItemTapped(context, index),
-      destinations: const [
-        NavigationDestination(
-          icon: Icon(Icons.home_outlined),
-          selectedIcon: Icon(Icons.home),
-          label: 'Beranda',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.receipt_long_outlined),
-          selectedIcon: Icon(Icons.receipt_long),
-          label: 'Pesanan',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.person_outline),
-          selectedIcon: Icon(Icons.person),
-          label: 'Profil',
-        ),
-      ],
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
+            blurRadius: 20,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: NavigationBar(
+        selectedIndex: selectedIndex,
+        onDestinationSelected: (index) => _onItemTapped(context, index),
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        indicatorColor: Theme.of(context).colorScheme.primaryContainer,
+        elevation: 0,
+        height: 64,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home_rounded),
+            label: 'Beranda',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.menu_book_outlined),
+            selectedIcon: Icon(Icons.menu_book_rounded),
+            label: 'Kursus Saya',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.receipt_long_outlined),
+            selectedIcon: Icon(Icons.receipt_long_rounded),
+            label: 'Pesanan',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline_rounded),
+            selectedIcon: Icon(Icons.person_rounded),
+            label: 'Profil',
+          ),
+        ],
+      ),
     );
   }
 }

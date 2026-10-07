@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ThemeCubit extends Cubit<ThemeMode> {
   static const String _themeModeKey = 'theme_mode';
 
-  ThemeCubit() : super(ThemeMode.system) {
+  ThemeCubit() : super(ThemeMode.light) {
     _loadTheme();
   }
 

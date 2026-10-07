@@ -110,10 +110,11 @@ class SkeletonCourseCard extends StatelessWidget {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Hero Image
+            // Hero Image — dikurangi agar tidak overflow di grid
             Container(
-              height: 120,
+              height: 108,
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.only(
@@ -123,42 +124,34 @@ class SkeletonCourseCard extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   // Title
                   Container(
                     width: double.infinity,
-                    height: 16,
+                    height: 14,
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: AppShapes.borderRadiusSM,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   // Subtitle
                   Container(
-                    width: 120,
+                    width: 100,
                     height: 12,
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: AppShapes.borderRadiusSM,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   // Rating & Distance
                   Row(
                     children: [
-                      Container(
-                        width: 60,
-                        height: 12,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: AppShapes.borderRadiusSM,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
                       Container(
                         width: 50,
                         height: 12,
@@ -167,13 +160,22 @@ class SkeletonCourseCard extends StatelessWidget {
                           borderRadius: AppShapes.borderRadiusSM,
                         ),
                       ),
+                      const SizedBox(width: 8),
+                      Container(
+                        width: 40,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: AppShapes.borderRadiusSM,
+                        ),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   // Price
                   Container(
-                    width: 100,
-                    height: 18,
+                    width: 80,
+                    height: 14,
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: AppShapes.borderRadiusSM,

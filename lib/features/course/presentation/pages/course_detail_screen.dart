@@ -1,8 +1,6 @@
 /// Course Detail Screen with image gallery, syllabus, and booking CTA
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_shapes.dart';
@@ -39,25 +37,26 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
 
   Future<void> _fetchCourseDetail() async {
     try {
-      final response = await http.get(
-        Uri.parse('https://skilloka.my.id/api/courses/${widget.courseId}'),
-        headers: {'Accept': 'application/json'},
-      );
+      // ✅ FIX: Gunakan ApiService.getCourseDetail() — environment-aware, auth token otomatis
+      final result = await _api.getCourseDetail(widget.courseId);
 
-      if (response.statusCode == 200) {
-        final jsonResponse = json.decode(response.body);
-        debugPrint('DATA COURSE API: ${jsonResponse.toString()}');
+      if (!mounted) return;
 
+      if (result['success'] == true) {
+        final raw = result['data'];
+        // Tangani berbagai format response Laravel
+        final data = (raw is Map && raw['data'] != null) ? raw['data'] : raw;
         setState(() {
-          courseData = jsonResponse['data'] ?? jsonResponse;
+          courseData = Map<String, dynamic>.from(data as Map);
           isLoading = false;
         });
       } else {
+        debugPrint('Course detail error: ${result['message']}');
         setState(() => isLoading = false);
       }
     } catch (e) {
       debugPrint('Error fetching course: $e');
-      setState(() => isLoading = false);
+      if (mounted) setState(() => isLoading = false);
     }
   }
 

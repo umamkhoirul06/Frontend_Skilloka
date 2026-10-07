@@ -22,6 +22,7 @@ class _LPKDetailScreenState extends State<LPKDetailScreen> {
   List<dynamic> _courses = [];
   bool _isLoading = true;
   String? _error;
+  // ignore: unused_field - reserved for future image gallery feature
   int _currentImageIndex = 0;
 
   @override
@@ -97,6 +98,7 @@ class _LPKDetailScreenState extends State<LPKDetailScreen> {
     final rating = (_lpk!['rating'] ?? 0).toString();
     final ratingCount = (_lpk!['rating_count'] ?? 0).toString();
     final alumniCount = (_lpk!['alumni_count'] ?? 0).toString();
+    // ignore: unused_local_variable - reserved for UI badge
     final isVerified = _lpk!['is_verified'] ?? false;
     final coverUrl =
         ApiService.toFullUrl(_lpk!['cover_url'] ?? _lpk!['cover'] ?? '');

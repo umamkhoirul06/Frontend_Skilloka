@@ -211,7 +211,7 @@ class _BookingScreenState extends State<BookingScreen> {
                     child: Image.network(
                       imageUrl.isNotEmpty
                           ? imageUrl
-                          : 'https://via.placeholder.com/80',
+                          : 'https://ui-avatars.com/api/?name=Kursus&background=0D9488&color=fff&size=80',
                       width: 80,
                       height: 80,
                       fit: BoxFit.cover,

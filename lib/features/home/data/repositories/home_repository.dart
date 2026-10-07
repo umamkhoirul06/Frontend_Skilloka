@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/services/api_service.dart';
 import '../models/lpk_model.dart';
 import '../../../course/data/models/course_model.dart';
 import '../../../../core/widgets/organisms/hero_banner.dart';
@@ -124,14 +125,14 @@ return result;
   print('BANNER RAW = ${item['image_url']}');
   print('====================');
 
-  return BannerItem(
-    id: item['id'].toString(),
-    title: item['title'] ?? '',
-    subtitle: null,
-    imageUrl: item['image_url'] ?? '',
-    tag: 'Promo',
-  );
-}).toList();
+    return BannerItem(
+      id: item['id']?.toString() ?? '',
+      title: item['title']?.toString() ?? '',
+      subtitle: item['subtitle']?.toString(),
+      imageUrl: ApiService.toFullUrl(item['image_url']?.toString() ?? ''),
+      tag: 'Promo',
+    );
+  }).toList();
     } catch (e) {
       print('ERROR GET BANNERS: $e');
       return [];

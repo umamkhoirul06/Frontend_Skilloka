@@ -1,11 +1,9 @@
 /// Course Card with parallax, rolling price, and rating animations
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_shapes.dart';
 import '../../theme/app_typography.dart';
 import '../../animations/app_animations.dart';
-import '../skeleton/skeleton_loader.dart';
 
 class CourseCard extends StatefulWidget {
   final String id;

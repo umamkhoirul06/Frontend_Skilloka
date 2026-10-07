@@ -1,24 +1,28 @@
 /// App color palette for Skilloka
-/// Primary: Teal (vocational/growth theme)
-/// Secondary: Warm Orange (energy/action)
+/// Primary: Royal Blue (matching Skilloka Web platform brand)
+/// Secondary: Amber Gold (matching Skilloka Web upskilling arrow)
 import 'package:flutter/material.dart';
 
 class AppColors {
   AppColors._();
 
-  // Primary Colors - Teal/Emerald
-  static const Color primary = Color(0xFF0D9488);
-  static const Color primaryLight = Color(0xFF14B8A6);
-  static const Color primaryDark = Color(0xFF0F766E);
-  static const Color primaryContainer = Color(0xFFCCFBF1);
-  static const Color onPrimaryContainer = Color(0xFF042F2E);
+  // Primary Colors - Skilloka Web Brand Blue
+  static const Color primary = Color(0xFF2563EB); // brand-600
+  static const Color primaryLight = Color(0xFF3B82F6); // brand-500
+  static const Color primaryDark = Color(0xFF1D4ED8); // brand-700
+  static const Color primaryContainer = Color(0xFFDBEAFE); // brand-100
+  static const Color onPrimaryContainer = Color(0xFF1E3A8A); // brand-900
 
-  // Secondary Colors - Warm Orange
-  static const Color secondary = Color(0xFFF97316);
-  static const Color secondaryLight = Color(0xFFFB923C);
-  static const Color secondaryDark = Color(0xFFEA580C);
-  static const Color secondaryContainer = Color(0xFFFFEDD5);
-  static const Color onSecondaryContainer = Color(0xFF431407);
+  // Secondary Colors - Skilloka Web Amber Gold
+  static const Color secondary = Color(0xFFF59E0B); // amberbrand-500
+  static const Color secondaryLight = Color(0xFFFBBF24);
+  static const Color secondaryDark = Color(0xFFD97706); // amberbrand-600
+  static const Color secondaryContainer = Color(0xFFFEF3C7);
+  static const Color onSecondaryContainer = Color(0xFF78350F);
+
+  // Deep Navy Brand Colors (Web background & headers)
+  static const Color navy = Color(0xFF0F172A);
+  static const Color navyLight = Color(0xFF1E293B);
 
   // Category Colors
   static const Color categoryLas = Color(0xFFF97316); // Orange - Welding
@@ -75,6 +79,7 @@ class AppColors {
   static const Color warning = Color(0xFFF59E0B);
   static const Color warningContainer = Color(0xFFFEF3C7);
   static const Color error = Color(0xFFEF4444);
+  static const Color danger = Color(0xFFEF4444); // alias for error
   static const Color errorContainer = Color(0xFFFEE2E2);
   static const Color info = Color(0xFF3B82F6);
   static const Color infoContainer = Color(0xFFDBEAFE);
@@ -104,8 +109,8 @@ class AppColors {
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
     colors: [
-      Color(0xFF0D9488),
-      Color(0xFF0F766E),
+      Color(0xFF0F172A), // slate-900
+      Color(0xFF1E3A8A), // brand-900
     ],
   );
 }

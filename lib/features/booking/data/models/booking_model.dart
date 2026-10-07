@@ -24,14 +24,20 @@ class ScheduleInfo {
   factory ScheduleInfo.fromJson(Map<String, dynamic> json) {
     return ScheduleInfo(
       id: json['id']?.toString(),
-      courseId: json['courseId']?.toString(),
-      courseTitle: json['courseTitle']?.toString(),
-      courseImageUrl: json['courseImageUrl']?.toString(),
-      lpkName: json['lpkName']?.toString(),
-      lpkLogoUrl: json['lpkLogoUrl']?.toString(),
-      categoryName: json['categoryName']?.toString(),
-      startDate: json['startDate']?.toString(),
-      endDate: json['endDate']?.toString(),
+      // ✅ FIX: Laravel returns snake_case, dengan fallback ke camelCase
+      courseId: (json['course_id'] ?? json['courseId'])?.toString(),
+      courseTitle: (json['course_title'] ?? json['courseTitle'] ??
+          json['course']?['title'])?.toString(),
+      courseImageUrl: (json['course_image_url'] ?? json['courseImageUrl'] ??
+          json['course']?['image'])?.toString(),
+      lpkName: (json['lpk_name'] ?? json['lpkName'] ??
+          json['course']?['lpk']?['name'])?.toString(),
+      lpkLogoUrl: (json['lpk_logo_url'] ?? json['lpkLogoUrl'] ??
+          json['course']?['lpk']?['logo'])?.toString(),
+      categoryName: (json['category_name'] ?? json['categoryName'] ??
+          json['course']?['category']?['name'])?.toString(),
+      startDate: (json['start_date'] ?? json['startDate'])?.toString(),
+      endDate: (json['end_date'] ?? json['endDate'])?.toString(),
     );
   }
 }
