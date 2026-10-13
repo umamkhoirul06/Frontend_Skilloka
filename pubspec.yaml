@@ -95,6 +95,7 @@ flutter:
   generate: true
 
   assets:
+    - assets/avatars/
     - assets/images/
     - assets/icons/
     - assets/lottie/

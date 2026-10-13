@@ -1,11 +1,22 @@
 import 'package:flutter/material.dart';
+
 import 'package:go_router/go_router.dart';
+
 import '../../../../core/theme/app_colors.dart';
+
 import '../../../../core/theme/app_shapes.dart';
+
 import '../../../../core/theme/app_typography.dart';
+
 import '../../../../core/animations/app_animations.dart';
+
 import '../../../../core/navigation/app_router.dart';
+
 import '../../../../core/services/api_service.dart';
+
+import '../../../../models/avatar_frame_data.dart';
+
+import '../../../../widgets/profile_frame_avatar.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -18,43 +29,68 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _api = ApiService();
 
   String _userName = '';
+
   String _userPhone = '';
+
   String? _userPhotoUrl;
+
   int _activeBookings = 0;
+
   int _certificates = 0;
+
   bool _isLoading = true;
+
   String? _errorMessage;
 
-  // 🔥 TAMBAHAN VARIABEL BACKGROUND GALERI
+  String _avatarType = 'photo';
+
+  String _avatarId = 'character_01';
+
+  String _frameId = 'none';
+
+  // Variabel Background Galeri LPK
+
   List<String> _bgGallery = [];
+
   int _currentBgIndex = 0;
 
   @override
   void initState() {
     super.initState();
+
     _fetchProfile();
   }
 
-  // ── Fetch profil dari API ─────────────────────────────────────────────────
+  // ── Fetch Profil dari API Backend ─────────────────────────────────────────
+
   Future<void> _fetchProfile() async {
-    if (mounted)
+    if (mounted) {
       setState(() {
         _isLoading = true;
+
         _errorMessage = null;
       });
+    }
 
     try {
       final result = await _api.getProfile();
+
       if (!mounted) return;
 
-      if (result['success']) {
+      if (result['success'] == true) {
         final raw = result['data'];
+
         final data = (raw is Map && raw['data'] != null) ? raw['data'] : raw;
 
-        // 🔥 MENCOBA MENGAMBIL GALERI JIKA DIA ADMIN LPK
+        // Mengambil galeri foto jika user terhubung dengan Admin LPK
+
         List<String> extractedGallery = [];
-        if (data['lpk'] != null && data['lpk']['images'] != null) {
+
+        if (data != null &&
+            data['lpk'] != null &&
+            data['lpk']['images'] != null) {
           final imgs = data['lpk']['images'];
+
           if (imgs is List) {
             extractedGallery =
                 imgs.map((e) => ApiService.toFullUrl(e.toString())).toList();
@@ -62,17 +98,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }
 
         setState(() {
-          _userName = data['name'] ?? 'Pengguna';
-          _userPhone = data['phone'] ?? '';
-          _userPhotoUrl = data['photo_url'] ?? data['avatar'] ?? data['photo'];
-          _activeBookings = data['active_bookings_count'] ?? 0;
-          _certificates = data['certificates_count'] ?? 0;
-          _bgGallery = extractedGallery; // Simpan galeri LPK sebagai Background
+          _userName = data?['name'] ?? 'Pengguna';
+
+          _userPhone = data?['phone'] ?? '';
+
+          _userPhotoUrl = ApiService.toFullUrl(
+            data?['photo_url'] ?? data?['avatar'] ?? data?['photo'],
+          );
+
+          _activeBookings = data?['active_bookings_count'] ?? 0;
+
+          _certificates = data?['certificates_count'] ?? 0;
+
+          _bgGallery = extractedGallery;
+
           _isLoading = false;
+
+          _avatarType = data?['avatar_type'] ?? 'photo';
+
+          _avatarId = data?['avatar_id'] ?? 'character_01';
+
+          _frameId = data?['frame_id'] ?? 'none';
         });
       } else {
         setState(() {
-          _errorMessage = result['message'];
+          _errorMessage = result['message'] ?? 'Gagal memuat profil';
+
           _isLoading = false;
         });
       }
@@ -80,6 +131,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (mounted) {
         setState(() {
           _errorMessage = 'Koneksi gagal';
+
           _isLoading = false;
         });
       }
@@ -88,6 +140,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _navigateToEditProfile(BuildContext context) async {
     final updated = await context.push<bool>(AppRouter.editProfile);
+
     if (updated == true && mounted) {
       _fetchProfile();
     }
@@ -102,6 +155,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: CustomScrollView(
           slivers: [
             // ── App Bar ──────────────────────────────────────────────────
+
             SliverAppBar(
               pinned: true,
               expandedHeight: 0,
@@ -155,24 +209,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildLoadingSkeleton() {
-    return Column(
-      children: [
-        Container(
-          width: double.infinity,
-          height: 220,
-          color: AppColors.primaryLight.withValues(alpha: 0.3),
-          child: const Center(
-              child: CircularProgressIndicator(color: Colors.white)),
-        ),
-      ],
+    return Container(
+      width: double.infinity,
+      height: 220,
+      color: AppColors.primaryLight.withValues(alpha: 0.3),
+      child: const Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      ),
     );
   }
 
-  // ── Hero Header (DENGAN GALERI BACKGROUND) ─────────────────────────────
+  // ── Hero Header (Galeri Background Slider) ─────────────────────────────────
+
   Widget _buildHeroHeader(BuildContext context) {
     return Stack(
       children: [
-        // 🔥 LAYER 1: Background Gradient ATAU Slider Gambar
+        // Layer 1: Background Image Slider / Gradient Fallback
+
         Positioned.fill(
           child: _bgGallery.isNotEmpty
               ? PageView.builder(
@@ -182,18 +235,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     _bgGallery[idx],
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => Container(
-                      decoration:
-                          const BoxDecoration(gradient: AppColors.heroGradient),
+                      decoration: const BoxDecoration(
+                        gradient: AppColors.heroGradient,
+                      ),
                     ),
                   ),
                 )
               : Container(
-                  decoration:
-                      const BoxDecoration(gradient: AppColors.heroGradient),
+                  decoration: const BoxDecoration(
+                    gradient: AppColors.heroGradient,
+                  ),
                 ),
         ),
 
-        // 🔥 LAYER 2: Overlay Hitam (Agar teks & avatar tetap jelas dibaca)
+        // Layer 2: Overlay Transparan agar Teks Mudah Dibaca
+
         if (_bgGallery.isNotEmpty)
           Positioned.fill(
             child: Container(
@@ -201,50 +257,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
 
-        // 🔥 LAYER 3: Konten Utama (Avatar, Nama, Tombol)
+        // Layer 3: Konten Profil Utama
+
         Container(
           width: double.infinity,
           padding: const EdgeInsets.fromLTRB(20, 30, 20, 28),
           child: Column(
             children: [
-              // Avatar
+              // Avatar dengan frame pilihan pengguna
               Stack(
                 alignment: Alignment.center,
+                clipBehavior: Clip.none,
                 children: [
-                  Container(
-                    width: 88,
-                    height: 88,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF5EEAD4), Color(0xFF0D9488)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      border: Border.all(color: Colors.white, width: 3),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.2),
-                          blurRadius: 16,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: ClipOval(
-                      child: _userPhotoUrl != null && _userPhotoUrl!.isNotEmpty
-                          ? Image.network(
-                              _userPhotoUrl!,
-                              fit: BoxFit.cover,
-                              width: 88,
-                              height: 88,
-                              errorBuilder: (_, __, ___) => const Icon(
-                                  Icons.person,
-                                  size: 44,
-                                  color: Colors.white),
-                            )
-                          : const Icon(Icons.person,
-                              size: 44, color: Colors.white),
-                    ),
+                  ProfileFrameAvatar(
+                    size: 88,
+                    frameType: _getFrameType(_frameId),
+                    isCustomPhoto: _avatarType != 'dummy',
+                    imagePath: _userPhotoUrl,
+                    selectedAvatar: _getSelectedAvatar(),
                   ),
                   Positioned(
                     bottom: 0,
@@ -259,8 +289,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           shape: BoxShape.circle,
                           border: Border.all(color: Colors.white, width: 2),
                         ),
-                        child: const Icon(Icons.edit,
-                            size: 14, color: Colors.white),
+                        child: const Icon(
+                          Icons.edit,
+                          size: 14,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
@@ -269,14 +302,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
               const SizedBox(height: 12),
 
-              // Nama
+              // Nama Pengguna
+
               Text(
                 _userName.isEmpty ? 'Pengguna' : _userName,
                 style: AppTypography.titleLarge.copyWith(color: Colors.white),
               ),
+
               const SizedBox(height: 4),
 
-              // Nomor HP
+              // Nomor HP / Pesan Error
+
               if (_errorMessage != null)
                 Container(
                   margin: const EdgeInsets.only(top: 4),
@@ -312,6 +348,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 12),
 
               // Tombol Edit Profil
+
               OutlinedButton.icon(
                 onPressed: () => _navigateToEditProfile(context),
                 icon: const Icon(Icons.edit_outlined, size: 16),
@@ -326,7 +363,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
 
-              // 🔥 INDICATOR DOTS JIKA GALERI LEBIH DARI 1
+              // Indikator Halaman Galeri jika Gambar > 1
+
               if (_bgGallery.length > 1)
                 Padding(
                   padding: const EdgeInsets.only(top: 16),
@@ -355,7 +393,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  AvatarItem? _getSelectedAvatar() {
+    if (_avatarType != 'dummy') return null;
+
+    for (final avatar in dummyAvatars) {
+      if (avatar.id == _avatarId) return avatar;
+    }
+
+    return dummyAvatars.isNotEmpty ? dummyAvatars.first : null;
+  }
+
+  FrameType _getFrameType(String frameId) {
+    switch (frameId) {
+      case 'soft':
+        return FrameType.cute;
+      case 'glow':
+        return FrameType.glow;
+      case 'sparkle':
+        return FrameType.sparkle;
+      case 'gradient':
+        return FrameType.gradient;
+      case 'none':
+      default:
+        return FrameType.simple;
+    }
+  }
+
   // ── Stats Row ─────────────────────────────────────────────────────────────
+
   Widget _buildStatsRow() {
     return Container(
       decoration: BoxDecoration(
@@ -383,13 +448,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             Icon(icon, size: 20, color: AppColors.primary),
             const SizedBox(height: 6),
-            Text(value,
-                style: AppTypography.headlineSmall
-                    .copyWith(color: AppColors.textPrimary, fontSize: 22)),
-            Text(label,
-                style: AppTypography.bodySmall
-                    .copyWith(color: AppColors.textSecondary),
-                textAlign: TextAlign.center),
+            Text(
+              value,
+              style: AppTypography.headlineSmall
+                  .copyWith(color: AppColors.textPrimary, fontSize: 22),
+            ),
+            Text(
+              label,
+              style: AppTypography.bodySmall
+                  .copyWith(color: AppColors.textSecondary),
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),
@@ -400,6 +469,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       Container(width: 1, height: 56, color: AppColors.outline);
 
   // ── Quick Actions ─────────────────────────────────────────────────────────
+
   Widget _buildQuickActions(BuildContext context) {
     final actions = [
       _QuickAction(
@@ -453,10 +523,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: Icon(a.icon, color: a.color, size: 26),
                     ),
                     const SizedBox(height: 6),
-                    Text(a.label,
-                        style: AppTypography.labelSmall
-                            .copyWith(color: AppColors.textSecondary),
-                        textAlign: TextAlign.center),
+                    Text(
+                      a.label,
+                      style: AppTypography.labelSmall
+                          .copyWith(color: AppColors.textSecondary),
+                      textAlign: TextAlign.center,
+                    ),
                   ],
                 ),
               ),
@@ -468,6 +540,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // ── Menu List ─────────────────────────────────────────────────────────────
+
   Widget _buildMenuList(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -531,7 +604,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                    color: iconBg, borderRadius: AppShapes.borderRadiusSM),
+                  color: iconBg,
+                  borderRadius: AppShapes.borderRadiusSM,
+                ),
                 child: Icon(icon, color: iconColor, size: 22),
               ),
               const SizedBox(width: 12),
@@ -540,9 +615,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(title, style: AppTypography.labelLarge),
-                    Text(subtitle,
-                        style: AppTypography.bodySmall
-                            .copyWith(color: AppColors.textSecondary)),
+                    Text(
+                      subtitle,
+                      style: AppTypography.bodySmall
+                          .copyWith(color: AppColors.textSecondary),
+                    ),
                   ],
                 ),
               ),
@@ -551,14 +628,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                      color: AppColors.secondary,
-                      borderRadius: AppShapes.chipRadius),
-                  child: Text(badge,
-                      style: AppTypography.badge.copyWith(color: Colors.white)),
+                    color: AppColors.secondary,
+                    borderRadius: AppShapes.chipRadius,
+                  ),
+                  child: Text(
+                    badge,
+                    style: AppTypography.badge.copyWith(color: Colors.white),
+                  ),
                 )
               else
-                const Icon(Icons.chevron_right,
-                    color: AppColors.textTertiary, size: 20),
+                const Icon(
+                  Icons.chevron_right,
+                  color: AppColors.textTertiary,
+                  size: 20,
+                ),
             ],
           ),
         ),
@@ -569,6 +652,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildDivider() => const Divider(height: 1, indent: 72, endIndent: 16);
 
   // ── Logout ────────────────────────────────────────────────────────────────
+
   Widget _buildLogoutButton(BuildContext context) {
     return SizedBox(
       width: double.infinity,
@@ -602,15 +686,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ElevatedButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.error,
-                foregroundColor: Colors.white,
-                elevation: 0),
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+              elevation: 0,
+            ),
             child: const Text('Keluar'),
           ),
         ],
       ),
     );
-    if (confirmed == true && context.mounted) {
+
+    if (confirmed == true && mounted) {
       await _api.logout();
     }
   }
@@ -618,9 +704,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
 class _QuickAction {
   final IconData icon;
+
   final String label;
+
   final Color color;
+
   final VoidCallback onTap;
+
   const _QuickAction({
     required this.icon,
     required this.label,

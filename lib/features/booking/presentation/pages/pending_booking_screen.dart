@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_shapes.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -15,17 +16,82 @@ class PendingBookingScreen extends StatefulWidget {
 
   @override
   State<PendingBookingScreen> createState() => _PendingBookingScreenState();
+  
 }
 
 class _PendingBookingScreenState extends State<PendingBookingScreen> {
   bool _isApproved = false;
   bool _isCancelled = false;
+  bool _isPaying = false;
   String? _qrUrl;
-  String _statusLabel = 'Menunggu Persetujuan Admin LPK...';
+  String _statusLabel = 'Menunggu pembayaran kursus.';
   Map<String, dynamic>? _bookingData;
   Timer? _timer;
   int _pollCount = 0;
   static const int _maxPolls = 60; // max 5 menit polling (5s * 60)
+  
+  Future<void> _startPayment() async {
+    if (_isPaying) return;
+
+    setState(() {
+      _isPaying = true;
+    });
+
+    try {
+      final response = await sl<ApiClient>().post(
+        '/payment/create-transaction',
+        data: {
+          'order_id': widget.bookingId,
+        },
+      );
+
+      final data = response.data as Map<String, dynamic>;
+      final snapToken = data['snap_token'] as String?;
+
+      if (snapToken == null || snapToken.isEmpty) {
+        throw Exception('Token pembayaran tidak diterima.');
+      }
+
+      final checkoutUri = Uri.https(
+        'app.sandbox.midtrans.com',
+        '/snap/v2/vtweb/$snapToken',
+      );
+
+      final opened = await launchUrl(
+        checkoutUri,
+        mode: LaunchMode.externalApplication,
+      );
+
+      if (!opened) {
+        throw Exception('Halaman pembayaran gagal dibuka.');
+      }
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Checkout dibuka. Silakan selesaikan simulasi pembayaran.',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal membuka pembayaran: $e'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isPaying = false;
+        });
+      }
+    }
+  }
+
 
   @override
   void initState() {
@@ -79,12 +145,17 @@ class _PendingBookingScreenState extends State<PendingBookingScreen> {
             _bookingData = data;
           });
         } else {
-          // Masih pending / Menunggu
-          setState(() {
-            _bookingData = data;
-            _statusLabel = 'Menunggu Persetujuan Admin LPK...';
-          });
-        }
+  setState(() {
+    _bookingData = data;
+
+    if (status == 'menunggu pembayaran' ||
+        status == 'menunggu_pembayaran') {
+      _statusLabel = 'Booking berhasil dibuat. Silakan lakukan pembayaran.';
+    } else {
+      _statusLabel = 'Status booking: ${data['status'] ?? 'Menunggu'}.';
+    }
+  });
+}
       }
     } catch (e) {
       debugPrint("Polling error: $e");
@@ -153,10 +224,35 @@ class _PendingBookingScreenState extends State<PendingBookingScreen> {
         ),
         const SizedBox(height: 32),
 
-        // Info booking (jika sudah ter-load)
-        if (_bookingData != null) _buildBookingInfo(),
+        // Info booking
+if (_bookingData != null) _buildBookingInfo(),
 
-        const Spacer(),
+const SizedBox(height: 24),
+
+// Tombol pembayaran Midtrans
+SizedBox(
+  width: double.infinity,
+  child: ElevatedButton.icon(
+    onPressed: _isPaying ? null : _startPayment,
+    icon: _isPaying
+        ? const SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        : const Icon(Icons.payment),
+    label: Text(
+      _isPaying ? 'Menyiapkan Pembayaran...' : 'Bayar Sekarang',
+    ),
+    style: ElevatedButton.styleFrom(
+      backgroundColor: AppColors.primary,
+      foregroundColor: Colors.white,
+      padding: const EdgeInsets.symmetric(vertical: 16),
+    ),
+  ),
+),
+
+const Spacer(),
 
         // Info polling
         Text(
