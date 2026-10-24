@@ -8,6 +8,7 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_shapes.dart';
 import '../../theme/app_typography.dart';
 import '../../animations/app_animations.dart';
+import '../../services/api_service.dart';
 import '../skeleton/skeleton_loader.dart';
 
 class HeroBanner extends StatefulWidget {
@@ -136,13 +137,25 @@ class _BannerCard extends StatelessWidget {
             // Background Image with Parallax
             Transform.translate(
               offset: Offset(parallaxOffset, 0),
-              child: item.imageUrl.isNotEmpty
-                  ? CachedNetworkImage(
-                      imageUrl: item.imageUrl,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) =>
-                          Container(decoration: BoxDecoration(gradient: AppColors.heroGradient)),
-                      errorWidget: (context, url, error) => CachedNetworkImage(
+              child: () {
+                final resolvedUrl = ApiService.toFullUrl(item.imageUrl);
+                return resolvedUrl.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: resolvedUrl,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) =>
+                            Container(decoration: BoxDecoration(gradient: AppColors.heroGradient)),
+                        errorWidget: (context, url, error) => CachedNetworkImage(
+                          imageUrl:
+                              'https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=1000&auto=format&fit=crop&q=80',
+                          fit: BoxFit.cover,
+                          errorWidget: (context, url, error) => Container(
+                            decoration:
+                                const BoxDecoration(gradient: AppColors.primaryGradient),
+                          ),
+                        ),
+                      )
+                    : CachedNetworkImage(
                         imageUrl:
                             'https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=1000&auto=format&fit=crop&q=80',
                         fit: BoxFit.cover,
@@ -150,17 +163,8 @@ class _BannerCard extends StatelessWidget {
                           decoration:
                               const BoxDecoration(gradient: AppColors.primaryGradient),
                         ),
-                      ),
-                    )
-                  : CachedNetworkImage(
-                      imageUrl:
-                          'https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=1000&auto=format&fit=crop&q=80',
-                      fit: BoxFit.cover,
-                      errorWidget: (context, url, error) => Container(
-                        decoration:
-                            const BoxDecoration(gradient: AppColors.primaryGradient),
-                      ),
-                    ),
+                      );
+              }(),
             ),
             // Gradient Overlay
             Container(

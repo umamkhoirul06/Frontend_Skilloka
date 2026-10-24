@@ -5,6 +5,7 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_shapes.dart';
 import '../../theme/app_typography.dart';
 import '../../animations/app_animations.dart';
+import '../../services/api_service.dart';
 import '../skeleton/skeleton_loader.dart';
 
 class LPKCard extends StatefulWidget {
@@ -171,32 +172,32 @@ class _LPKCardState extends State<LPKCard> with SingleTickerProviderStateMixin {
             borderRadius: AppShapes.borderRadiusMD,
             border: Border.all(color: AppColors.outline, width: 1),
           ),
-          child: widget.logoUrl != null
-              ? ClipRRect(
-                  borderRadius: AppShapes.borderRadiusMD,
-                  child: CachedNetworkImage(
-                    imageUrl: widget.logoUrl!,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) =>
-                        const SkeletonLoader(width: 60, height: 60),
-                    errorWidget: (context, url, error) {
-  debugPrint('IMAGE ERROR');
-  debugPrint('URL: $url');
-  debugPrint('ERROR: $error');
-
-  return const Icon(
-    Icons.business,
-    color: AppColors.textTertiary,
-    size: 28,
-  );
-},
-                  ),
-                )
-              : const Icon(
-                  Icons.business,
-                  color: AppColors.textTertiary,
-                  size: 28,
-                ),
+          child: () {
+            final resolvedLogo = ApiService.toFullUrl(widget.logoUrl);
+            return resolvedLogo.isNotEmpty
+                ? ClipRRect(
+                    borderRadius: AppShapes.borderRadiusMD,
+                    child: CachedNetworkImage(
+                      imageUrl: resolvedLogo,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) =>
+                          const SkeletonLoader(width: 60, height: 60),
+                      errorWidget: (context, url, error) {
+                        debugPrint('LPKCard image load error ($url): $error');
+                        return const Icon(
+                          Icons.business,
+                          color: AppColors.textTertiary,
+                          size: 28,
+                        );
+                      },
+                    ),
+                  )
+                : const Icon(
+                    Icons.business,
+                    color: AppColors.textTertiary,
+                    size: 28,
+                  );
+          }(),
         ),
         // Verified badge overlay
         if (widget.isVerified)
