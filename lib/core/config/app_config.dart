@@ -14,7 +14,7 @@ class AppConfig {
 
   /// IP PC kamu di jaringan WiFi lokal (hanya untuk devDevice).
   /// Cek dengan: `ipconfig` (Windows) → IPv4 Address
-  static const String _deviceIp = '10.0.168.202';
+  static const String _deviceIp = '192.168.0.116';
 
   static String get _localHost {
     if (kIsWeb ||
@@ -22,7 +22,7 @@ class AppConfig {
         defaultTargetPlatform == TargetPlatform.macOS ||
         defaultTargetPlatform == TargetPlatform.linux ||
         defaultTargetPlatform == TargetPlatform.iOS) {
-      return 'localhost:8000';
+      return '127.0.0.1:8000';
     }
     // Android emulator
     return '10.0.2.2:8000';
@@ -47,5 +47,12 @@ class AppConfig {
   static String get baseStorageUrl => '$baseOrigin/storage';
 
   static bool get enableLogging => environment != AppEnvironment.prod;
+
+  /// Google Gemini Free Tier API Key (can be injected via --dart-define=GEMINI_API_KEY=xxx or overridden in runtime)
+  /// Set your own key via the chatbot settings dialog (gear icon) or provide via --dart-define=GEMINI_API_KEY=AIzaSy...
+  static String geminiApiKey = const String.fromEnvironment(
+    'GEMINI_API_KEY',
+    defaultValue: '', // Leave empty to use built-in local reasoning; set real key via settings or --dart-define
+  );
 }
 

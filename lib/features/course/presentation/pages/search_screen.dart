@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/services/api_service.dart';
@@ -433,87 +434,157 @@ class _CourseResultCard extends StatelessWidget {
     final level = course['level']?.toString() ?? '';
     final duration = course['duration_hours']?.toString();
 
+    String rawImg = '';
+    if (course['images'] != null) {
+      final imgs = course['images'];
+      if (imgs is List && imgs.isNotEmpty) {
+        rawImg = imgs[0].toString();
+      } else if (imgs is String && imgs.isNotEmpty) {
+        rawImg = imgs;
+      }
+    }
+    if (rawImg.isEmpty) {
+      rawImg = (course['image_url'] ??
+              course['image'] ??
+              course['thumbnail'] ??
+              course['cover_image'] ??
+              '')
+          .toString();
+    }
+    final imageUrl = ApiService.toFullUrl(rawImg);
+
     return Card(
       elevation: 0,
+      margin: const EdgeInsets.symmetric(vertical: 4),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         side: const BorderSide(color: AppColors.outline),
       ),
       color: AppColors.surface,
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         onTap: () => context.push(AppRouter.courseDetailPath(id)),
         child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
+          padding: const EdgeInsets.all(12),
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  if (catName.isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        catName,
-                        style: AppTypography.labelSmall.copyWith(
-                          color: AppColors.primary,
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: SizedBox(
+                  width: 90,
+                  height: 90,
+                  child: imageUrl.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: imageUrl,
+                          fit: BoxFit.cover,
+                          placeholder: (_, __) => Container(
+                            color: AppColors.surfaceVariant,
+                            child: const Center(
+                              child: SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                          ),
+                          errorWidget: (_, __, ___) => Container(
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                            child: const Center(
+                              child: Icon(Icons.school_rounded,
+                                  color: AppColors.primary, size: 28),
+                            ),
+                          ),
+                        )
+                      : Container(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          child: const Center(
+                            child: Icon(Icons.school_rounded,
+                                color: AppColors.primary, size: 28),
+                          ),
                         ),
-                      ),
-                    ),
-                  const Spacer(),
-                  if (level.isNotEmpty)
-                    Text(
-                      _levelLabel(level),
-                      style: AppTypography.labelSmall.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                title,
-                style: AppTypography.titleSmall.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                lpkName,
-                style: AppTypography.bodySmall.copyWith(
-                  color: AppColors.textSecondary,
                 ),
               ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Text(
-                    formattedPrice,
-                    style: AppTypography.titleSmall.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w700,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        if (catName.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              catName,
+                              style: AppTypography.labelSmall.copyWith(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        const Spacer(),
+                        if (level.isNotEmpty)
+                          Text(
+                            _levelLabel(level),
+                            style: AppTypography.labelSmall.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                      ],
                     ),
-                  ),
-                  const Spacer(),
-                  if (duration != null) ...[
-                    Icon(Icons.access_time,
-                        size: 14, color: AppColors.textSecondary),
-                    const SizedBox(width: 4),
+                    const SizedBox(height: 6),
                     Text(
-                      '$duration jam',
-                      style: AppTypography.labelSmall.copyWith(
+                      title,
+                      style: AppTypography.titleSmall.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      lpkName,
+                      style: AppTypography.bodySmall.copyWith(
                         color: AppColors.textSecondary,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Text(
+                          formattedPrice,
+                          style: AppTypography.titleSmall.copyWith(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const Spacer(),
+                        if (duration != null && duration.isNotEmpty) ...[
+                          Icon(Icons.access_time,
+                              size: 14, color: AppColors.textSecondary),
+                          const SizedBox(width: 4),
+                          Text(
+                            '$duration jam',
+                            style: AppTypography.labelSmall.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ],
-                ],
+                ),
               ),
             ],
           ),
@@ -577,14 +648,15 @@ class _LPKResultCard extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
                 child: logoUrl.isNotEmpty
-                    ? Image.network(
-                        logoUrl,
+                    ? CachedNetworkImage(
+                        imageUrl: logoUrl,
                         width: 56,
                         height: 56,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _LPKPlaceholder(),
+                        placeholder: (_, __) => const _LPKPlaceholder(),
+                        errorWidget: (_, __, ___) => const _LPKPlaceholder(),
                       )
-                    : _LPKPlaceholder(),
+                    : const _LPKPlaceholder(),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -650,16 +722,18 @@ class _LPKResultCard extends StatelessWidget {
 }
 
 class _LPKPlaceholder extends StatelessWidget {
+  const _LPKPlaceholder();
+
   @override
   Widget build(BuildContext context) {
     return Container(
       width: 56,
       height: 56,
       decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
+        color: AppColors.primary.withOpacity(0.08),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: const Icon(Icons.business, color: AppColors.textTertiary),
+      child: const Icon(Icons.business_rounded, color: AppColors.primary, size: 28),
     );
   }
 }

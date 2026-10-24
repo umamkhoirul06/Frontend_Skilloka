@@ -142,11 +142,25 @@ class _BannerCard extends StatelessWidget {
                       fit: BoxFit.cover,
                       placeholder: (context, url) =>
                           Container(decoration: BoxDecoration(gradient: AppColors.heroGradient)),
-                      errorWidget: (context, url, error) => Container(
-                        decoration: BoxDecoration(gradient: AppColors.heroGradient),
+                      errorWidget: (context, url, error) => CachedNetworkImage(
+                        imageUrl:
+                            'https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=1000&auto=format&fit=crop&q=80',
+                        fit: BoxFit.cover,
+                        errorWidget: (context, url, error) => Container(
+                          decoration:
+                              const BoxDecoration(gradient: AppColors.primaryGradient),
+                        ),
                       ),
                     )
-                  : Container(decoration: BoxDecoration(gradient: AppColors.heroGradient)),
+                  : CachedNetworkImage(
+                      imageUrl:
+                          'https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=1000&auto=format&fit=crop&q=80',
+                      fit: BoxFit.cover,
+                      errorWidget: (context, url, error) => Container(
+                        decoration:
+                            const BoxDecoration(gradient: AppColors.primaryGradient),
+                      ),
+                    ),
             ),
             // Gradient Overlay
             Container(
@@ -256,14 +270,6 @@ class GreetingBanner extends StatelessWidget {
     return 'Selamat malam';
   }
 
-  String get _emoji {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return '☀️';
-    if (hour < 15) return '🌤️';
-    if (hour < 18) return '🌅';
-    return '🌙';
-  }
-
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -275,9 +281,10 @@ class GreetingBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '$_greeting, $_emoji',
+                  _greeting,
                   style: AppTypography.bodyMedium.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
                 const SizedBox(height: 2),

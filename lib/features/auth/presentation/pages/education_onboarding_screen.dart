@@ -4,6 +4,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/navigation/app_router.dart';
 import '../../../../core/services/api_service.dart';
+import '../../../../core/services/course_relevance_service.dart';
 
 /// Onboarding Pendidikan — PRD 8.3
 /// Muncul setelah login pertama jika profil pendidikan belum lengkap
@@ -53,30 +54,31 @@ class _EducationOnboardingScreenState
 
     setState(() => _isLoading = true);
     try {
-      final result = await _api.updateEducationProfile(
+      // Data Security: Sanitize inputs to prevent malformed or malicious payloads
+      final cleanMajor = CourseRelevanceService.sanitizeInput(_majorController.text);
+      final cleanLocation = CourseRelevanceService.sanitizeInput(_locationController.text);
+
+      final preference = UserProfilePreference(
         educationLevel: _selectedLevel!,
-        major: _majorController.text.trim(),
-        careerGoal: _selectedGoal,
-        preferredLocation: _locationController.text.trim().isEmpty
-            ? null
-            : _locationController.text.trim(),
+        major: cleanMajor,
+        careerGoal: _selectedGoal ?? 'Meningkatkan keahlian kerja',
+        preferredLocation: cleanLocation.isEmpty ? null : cleanLocation,
+      );
+
+      // Secure hardware-backed storage for user profiling
+      await CourseRelevanceService.savePreference(preference);
+
+      // Send to backend API
+      await _api.updateEducationProfile(
+        educationLevel: preference.educationLevel,
+        major: preference.major,
+        careerGoal: preference.careerGoal,
+        preferredLocation: preference.preferredLocation,
       );
 
       if (mounted) {
-        if (result['success'] == true) {
-          context.go(AppRouter.home);
-        } else {
-          // Jika gagal simpan ke backend, tetap lanjut ke home
-          // (data disimpan lokal lewat SharedPreferences jika perlu)
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['message'] ?? 'Gagal menyimpan profil pendidikan'),
-              backgroundColor: AppColors.warning,
-            ),
-          );
-          // Tetap lanjut ke home meski gagal simpan
-          context.go(AppRouter.home);
-        }
+        // Direct navigation to algorithmically relevant courses!
+        context.go(AppRouter.relevantCourses, extra: preference);
       }
     } catch (e) {
       if (mounted) {

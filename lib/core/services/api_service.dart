@@ -21,26 +21,59 @@ class ApiService {
     ),
   );
 
-  // ── Konversi path relatif ke full URL ──────────────────────────────
+  // ── Konversi path relatif ke full URL ──────────────────────────────────────
+  //
+  // Backend Laravel mengembalikan URL gambar sebagai full URL seperti:
+  //   http://127.0.0.1:8000/storage/courses/xxx.jpg
+  //
+  // Di emulator Android, 127.0.0.1 tidak bisa diakses — harus 10.0.2.2.
+  // Di physical device, harus pakai IP LAN PC host.
+  // Fungsi ini menormalisasi semua URL relatif maupun absolut ke domain
+  // yang dikonfigurasi di AppConfig.baseOrigin (sesuai environment aktif).
   static String toFullUrl(String? path) {
-    if (path == null || path.isEmpty) return '';
-    var url = path.trim();
-    if (url.startsWith('http://127.0.0.1:8000') ||
-        url.startsWith('http://localhost:8000')) {
-      final origin = AppConfig.baseOrigin;
-      return url
-          .replaceFirst('http://127.0.0.1:8000', origin)
-          .replaceFirst('http://localhost:8000', origin);
+    if (path == null) return '';
+    var url = path.trim().replaceAll(r'\/', '/').replaceAll(r'\', '/');
+    if (url.isEmpty) return '';
+
+    // Bersihkan format string array JSON seperti '["courses/xxx.jpg"]' atau '"courses/xxx.jpg"'
+    if (url.startsWith('["') && url.endsWith('"]')) {
+      url = url.substring(2, url.length - 2).trim();
+    } else if (url.startsWith("['") && url.endsWith("']")) {
+      url = url.substring(2, url.length - 2).trim();
+    } else if (url.startsWith('[') && url.endsWith(']')) {
+      url = url.substring(1, url.length - 1).replaceAll('"', '').replaceAll("'", '').trim();
     }
+    if ((url.startsWith('"') && url.endsWith('"')) || (url.startsWith("'") && url.endsWith("'"))) {
+      url = url.substring(1, url.length - 1).trim();
+    }
+    if (url.isEmpty) return '';
+
+    final origin = AppConfig.baseOrigin; // e.g. http://10.0.2.2:8000 atau http://127.0.0.1:8000
+
+    // Jika URL sudah menggunakan baseOrigin yang benar — kembalikan apa adanya
+    if (url.startsWith(origin)) return url;
+
+    // Ganti domain lokal apapun (127.0.0.1:8000, localhost:8000, 10.0.2.2:8000, 192.168.x.x:8000)
+    // ke baseOrigin yang aktif saat ini.
+    final localPattern = RegExp(r'^https?://(localhost|127\.0\.0\.1|10\.0\.2\.2|192\.168\.\d+\.\d+)(:\d+)?');
+    if (localPattern.hasMatch(url)) {
+      return url.replaceFirst(localPattern, origin);
+    }
+
+    // URL absolut eksternal (Unsplash, HTTPS production, dsb) — biarkan apa adanya
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
-    if (url.startsWith('/storage/')) {
-      return '${AppConfig.baseOrigin}$url';
-    }
-    if (url.startsWith('storage/')) {
-      return '${AppConfig.baseOrigin}/$url';
-    }
+
+    // Bersihkan prefix 'public/' jika ada
+    if (url.startsWith('public/')) url = url.substring(7);
+    if (url.startsWith('/public/')) url = url.substring(8);
+
+    // Path relatif: /storage/... atau storage/...
+    if (url.startsWith('/storage/')) return '$origin$url';
+    if (url.startsWith('storage/')) return '$origin/$url';
+
+    // Path lainnya (misal: 'courses/xxx.jpg' atau 'lpks/xxx.png')
     final clean = url.startsWith('/') ? url.substring(1) : url;
-    return '$storageUrl/$clean';
+    return '$origin/storage/$clean';
   }
 
   // â”€â”€ Token Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -123,12 +156,18 @@ class ApiService {
   Future<Map<String, dynamic>> requestOtp(String phone,
       {String channel = 'whatsapp'}) async {
     try {
-      final r = await http.post(Uri.parse('$baseUrl/auth/request-otp'),
+      final body = jsonEncode({'phone': phone, 'channel': channel});
+      var r = await http.post(Uri.parse('$baseUrl/auth/request-otp'),
           headers: _publicHeaders,
-          body: jsonEncode({'phone': phone, 'channel': channel})).timeout(
+          body: body).timeout(
         const Duration(seconds: 15),
         onTimeout: () => http.Response('{"message":"Koneksi timeout. Server tidak merespons."}', 408),
       );
+      if (r.statusCode == 404) {
+        // Fallback ke endpoint PRD v2 /auth/otp/request
+        r = await http.post(Uri.parse('$baseUrl/auth/otp/request'),
+            headers: _publicHeaders, body: body);
+      }
       return _handleResponse(r);
     } on http.ClientException catch (e) {
       return {'success': false, 'message': 'Gagal terhubung ke server: ${e.message}'};
@@ -139,12 +178,22 @@ class ApiService {
 
   Future<Map<String, dynamic>> verifyOtp(String phone, String otp) async {
     try {
-      final r = await http.post(Uri.parse('$baseUrl/auth/verify-otp'),
+      final body = jsonEncode({
+        'phone': phone,
+        'otp_code': otp,
+        'otp': otp,
+      });
+      var r = await http.post(Uri.parse('$baseUrl/auth/verify-otp'),
           headers: _publicHeaders,
-          body: jsonEncode({'phone': phone, 'otp_code': otp})).timeout(
+          body: body).timeout(
         const Duration(seconds: 15),
         onTimeout: () => http.Response('{"message":"Koneksi timeout. Server tidak merespons."}', 408),
       );
+      if (r.statusCode == 404) {
+        // Fallback ke endpoint PRD v2 /auth/otp/verify
+        r = await http.post(Uri.parse('$baseUrl/auth/otp/verify'),
+            headers: _publicHeaders, body: body);
+      }
       final result = _handleResponse(r);
       if (result['success']) {
         final d = result['data'];
@@ -326,9 +375,13 @@ class ApiService {
 
   Future<Map<String, dynamic>> cancelBooking(String bookingId) async {
     try {
-      final r = await http.patch(
-          Uri.parse('$baseUrl/bookings/$bookingId/cancel'),
-          headers: await _authHeaders());
+      final uri = Uri.parse('$baseUrl/bookings/$bookingId/cancel');
+      final headers = await _authHeaders();
+      var r = await http.post(uri, headers: headers);
+      if (r.statusCode == 405) {
+        // Fallback jika backend lama memakai PATCH
+        r = await http.patch(uri, headers: headers);
+      }
       return _handleResponse(r);
     } catch (e) {
       return {'success': false, 'message': 'Koneksi gagal: $e'};
@@ -609,6 +662,18 @@ class ApiService {
     try {
       final r = await http.get(
         Uri.parse('$baseUrl/subscriptions'),
+        headers: await _authHeaders(),
+      );
+      return _handleResponse(r);
+    } catch (e) {
+      return {'success': false, 'message': 'Koneksi gagal: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> getSubscriptionDetail(String id) async {
+    try {
+      final r = await http.get(
+        Uri.parse('$baseUrl/subscriptions/$id'),
         headers: await _authHeaders(),
       );
       return _handleResponse(r);

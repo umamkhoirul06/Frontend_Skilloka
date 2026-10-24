@@ -72,10 +72,16 @@ class _LPKCardState extends State<LPKCard> with SingleTickerProviderStateMixin {
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
           borderRadius: AppShapes.cardRadius,
+          border: Border.all(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? AppColors.outlineDark
+                : AppColors.outline,
+            width: 1,
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 12,
+              color: const Color(0xFF0F172A).withValues(alpha: 0.05),
+              blurRadius: 14,
               offset: const Offset(0, 4),
             ),
           ],

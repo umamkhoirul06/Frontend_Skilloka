@@ -1,5 +1,7 @@
 /// Course Card with parallax, rolling price, and rating animations
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../services/api_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_shapes.dart';
 import '../../theme/app_typography.dart';
@@ -86,6 +88,12 @@ class _CourseCardState extends State<CourseCard>
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
             borderRadius: AppShapes.cardRadius,
+            border: Border.all(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? AppColors.outlineDark
+                  : AppColors.outline,
+              width: 1,
+            ),
             boxShadow: _isPressed
                 ? [
                     BoxShadow(
@@ -96,9 +104,9 @@ class _CourseCardState extends State<CourseCard>
                   ]
                 : [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.08),
-                      blurRadius: 16,
-                      offset: const Offset(0, 8),
+                      color: const Color(0xFF0F172A).withValues(alpha: 0.05),
+                      blurRadius: 14,
+                      offset: const Offset(0, 4),
                     ),
                   ],
           ),
@@ -220,37 +228,110 @@ class _CourseCardState extends State<CourseCard>
     );
   }
 
-  Widget _buildHeroImage() {
-    final String rawUrl = widget.imageUrl;
+  Widget _buildPlaceholder() {
+    IconData icon = Icons.school_rounded;
+    final cat = (widget.category ?? '').toLowerCase();
+    final tit = widget.title.toLowerCase();
 
-    // Pengaman: Pastikan URL-nya benar-benar ada "http"-nya
-    final String safeImageUrl = rawUrl.startsWith('http')
-        ? rawUrl
-        : 'https://skilloka.my.id/storage/$rawUrl';
+    if (cat.contains('teknologi') ||
+        cat.contains('digital') ||
+        cat.contains('it') ||
+        cat.contains('komputer') ||
+        tit.contains('web') ||
+        tit.contains('coding') ||
+        tit.contains('flutter')) {
+      icon = Icons.terminal_rounded;
+    } else if (cat.contains('desain') || tit.contains('grafis')) {
+      icon = Icons.palette_rounded;
+    } else if (cat.contains('otomotif') ||
+        cat.contains('manufaktur') ||
+        cat.contains('mesin') ||
+        cat.contains('las') ||
+        tit.contains('bubut') ||
+        tit.contains('cnc')) {
+      icon = Icons.precision_manufacturing_rounded;
+    } else if (cat.contains('bahasa') ||
+        tit.contains('jepang') ||
+        tit.contains('inggris')) {
+      icon = Icons.language_rounded;
+    } else if (cat.contains('hotel') ||
+        cat.contains('kuliner') ||
+        cat.contains('barista')) {
+      icon = Icons.restaurant_rounded;
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primary.withValues(alpha: 0.12),
+            AppColors.secondary.withValues(alpha: 0.08),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 38,
+              color: AppColors.primary.withValues(alpha: 0.65),
+            ),
+            const SizedBox(height: 6),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Text(
+                widget.category ?? 'Kursus',
+                style: AppTypography.labelSmall.copyWith(
+                  color: AppColors.primary.withValues(alpha: 0.8),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeroImage() {
+    final String rawUrl = widget.imageUrl.trim();
+    final String resolvedUrl = ApiService.toFullUrl(rawUrl);
 
     return ClipRRect(
       borderRadius: BorderRadius.only(
         topLeft: Radius.circular(AppShapes.radiusLG),
         topRight: Radius.circular(AppShapes.radiusLG),
       ),
-      child: Image.network(
-        safeImageUrl,
-        fit: BoxFit.cover,
-        // 🔥 SURAT IZIN UNTUK CHROME AGAR TIDAK DIBLOKIR CORS!
-        headers: const {
-          'Access-Control-Allow-Origin': '*',
-        },
-        errorBuilder: (context, error, stackTrace) => Container(
-          color: AppColors.surfaceVariant,
-          child: Center(
-            child: Icon(
-              Icons.image_not_supported_outlined,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              size: 32,
-            ),
-          ),
-        ),
-      ),
+      child: resolvedUrl.isNotEmpty
+          ? CachedNetworkImage(
+              imageUrl: resolvedUrl,
+              fit: BoxFit.cover,
+              placeholder: (context, url) => Container(
+                color: AppColors.surfaceVariant,
+                child: const Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+              ),
+              errorWidget: (context, url, error) {
+                debugPrint('CourseCard failed to load image ($url): $error');
+                return _buildPlaceholder();
+              },
+            )
+          : _buildPlaceholder(),
     );
   }
 

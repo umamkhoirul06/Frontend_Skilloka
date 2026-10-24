@@ -1,8 +1,9 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/services/api_service.dart';
+import '../../../../core/services/gemini_chatbot_service.dart';
 import '../../../../core/widgets/chatbot_avatar_3d.dart';
 
 /// Chatbot Screen — PRD section 20
@@ -40,12 +41,14 @@ class _ChatbotScreenState extends State<ChatbotScreen>
 
     _messages.add(_ChatMessage(
       text:
-          'Halo! Saya **Asisten AI Skilloka**.\n\nSaya siap membantu Anda:\n• Menemukan kursus dan pelatihan sesuai minat keahlian\n• Informasi lembaga LPK terverifikasi dan jadwal kelas\n• Panduan proses pendaftaran dan pembayaran kursus\n• Ketentuan sertifikasi kompetensi resmi Disnaker\n\nAda yang ingin Anda tanyakan?',
+          'Halo! Saya **Loka**, Konsultan Karir & Asisten AI resmi Skilloka.\n\nSaya siap mendampingi perjalanan karirmu:\n• **Konsultasi Karir & Minat**: Bingung menentukan bidang kerja atau ingin beralih profesi?\n• **Teman Curhat & Motivasi**: Merasa cemas, minder, atau overthinking soal masa depan? Ceritakan saja, saya siap mendengarkan!\n• **Rekomendasi LPK & Kursus**: Panduan pelatihan teknik las, otomotif, IT/digital, bahasa asing, hingga tata boga & perhotelan.\n• **Sertifikasi BNSP & Disnaker**: Informasi standar kompetensi kerja resmi.\n\nAda hal yang ingin kamu diskusikan atau tanyakan hari ini?',
       isBot: true,
       time: DateTime.now(),
     ));
 
     _loadHistory();
+    // Preload live courses from backend database so Loka has latest courses
+    GeminiChatbotService.instance.getOrFetchLiveCourses(forceRefresh: true);
   }
 
   @override
@@ -72,17 +75,25 @@ class _ChatbotScreenState extends State<ChatbotScreen>
 
         final historyMessages = rawList.expand((e) {
           final msg = Map<String, dynamic>.from(e as Map);
+          final userMsg = msg['user_message']?.toString();
+          final botResp = msg['bot_response']?.toString();
+
+          // Filter out dummy response "Chatbot response generated" dari backend mock
+          final isDummy = botResp != null &&
+              (botResp.toLowerCase().contains('response generated') ||
+                  botResp.toLowerCase() == 'message sent');
+
           return [
-            if (msg['user_message'] != null)
+            if (userMsg != null && userMsg.isNotEmpty)
               _ChatMessage(
-                text: msg['user_message'].toString(),
+                text: userMsg,
                 isBot: false,
                 time: DateTime.tryParse(msg['created_at']?.toString() ?? '') ??
                     DateTime.now(),
               ),
-            if (msg['bot_response'] != null)
+            if (botResp != null && botResp.isNotEmpty && !isDummy)
               _ChatMessage(
-                text: msg['bot_response'].toString(),
+                text: botResp,
                 isBot: true,
                 time: DateTime.tryParse(msg['created_at']?.toString() ?? '') ??
                     DateTime.now(),
@@ -115,24 +126,24 @@ class _ChatbotScreenState extends State<ChatbotScreen>
     });
     _scrollToBottom();
 
+    // Map conversation history for multi-turn Gemini reasoning
+    final history = _messages
+        .take(_messages.length - 1)
+        .map((m) => {
+              'role': m.isBot ? 'model' : 'user',
+              'text': m.text,
+            })
+        .toList();
+
+    // Sync ke backend di background (non-blocking) agar riwayat tetap tersimpan di server
+    _api.sendChatbotMessage(text).catchError((_) => <String, dynamic>{});
+
     try {
-      final result = await _api.sendChatbotMessage(text);
-      String reply = '';
-
-      if (result['success'] == true) {
-        final data = result['data'];
-        if (data is Map) {
-          reply = (data['reply'] ?? data['response'] ?? data['message'] ?? '')
-              .toString();
-        } else if (data is String) {
-          reply = data;
-        }
-      }
-
-      // Jika backend tidak mengembalikan reply (endpoint tidak ada atau error), gunakan fallback lokal
-      if (reply.isEmpty) {
-        reply = _generateLocalReply(text);
-      }
+      // Prioritaskan Gemini AI / Loka reasoning engine agar jawaban cerdas, empatik, dan solutif
+      final reply = await GeminiChatbotService.instance.getChatResponse(
+        userMessage: text,
+        chatHistory: history,
+      );
 
       if (mounted && reply.isNotEmpty) {
         setState(() {
@@ -145,9 +156,11 @@ class _ChatbotScreenState extends State<ChatbotScreen>
         _scrollToBottom();
       }
     } catch (e) {
-      // Saat koneksi gagal, gunakan fallback lokal
-      final fallback = _generateLocalReply(text);
       if (mounted) {
+        final fallback = await GeminiChatbotService.instance.getChatResponse(
+          userMessage: text,
+          chatHistory: history,
+        );
         setState(() {
           _messages.add(_ChatMessage(
             text: fallback,
@@ -160,52 +173,6 @@ class _ChatbotScreenState extends State<ChatbotScreen>
     } finally {
       if (mounted) setState(() => _isSending = false);
     }
-  }
-
-  /// Fallback jawaban lokal ketika backend chatbot tidak tersedia
-  String _generateLocalReply(String userMessage) {
-    final msg = userMessage.toLowerCase();
-
-    if (msg.contains('kursus') &&
-        (msg.contains('apa') || msg.contains('tersedia') || msg.contains('ada'))) {
-      return 'Di Skilloka tersedia berbagai pilihan bidang kursus kejuruan:\n\n• **Teknik & Otomotif**: Pelatihan las listrik/argon, mekanik motor/mobil, dan operator bubut CNC.\n• **Teknologi & Digital**: Administrasi perkantoran, desain grafis multimedia, dan pemrograman web.\n• **Bahasa Asing**: Bahasa Jepang, Korea, dan Inggris untuk persiapan karir luar negeri.\n• **Bisnis & Manajemen**: Manajemen ritel, akuntansi dasar, dan kewirausahaan.\n• **Pariwisata & Jasa**: Perhotelan, tata boga kuliner, barista, dan tata rias.\n\nSilakan buka menu **Pencarian** untuk melihat daftar kurikulum dan silabus lengkap.';
-    }
-
-    if (msg.contains('booking') || msg.contains('daftar') || msg.contains('cara')) {
-      return 'Tahapan pendaftaran kursus di Skilloka:\n\n1. Pilih program pelatihan yang diminati pada katalog kursus.\n2. Klik tombol "Daftar Sekarang" pada halaman detail kursus.\n3. Pilih jadwal kelas dan batch pelatihan yang tersedia.\n4. Konfirmasi data diri peserta dan pilih metode pembayaran.\n5. Selesaikan transaksi via Transfer Bank atau QRIS.\n\nNotifikasi bukti pendaftaran resmi akan otomatis dikirimkan ke akun dan WhatsApp Anda.';
-    }
-
-    if (msg.contains('biaya') || msg.contains('harga') || msg.contains('bayar')) {
-      return 'Kisaran biaya pelatihan di Skilloka disesuaikan dengan jenis dan durasi program:\n\n• **Program Singkat (1–2 minggu)**: Rp 500.000 – Rp 1.500.000\n• **Program Reguler (1–3 bulan)**: Rp 1.500.000 – Rp 5.000.000\n• **Program Sertifikasi Profesi**: Rp 3.000.000 – Rp 8.000.000\n\nBeberapa program juga didukung subsidi program pelatihan Disnaker. Informasi biaya transparan dapat dicek pada tiap detail kursus.';
-    }
-
-    if (msg.contains('sertifikat') || msg.contains('syarat')) {
-      return 'Syarat kelulusan untuk memperoleh sertifikat pelatihan:\n\n• Tingkat kehadiran tatap muka/praktik minimal 80%\n• Menyelesaikan seluruh modul tugas dan praktik keahlian\n• Lulus evaluasi uji kompetensi akhir dengan nilai minimal 70/100\n\nSertifikat diterbitkan resmi oleh LPK berizin Disnaker dan dilengkapi verifikasi QR Code.';
-    }
-
-    if (msg.contains('lpk') || msg.contains('lembaga') || msg.contains('terdekat')) {
-      return 'Seluruh LPK yang bermitra dengan Skilloka telah terverifikasi secara resmi oleh Disnaker Indramayu.\n\nAnda dapat memfilter lembaga pelatihan berdasarkan kecamatan, meninjau profil fasilitas, rekam jejak instruktur, serta ulasan alumni di menu **Pencarian LPK**.';
-    }
-
-    if (msg.contains('halo') ||
-        msg.contains('hi') ||
-        msg.contains('hai') ||
-        msg.contains('hello')) {
-      return 'Halo! Senang dapat menyapa Anda di Skilloka. Apakah ada informasi kursus, rekomendasi LPK, atau panduan pendaftaran yang ingin Anda ketahui?';
-    }
-
-    if (msg.contains('terima kasih') ||
-        msg.contains('makasih') ||
-        msg.contains('thanks')) {
-      return 'Sama-sama. Semoga pelatihan yang Anda pilih dapat menunjang perkembangan karir Anda. Jangan ragu bertanya kembali jika membutuhkan bantuan.';
-    }
-
-    // Default fallback
-    final responses = [
-      'Terima kasih atas pertanyaan Anda. Untuk informasi lebih spesifik mengenai "$userMessage", silakan telusuri katalog kursus di menu Pencarian atau hubungi LPK terkait melalui rincian kontak di aplikasi.',
-      'Pertanyaan Anda sedang kami catat. Anda juga dapat melihat jadwal kelas terbaru atau berkonsultasi mengenai persyaratan pelatihan di menu Beranda dan Pencarian.',
-    ];
-    return responses[Random().nextInt(responses.length)];
   }
 
   void _scrollToBottom() {
@@ -221,11 +188,12 @@ class _ChatbotScreenState extends State<ChatbotScreen>
   }
 
   final List<String> _quickReplies = [
-    'Kursus yang tersedia',
-    'Cara pendaftaran kursus',
-    'Kisaran biaya kursus',
-    'Syarat sertifikat kompetensi',
-    'Rekomendasi LPK terdekat',
+    'Kursus apa saja yang tersedia sekarang?',
+    'Rekomendasi kursus untuk pemula',
+    'Prospek kerja teknik las & otomotif',
+    'Cara magang ke Jepang lewat LPK',
+    'Apa keuntungan sertifikat BNSP?',
+    'Cara pendaftaran kursus di Skilloka',
   ];
 
   @override
@@ -299,7 +267,7 @@ class _ChatbotScreenState extends State<ChatbotScreen>
           ),
           const SizedBox(height: 14),
           Text(
-            'Asisten Virtual AI Skilloka',
+            'Loka — Konsultan Karir & Teman Curhat',
             style: AppTypography.titleMedium.copyWith(
               fontWeight: FontWeight.w700,
               color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -307,7 +275,7 @@ class _ChatbotScreenState extends State<ChatbotScreen>
           ),
           const SizedBox(height: 4),
           Text(
-            'Pusat informasi pelatihan kejuruan & LPK resmi di Indramayu',
+            'Konsultasi karir vokasi, rekomendasi LPK resmi, & bimbingan masa depan',
             textAlign: TextAlign.center,
             style: AppTypography.bodySmall.copyWith(
               color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
@@ -344,7 +312,7 @@ class _ChatbotScreenState extends State<ChatbotScreen>
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Asisten Skilloka',
+              Text('Loka AI • Skilloka',
                   style: AppTypography.titleSmall
                       .copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
               Row(
@@ -365,7 +333,7 @@ class _ChatbotScreenState extends State<ChatbotScreen>
                       ],
                     ),
                   ),
-                  Text('Online',
+                  Text('Konsultan Aktif',
                       style: AppTypography.bodySmall.copyWith(
                           color: Colors.white.withValues(alpha: 0.85),
                           fontSize: 11)),
@@ -377,6 +345,12 @@ class _ChatbotScreenState extends State<ChatbotScreen>
       ),
       actions: [
         IconButton(
+          icon: const Icon(Icons.tune_rounded, size: 20),
+          color: Colors.white.withValues(alpha: 0.9),
+          tooltip: 'Pengaturan Gemini AI',
+          onPressed: _showGeminiSettingsDialog,
+        ),
+        IconButton(
           icon: Icon(Icons.delete_outline_rounded,
               color: Colors.white.withValues(alpha: 0.8), size: 20),
           onPressed: () {
@@ -387,6 +361,201 @@ class _ChatbotScreenState extends State<ChatbotScreen>
           tooltip: 'Hapus riwayat',
         ),
       ],
+    );
+  }
+
+  Future<void> _showGeminiSettingsDialog() async {
+    final hasKey = await GeminiChatbotService.instance.hasApiKey();
+    final currentKey = await GeminiChatbotService.instance.getApiKey();
+    if (!mounted) return;
+
+    final keyController = TextEditingController(text: currentKey);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E293B) : Colors.white,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.auto_awesome_rounded,
+                          color: AppColors.primary, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Pengaturan Gemini AI',
+                            style: AppTypography.titleSmall.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          Text(
+                            hasKey
+                                ? 'Status: Aktif dengan Google Gemini API'
+                                : 'Status: Aktif dengan Konsultan Cerdas Lokal',
+                            style: AppTypography.bodySmall.copyWith(
+                              color: hasKey ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'Menggunakan Google Gemini API (model Gemini 3.5 Flash Lite) resmi dari Google AI Studio untuk penalaran cerdas, konsultasi karir, dan teman curhat.',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: keyController,
+                  obscureText: true,
+                  style: AppTypography.bodyMedium,
+                  decoration: InputDecoration(
+                    labelText: 'Gemini API Key',
+                    hintText: 'AIzaSy...',
+                    prefixIcon: const Icon(Icons.key_rounded, size: 20),
+                    filled: true,
+                    fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                InkWell(
+                  onTap: () async {
+                    final uri = Uri.parse('https://aistudio.google.com/app/apikey');
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    }
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.open_in_new_rounded,
+                            size: 14, color: AppColors.primary),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Dapatkan API Key Gratis di Google AI Studio',
+                          style: AppTypography.labelSmall.copyWith(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w600,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    if (hasKey)
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () async {
+                            await GeminiChatbotService.instance.resetApiKey();
+                            if (ctx.mounted) {
+                              Navigator.pop(ctx);
+                              ScaffoldMessenger.of(ctx).showSnackBar(
+                                const SnackBar(
+                                  content: Text('API Key direset ke mode default.'),
+                                ),
+                              );
+                            }
+                          },
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text('Reset'),
+                        ),
+                      ),
+                    if (hasKey) const SizedBox(width: 10),
+                    Expanded(
+                      flex: 2,
+                      child: FilledButton(
+                        onPressed: () async {
+                          final newKey = keyController.text.trim();
+                          if (newKey.isNotEmpty) {
+                            await GeminiChatbotService.instance.saveApiKey(newKey);
+                          }
+                          if (ctx.mounted) {
+                            Navigator.pop(ctx);
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              const SnackBar(
+                                content: Text('Pengaturan Gemini AI berhasil disimpan.'),
+                              ),
+                            );
+                          }
+                        },
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('Simpan'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

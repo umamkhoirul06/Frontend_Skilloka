@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_shapes.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -9,6 +10,7 @@ import '../../../../core/widgets/atoms/input_field.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/di/injection_container.dart';
+import '../../../course/data/models/course_model.dart';
 
 class BookingScreen extends StatefulWidget {
   final String courseId;
@@ -20,6 +22,8 @@ class BookingScreen extends StatefulWidget {
 
 class _BookingScreenState extends State<BookingScreen> {
   int _selectedBatchIndex = 0;
+  bool _withSubscription = true;
+  static const double _subscriptionFee = 50000;
   bool _agreedToTerms = false;
   bool _isLoading = true;
   bool _isSubmitting = false;
@@ -107,13 +111,16 @@ class _BookingScreenState extends State<BookingScreen> {
       final selectedBatch = _batches[_selectedBatchIndex];
       final scheduleId = selectedBatch['id'];
 
-      // 3. Siapkan Payload untuk API
+      // 3. Siapkan Payload untuk API (PRD 2.2: Opsi Layanan & Langganan)
       final payload = {
         'course_id': _safeCourseId,
         if (scheduleId != null) 'schedule_id': scheduleId.toString(),
         'name': name,
         'phone': phone,
         'email': email,
+        'service_type': _withSubscription ? 'subscription' : 'regular',
+        'include_subscription': _withSubscription,
+        if (_withSubscription) 'subscription_fee': _subscriptionFee,
         'status': 'pending', // Status alur approval baru
       };
 
@@ -138,7 +145,7 @@ class _BookingScreenState extends State<BookingScreen> {
       if (e.toString().contains('401')) {
         _showError('Sesi habis. Silakan login kembali.');
         ApiService().removeToken();
-        context.go(AppRouter.login);
+        if (mounted) context.go(AppRouter.login);
       } else {
         // 🔥 UBAH BAGIAN INI: Tampilkan pesan error aslinya!
         // Jika pakai Dio, kita coba ambil pesan dari response Laravel
@@ -182,13 +189,30 @@ class _BookingScreenState extends State<BookingScreen> {
     final double basePrice =
         double.tryParse(course['price']?.toString() ?? '0') ?? 0;
     const double adminFee = 5000;
-    final double totalPrice = basePrice + adminFee;
+    final double currentSubscriptionFee =
+        _withSubscription ? _subscriptionFee : 0;
+    final double totalPrice = basePrice + adminFee + currentSubscriptionFee;
 
     String rawImg = '';
-    if (course['images'] != null && (course['images'] as List).isNotEmpty) {
-      rawImg = course['images'][0].toString();
+    if (course['images'] != null) {
+      final imgs = course['images'];
+      if (imgs is List && imgs.isNotEmpty) {
+        rawImg = imgs[0].toString();
+      } else if (imgs is String && imgs.isNotEmpty) {
+        rawImg = imgs;
+      }
+    }
+    if (rawImg.isEmpty) {
+      rawImg = (course['image_url'] ??
+              course['image'] ??
+              course['thumbnail'] ??
+              '')
+          .toString();
     }
     final imageUrl = ApiService.toFullUrl(rawImg);
+    final String categoryName = course['category']?['name'] ?? 'Umum';
+    final fallbackUrl =
+        CourseModel.getFallbackImage(title: title, category: categoryName);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Pendaftaran Kursus')),
@@ -208,18 +232,28 @@ class _BookingScreenState extends State<BookingScreen> {
                 children: [
                   ClipRRect(
                     borderRadius: AppShapes.borderRadiusSM,
-                    child: Image.network(
-                      imageUrl.isNotEmpty
-                          ? imageUrl
-                          : 'https://ui-avatars.com/api/?name=Kursus&background=0D9488&color=fff&size=80',
+                    child: CachedNetworkImage(
+                      imageUrl: imageUrl.isNotEmpty ? imageUrl : fallbackUrl,
                       width: 80,
                       height: 80,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
+                      placeholder: (_, __) => Container(
                         width: 80,
                         height: 80,
                         color: AppColors.surfaceVariant,
-                        child: const Icon(Icons.image_not_supported),
+                      ),
+                      errorWidget: (_, __, ___) => CachedNetworkImage(
+                        imageUrl: fallbackUrl,
+                        width: 80,
+                        height: 80,
+                        fit: BoxFit.cover,
+                        errorWidget: (_, __, ___) => Container(
+                          width: 80,
+                          height: 80,
+                          color: AppColors.primaryLight,
+                          child: const Icon(Icons.school,
+                              color: AppColors.primary),
+                        ),
                       ),
                     ),
                   ),
@@ -330,6 +364,142 @@ class _BookingScreenState extends State<BookingScreen> {
             ),
             const SizedBox(height: 24),
 
+            // Pilihan Layanan (PRD 2.2: Opsi Booking Biasa vs Booking + Langganan)
+            Text('Pilihan Layanan Pelatihan',
+                style: AppTypography.titleMedium),
+            const SizedBox(height: 4),
+            Text(
+              'Langganan Skilloka Premium membuka akses materi digital modul & presensi absensi',
+              style: AppTypography.bodySmall
+                  .copyWith(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 12),
+
+            // Opsi 1: Booking + Langganan Premium
+            InkWell(
+              onTap: () => setState(() => _withSubscription = true),
+              borderRadius: AppShapes.borderRadiusMD,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _withSubscription
+                      ? AppColors.primaryContainer
+                      : AppColors.surfaceVariant,
+                  borderRadius: AppShapes.borderRadiusMD,
+                  border: Border.all(
+                    color: _withSubscription
+                        ? AppColors.primary
+                        : Colors.transparent,
+                    width: 2,
+                  ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      _withSubscription
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_off,
+                      color: _withSubscription
+                          ? AppColors.primary
+                          : AppColors.textTertiary,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text('Booking + Langganan',
+                                  style: AppTypography.labelLarge),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Text(
+                                  'Rekomendasi',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Kelas Tatap Muka LPK + Akses Penuh Materi Digital & Pencatatan Absensi Online (+${_formatRupiah(_subscriptionFee)})',
+                            style: AppTypography.bodySmall
+                                .copyWith(color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // Opsi 2: Booking Reguler
+            InkWell(
+              onTap: () => setState(() => _withSubscription = false),
+              borderRadius: AppShapes.borderRadiusMD,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: !_withSubscription
+                      ? AppColors.primaryContainer
+                      : AppColors.surfaceVariant,
+                  borderRadius: AppShapes.borderRadiusMD,
+                  border: Border.all(
+                    color: !_withSubscription
+                        ? AppColors.primary
+                        : Colors.transparent,
+                    width: 2,
+                  ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      !_withSubscription
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_off,
+                      color: !_withSubscription
+                          ? AppColors.primary
+                          : AppColors.textTertiary,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Booking Reguler',
+                              style: AppTypography.labelLarge),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Hanya pelatihan kelas tatap muka LPK (tanpa modul materi digital & sistem absensi online)',
+                            style: AppTypography.bodySmall
+                                .copyWith(color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+
             // Syarat & Ketentuan
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -379,6 +549,11 @@ class _BookingScreenState extends State<BookingScreen> {
                   _buildPriceRow('Biaya Kursus', basePrice),
                   const SizedBox(height: 8),
                   _buildPriceRow('Biaya Admin', adminFee),
+                  if (_withSubscription) ...[
+                    const SizedBox(height: 8),
+                    _buildPriceRow(
+                        'Langganan (Materi & Absensi)', _subscriptionFee),
+                  ],
                   const Divider(height: 24),
                   _buildPriceRow('Total', totalPrice, isTotal: true),
                 ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_shapes.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -64,7 +65,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         setState(() {
           _userName = data['name'] ?? 'Pengguna';
           _userPhone = data['phone'] ?? '';
-          _userPhotoUrl = data['photo_url'] ?? data['avatar'] ?? data['photo'];
+          final rawPhoto = data['photo_url'] ?? data['avatar'] ?? data['photo'] ?? '';
+          _userPhotoUrl = rawPhoto.toString().isNotEmpty
+              ? ApiService.toFullUrl(rawPhoto.toString())
+              : null;
           _activeBookings = data['active_bookings_count'] ?? 0;
           _certificates = data['certificates_count'] ?? 0;
           _bgGallery = extractedGallery; // Simpan galeri LPK sebagai Background
@@ -216,15 +220,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     height: 88,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF5EEAD4), Color(0xFF0D9488)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
+                      gradient: AppColors.primaryGradient,
                       border: Border.all(color: Colors.white, width: 3),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.2),
+                          color: const Color(0xFF2563EB).withValues(alpha: 0.25),
                           blurRadius: 16,
                           offset: const Offset(0, 6),
                         ),
@@ -232,12 +232,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     child: ClipOval(
                       child: _userPhotoUrl != null && _userPhotoUrl!.isNotEmpty
-                          ? Image.network(
-                              _userPhotoUrl!,
+                          ? CachedNetworkImage(
+                              imageUrl: _userPhotoUrl!,
                               fit: BoxFit.cover,
                               width: 88,
                               height: 88,
-                              errorBuilder: (_, __, ___) => const Icon(
+                              placeholder: (_, __) => const Center(
+                                child: SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                              errorWidget: (_, __, ___) => const Icon(
                                   Icons.person,
                                   size: 44,
                                   color: Colors.white),
@@ -421,7 +431,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         onTap: () => context.push(AppRouter.certificates),
       ),
       _QuickAction(
-        icon: Icons.smart_toy_outlined,
+        icon: Icons.auto_awesome_rounded,
         label: 'Asisten AI',
         color: AppColors.primary,
         onTap: () => context.push(AppRouter.chatbot),
@@ -469,6 +479,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // ── Menu List ─────────────────────────────────────────────────────────────
   Widget _buildMenuList(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -476,12 +487,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
         const SizedBox(height: 12),
         Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: AppShapes.cardRadius,
+            border: Border.all(
+              color: isDark ? AppColors.outlineDark : AppColors.outline,
+              width: 1,
+            ),
             boxShadow: AppShapes.shadowSM,
           ),
           child: Column(
             children: [
+              _buildMenuItem(
+                context,
+                icon: Icons.school_outlined,
+                iconColor: AppColors.primary,
+                iconBg: AppColors.primaryContainer,
+                title: 'Minat & Profil Pendidikan',
+                subtitle: 'Sesuaikan algoritma kurasi kursus',
+                onTap: () => context.push(AppRouter.educationOnboarding),
+              ),
+              _buildDivider(),
+              _buildMenuItem(
+                context,
+                icon: Icons.auto_awesome_rounded,
+                iconColor: AppColors.secondaryDark,
+                iconBg: AppColors.secondaryContainer,
+                title: 'Kurasi Pelatihan Saya',
+                subtitle: 'Daftar kursus relevan profilmu',
+                onTap: () => context.push(AppRouter.relevantCourses),
+              ),
+              _buildDivider(),
               _buildMenuItem(
                 context,
                 icon: Icons.help_outline,

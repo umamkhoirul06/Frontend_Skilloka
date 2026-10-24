@@ -49,8 +49,11 @@ class _ReviewScreenState extends State<ReviewScreen> {
       if (result['success'] == true && mounted) {
         final data = result['data'];
         List<dynamic> rawList = [];
-        if (data is List) rawList = data;
-        else if (data is Map) rawList = data['data'] ?? [];
+        if (data is List) {
+          rawList = data;
+        } else if (data is Map) {
+          rawList = data['data'] ?? [];
+        }
         setState(() {
           _existingReviews = rawList
               .map((e) => Map<String, dynamic>.from(e as Map))
@@ -136,8 +139,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                         style: AppTypography.titleMedium),
                     const SizedBox(height: 12),
                     ..._existingReviews
-                        .map((r) => _ReviewCard(review: r))
-                        .toList(),
+                        .map((r) => _ReviewCard(review: r)),
                   ],
                 ],
               ),

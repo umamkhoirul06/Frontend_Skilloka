@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_shapes.dart';
 import '../../../../core/theme/app_typography.dart';
-import '../../../../core/animations/app_animations.dart';
 import '../../../../core/widgets/molecules/course_card.dart';
 import '../../../../core/services/api_service.dart';
 
@@ -115,13 +115,20 @@ class _LPKDetailScreenState extends State<LPKDetailScreen> {
     }
 
     // 🔥 FIX GALERI: Ambil dari list atau cover
+    const defaultCover =
+        'https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=1000&auto=format&fit=crop&q=80';
     final rawImages = _lpk!['images'];
     List<String> galleryImages = [];
     if (rawImages is List && rawImages.isNotEmpty) {
-      galleryImages =
-          rawImages.map((e) => ApiService.toFullUrl(e.toString())).toList();
+      galleryImages = rawImages
+          .map((e) => ApiService.toFullUrl(e.toString()))
+          .where((e) => e.isNotEmpty)
+          .toList();
     } else if (coverUrl.isNotEmpty) {
       galleryImages = [coverUrl];
+    }
+    if (galleryImages.isEmpty) {
+      galleryImages = [defaultCover];
     }
 
     return Scaffold(
@@ -131,55 +138,110 @@ class _LPKDetailScreenState extends State<LPKDetailScreen> {
             expandedHeight: 280,
             pinned: true,
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              icon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.35),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.arrow_back, color: Colors.white),
+              ),
               onPressed: () => context.pop(),
             ),
             flexibleSpace: FlexibleSpaceBar(
               background: Stack(fit: StackFit.expand, children: [
-                if (galleryImages.isNotEmpty)
-                  PageView.builder(
-                    itemCount: galleryImages.length,
-                    onPageChanged: (i) =>
-                        setState(() => _currentImageIndex = i),
-                    itemBuilder: (_, i) => Image.network(galleryImages[i],
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
-                            Container(color: AppColors.primary)),
-                  )
-                else
-                  Container(color: AppColors.primary),
-                Container(
-                    decoration: BoxDecoration(
+                PageView.builder(
+                  itemCount: galleryImages.length,
+                  onPageChanged: (i) => setState(() => _currentImageIndex = i),
+                  itemBuilder: (_, i) => CachedNetworkImage(
+                    imageUrl: galleryImages[i],
+                    fit: BoxFit.cover,
+                    placeholder: (_, __) => Container(
+                      decoration: const BoxDecoration(
                         gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                      Colors.transparent,
-                      Colors.black.withValues(alpha: 0.8)
-                    ]))),
+                          colors: [AppColors.primaryDark, AppColors.primary],
+                        ),
+                      ),
+                    ),
+                    errorWidget: (_, __, ___) => CachedNetworkImage(
+                      imageUrl: defaultCover,
+                      fit: BoxFit.cover,
+                      errorWidget: (_, __, ___) => Container(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [AppColors.primaryDark, AppColors.primary],
+                          ),
+                        ),
+                        child: const Icon(Icons.business_rounded,
+                            size: 64, color: Colors.white54),
+                      ),
+                    ),
+                  ),
+                ),
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.8),
+                      ],
+                    ),
+                  ),
+                ),
                 Positioned(
-                    left: 16,
-                    bottom: 16,
-                    right: 16,
-                    child: Row(children: [
+                  left: 16,
+                  bottom: 16,
+                  right: 16,
+                  child: Row(
+                    children: [
                       Container(
-                          width: 60,
-                          height: 60,
-                          decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: AppShapes.borderRadiusMD),
-                          child: ClipRRect(
-                              borderRadius: AppShapes.borderRadiusMD,
-                              child: Image.network(logoUrl,
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: AppShapes.borderRadiusMD,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.2),
+                              blurRadius: 8,
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: AppShapes.borderRadiusMD,
+                          child: logoUrl.isNotEmpty
+                              ? CachedNetworkImage(
+                                  imageUrl: logoUrl,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) =>
-                                      const Icon(Icons.business)))),
+                                  placeholder: (_, __) => Container(
+                                    color: AppColors.primary.withOpacity(0.1),
+                                  ),
+                                  errorWidget: (_, __, ___) => Container(
+                                    color: AppColors.primary.withOpacity(0.1),
+                                    child: const Icon(Icons.business_rounded,
+                                        color: AppColors.primary, size: 28),
+                                  ),
+                                )
+                              : Container(
+                                  color: AppColors.primary.withOpacity(0.1),
+                                  child: const Icon(Icons.business_rounded,
+                                      color: AppColors.primary, size: 28),
+                                ),
+                        ),
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
-                          child: Text(name,
-                              style: AppTypography.titleLarge
-                                  .copyWith(color: Colors.white)))
-                    ]))
+                        child: Text(
+                          name,
+                          style: AppTypography.titleLarge
+                              .copyWith(color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ]),
             ),
           ),
@@ -190,13 +252,35 @@ class _LPKDetailScreenState extends State<LPKDetailScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(children: [
-                      _buildStat(rating, 'Rating'),
+                      _buildStat(
+                          ratingCount != '0' ? '$rating ($ratingCount ulasan)' : rating,
+                          'Rating'),
                       const SizedBox(width: 24),
                       _buildStat(alumniCount, 'Alumni')
                     ]),
                     const SizedBox(height: 24),
-                    Text('Alamat', style: AppTypography.titleMedium),
-                    Text(address, style: AppTypography.bodyMedium),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Alamat', style: AppTypography.titleMedium),
+                              const SizedBox(height: 4),
+                              Text(address, style: AppTypography.bodyMedium),
+                            ],
+                          ),
+                        ),
+                        if (address.isNotEmpty && address != '-')
+                          IconButton(
+                            onPressed: () => _openMaps(address),
+                            icon: const Icon(Icons.map_outlined,
+                                color: AppColors.primary),
+                            tooltip: 'Buka di Maps',
+                          ),
+                      ],
+                    ),
                     const SizedBox(height: 24),
                     if (facilities.isNotEmpty) ...[
                       Text('Fasilitas', style: AppTypography.titleMedium),
@@ -226,15 +310,22 @@ class _LPKDetailScreenState extends State<LPKDetailScreen> {
                             final courseTitle =
                                 c['title'] ?? c['name'] ?? 'Kursus';
 
-                            // 🔥 FIX 2: Bongkar array 'images' dari Laravel untuk mengambil foto kursus
+                            // 🔥 FIX 2: Bongkar 'images' dari Laravel untuk mengambil foto kursus
                             String rawCourseImg = '';
-                            if (c['images'] != null &&
-                                c['images'] is List &&
-                                (c['images'] as List).isNotEmpty) {
-                              rawCourseImg = c['images'][0]
-                                  .toString(); // Ambil foto urutan pertama
-                            } else {
-                              rawCourseImg = c['image_url'] ?? c['image'] ?? '';
+                            if (c['images'] != null) {
+                              final imgs = c['images'];
+                              if (imgs is List && imgs.isNotEmpty) {
+                                rawCourseImg = imgs[0].toString();
+                              } else if (imgs is String && imgs.isNotEmpty) {
+                                rawCourseImg = imgs;
+                              }
+                            }
+                            if (rawCourseImg.isEmpty) {
+                              rawCourseImg = (c['image_url'] ??
+                                      c['image'] ??
+                                      c['thumbnail'] ??
+                                      '')
+                                  .toString();
                             }
 
                             // 🔥 FIX 3: Ambil Kategori dengan aman (terkadang berbentuk Object/Map)
@@ -331,16 +422,19 @@ class _LPKDetailScreenState extends State<LPKDetailScreen> {
                         backgroundColor: const Color(0xFF25D366),
                         foregroundColor: Colors.white)))
           ]));
-  void _openMaps(String lat, String lng) async {
-    final url =
-        Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
-    if (await canLaunchUrl(url))
+  void _openMaps(String query) async {
+    final url = Uri.parse(
+        'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(query)}');
+    if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
   }
 
   void _callPhone(String phone) async {
     final url = Uri.parse('tel:$phone');
-    if (await canLaunchUrl(url)) await launchUrl(url);
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url);
+    }
   }
 
   void _openWhatsApp(String phone, String lpkName) async {
@@ -348,7 +442,8 @@ class _LPKDetailScreenState extends State<LPKDetailScreen> {
     final wa = clean.startsWith('0') ? '62${clean.substring(1)}' : clean;
     final msg = Uri.encodeFull('Halo, saya tertarik dengan kursus di $lpkName');
     final url = Uri.parse('https://wa.me/$wa?text=$msg');
-    if (await canLaunchUrl(url))
+    if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
   }
 }

@@ -28,7 +28,8 @@ import '../../features/profile/presentation/pages/help_screen.dart';
 import '../../features/profile/presentation/pages/about_screen.dart';
 import '../../features/component_gallery/presentation/pages/component_gallery_screen.dart';
 import '../../features/profile/presentation/pages/settings_screen.dart';
-import '../../core/widgets/chatbot_avatar_3d.dart';
+import '../../features/course/presentation/pages/relevant_courses_screen.dart';
+import '../services/course_relevance_service.dart';
 
 class AppRouter {
   AppRouter._();
@@ -42,6 +43,7 @@ class AppRouter {
   static const String login = '/login';
   static const String register = '/register';
   static const String educationOnboarding = '/education-onboarding';
+  static const String relevantCourses = '/relevant-courses';
   static const String home = '/home';
   static const String search = '/search';
   static const String myCourses = '/my-courses';
@@ -117,13 +119,30 @@ class AppRouter {
         ),
       ),
 
+      // Relevant Courses (Curated results directly following profiling onboarding)
+      GoRoute(
+        path: relevantCourses,
+        pageBuilder: (context, state) {
+          final extra = state.extra;
+          return CustomTransitionPage(
+            key: state.pageKey,
+            child: RelevantCoursesScreen(
+              preference: extra is UserProfilePreference ? extra : null,
+            ),
+            transitionsBuilder: _slideUpTransition,
+          );
+        },
+      ),
+
       // Auth
       GoRoute(
         path: login,
         pageBuilder: (context, state) => CustomTransitionPage(
           key: state.pageKey,
           child: const LoginScreen(),
-          transitionsBuilder: _slideUpTransition,
+          transitionDuration: const Duration(milliseconds: 950),
+          reverseTransitionDuration: const Duration(milliseconds: 650),
+          transitionsBuilder: _cinematicLoginTransition,
         ),
       ),
       GoRoute(
@@ -403,6 +422,52 @@ class AppRouter {
       ),
     );
   }
+
+  static Widget _cinematicLoginTransition(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    // Cinematic slow-motion curve with silky smooth deceleration
+    final curvedAnimation = CurvedAnimation(
+      parent: animation,
+      curve: Curves.fastLinearToSlowEaseIn,
+      reverseCurve: Curves.easeInCubic,
+    );
+
+    final slideUp = Tween<Offset>(
+      begin: const Offset(0.0, 0.12),
+      end: Offset.zero,
+    ).animate(curvedAnimation);
+
+    final scale = Tween<double>(
+      begin: 0.93,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: animation,
+      curve: Curves.easeOutCubic,
+    ));
+
+    final fade = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: animation,
+      curve: const Interval(0.0, 0.80, curve: Curves.easeOut),
+    ));
+
+    return FadeTransition(
+      opacity: fade,
+      child: SlideTransition(
+        position: slideUp,
+        child: ScaleTransition(
+          scale: scale,
+          child: child,
+        ),
+      ),
+    );
+  }
 }
 
 /// Main Shell with Bottom Navigation
@@ -413,21 +478,79 @@ class MainShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          child,
-          Positioned(
-            right: 0,
-            bottom: 6,
-            child: SafeArea(
-              child: FloatingChatBotWidget(
-                onTap: () => context.push(AppRouter.chatbot),
+      body: child,
+      bottomNavigationBar: const MainBottomNavigation(),
+      floatingActionButton: _buildChatbotFab(context),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+    );
+  }
+
+  Widget _buildChatbotFab(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(28),
+        elevation: 6,
+        shadowColor: const Color(0xFF2563EB).withValues(alpha: 0.35),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(28),
+          onTap: () => context.push(AppRouter.chatbot),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.3),
+                width: 1.2,
               ),
             ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    const Icon(
+                      Icons.smart_toy_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF4ADE80),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 1),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Tanya AI',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ],
+        ),
       ),
-      bottomNavigationBar: const MainBottomNavigation(),
     );
   }
 }

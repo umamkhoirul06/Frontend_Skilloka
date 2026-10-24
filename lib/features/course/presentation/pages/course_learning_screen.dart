@@ -121,18 +121,60 @@ class _CourseLearningScreenState extends State<CourseLearningScreen>
         subtitle: 'Instruktur belum menambahkan materi untuk kursus ini.',
       );
     }
-    return ListView.separated(
+    final bool hasUnlocked = _contents.any((c) => c['is_locked'] != true);
+    return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: _contents.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemCount: _contents.length + 1,
       itemBuilder: (context, i) {
-        final item = _contents[i];
-        final title = item['title']?.toString() ?? 'Materi ${i + 1}';
+        if (i == 0) {
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: (hasUnlocked ? AppColors.success : AppColors.warning)
+                  .withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: (hasUnlocked ? AppColors.success : AppColors.warning)
+                    .withValues(alpha: 0.3),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  hasUnlocked
+                      ? Icons.verified_user_outlined
+                      : Icons.lock_outline,
+                  size: 18,
+                  color: hasUnlocked ? AppColors.success : AppColors.warning,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    hasUnlocked
+                        ? 'Langganan Aktif • Akses penuh materi & modul digital'
+                        : 'Materi terbuka bagi peserta terdaftar dengan paket langganan aktif',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: hasUnlocked
+                          ? AppColors.success
+                          : AppColors.warning,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final item = _contents[i - 1];
+        final title = item['title']?.toString() ?? 'Materi $i';
         final type = item['type']?.toString() ?? 'document';
         final isLocked = item['is_locked'] == true;
 
         return Card(
           elevation: 0,
+          margin: const EdgeInsets.only(bottom: 10),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
             side: const BorderSide(color: AppColors.outline),
@@ -145,13 +187,11 @@ class _CourseLearningScreenState extends State<CourseLearningScreen>
               decoration: BoxDecoration(
                 color: isLocked
                     ? AppColors.surfaceVariant
-                    : AppColors.primary.withOpacity(0.1),
+                    : AppColors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
-                isLocked
-                    ? Icons.lock_outline
-                    : _contentIcon(type),
+                isLocked ? Icons.lock_outline : _contentIcon(type),
                 size: 20,
                 color: isLocked ? AppColors.textTertiary : AppColors.primary,
               ),
@@ -168,11 +208,161 @@ class _CourseLearningScreenState extends State<CourseLearningScreen>
                 color: AppColors.textSecondary,
               ),
             ),
-            trailing: isLocked
-                ? null
-                : const Icon(Icons.chevron_right,
-                    color: AppColors.textSecondary),
-            onTap: isLocked ? null : () {},
+            trailing: Icon(
+              isLocked ? Icons.lock_outline : Icons.chevron_right,
+              color: isLocked ? AppColors.textTertiary : AppColors.textSecondary,
+              size: 20,
+            ),
+            onTap: () {
+              if (isLocked) {
+                _showLockedDialog();
+              } else {
+                _showMaterialDetail(item);
+              }
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  void _showLockedDialog() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.lock_outline,
+                    color: AppColors.warning, size: 28),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Materi Khusus Langganan',
+                style: AppTypography.titleMedium,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Akses materi digital, video pembelajaran, dan presensi absensi terbuka otomatis untuk peserta dengan paket Langganan Aktif Skilloka.',
+                style: AppTypography.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text('Mengerti'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showMaterialDetail(Map<String, dynamic> item) {
+    final title = item['title']?.toString() ?? 'Materi Pembelajaran';
+    final desc = item['description']?.toString() ??
+        item['content']?.toString() ??
+        'Silakan pelajari materi berikut sesuai panduan dan arahan instruktur LPK.';
+    final type = item['type']?.toString() ?? 'document';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.outline,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Icon(_contentIcon(type), color: AppColors.primary, size: 24),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      _contentTypeLabel(type),
+                      style: AppTypography.labelSmall.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(title, style: AppTypography.titleLarge),
+              const SizedBox(height: 12),
+              Text(
+                desc,
+                style: AppTypography.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.check_circle_outline),
+                  label: const Text('Selesai Membaca'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         );
       },

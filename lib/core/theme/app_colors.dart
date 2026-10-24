@@ -1,6 +1,6 @@
-/// App color palette for Skilloka
-/// Primary: Royal Blue (matching Skilloka Web platform brand)
-/// Secondary: Amber Gold (matching Skilloka Web upskilling arrow)
+// App color palette for Skilloka
+// Primary: Royal Blue (matching Skilloka Web platform brand)
+// Secondary: Amber Gold (matching Skilloka Web upskilling arrow)
 import 'package:flutter/material.dart';
 
 class AppColors {
@@ -32,24 +32,24 @@ class AppColors {
   static const Color categoryTataBoga = Color(0xFFEC4899); // Pink - Culinary
   static const Color categoryBahasa = Color(0xFF06B6D4); // Cyan - Language
 
-  // Neutral Colors
-  static const Color background = Color(0xFFFAFAFA);
+  // Neutral Colors (Matching Skilloka Web Slate System)
+  static const Color background = Color(0xFFF8FAFC); // slate-50
   static const Color surface = Color(0xFFFFFFFF);
-  static const Color surfaceVariant = Color(0xFFF5F5F5);
-  static const Color outline = Color(0xFFE5E5E5);
-  static const Color outlineVariant = Color(0xFFD4D4D4);
+  static const Color surfaceVariant = Color(0xFFF1F5F9); // slate-100
+  static const Color outline = Color(0xFFE2E8F0); // slate-200
+  static const Color outlineVariant = Color(0xFFCBD5E1); // slate-300
 
-  // Text Colors (Light Mode base values)
-  static const Color _textPrimaryLight = Color(0xFF171717);
-  static const Color _textSecondaryLight = Color(0xFF525252);
-  static const Color _textTertiaryLight = Color(0xFF737373);
-  static const Color _textDisabledLight = Color(0xFFA3A3A3);
+  // Text Colors (Light Mode base values - Slate System)
+  static const Color _textPrimaryLight = Color(0xFF0F172A); // slate-900
+  static const Color _textSecondaryLight = Color(0xFF475569); // slate-600
+  static const Color _textTertiaryLight = Color(0xFF94A3B8); // slate-400
+  static const Color _textDisabledLight = Color(0xFFCBD5E1); // slate-300
 
   // Text Colors (Dark Mode base values)
-  static const Color _textPrimaryDarkVal = Color(0xFFFAFAFA);
-  static const Color _textSecondaryDarkVal = Color(0xFFA3A3A3);
-  static const Color _textTertiaryDarkVal = Color(0xFF8A8A8A);
-  static const Color _textDisabledDarkVal = Color(0xFF525252);
+  static const Color _textPrimaryDarkVal = Color(0xFFF8FAFC);
+  static const Color _textSecondaryDarkVal = Color(0xFF94A3B8);
+  static const Color _textTertiaryDarkVal = Color(0xFF64748B);
+  static const Color _textDisabledDarkVal = Color(0xFF475569);
 
   // Legacy static accessors (light mode defaults, used by theme definitions)
   static const Color textPrimary = _textPrimaryLight;
@@ -74,35 +74,44 @@ class AppColors {
       Theme.of(context).brightness == Brightness.dark ? surfaceVariantDark : surfaceVariant;
 
   // Semantic Colors
-  static const Color success = Color(0xFF22C55E);
-  static const Color successContainer = Color(0xFFDCFCE7);
+  static const Color success = Color(0xFF059669); // emerald-600
+  static const Color successContainer = Color(0xFFECFDF5); // emerald-50
+  static const Color verifiedBorder = Color(0xFFA7F3D0); // emerald-200
   static const Color warning = Color(0xFFF59E0B);
   static const Color warningContainer = Color(0xFFFEF3C7);
   static const Color error = Color(0xFFEF4444);
   static const Color danger = Color(0xFFEF4444); // alias for error
   static const Color errorContainer = Color(0xFFFEE2E2);
   static const Color info = Color(0xFF3B82F6);
-  static const Color infoContainer = Color(0xFFDBEAFE);
+  static const Color infoContainer = Color(0xFFEFF6FF);
 
   // Dark Mode Colors
-  static const Color backgroundDark = Color(0xFF0A0A0A);
-  static const Color surfaceDark = Color(0xFF171717);
-  static const Color surfaceVariantDark = Color(0xFF262626);
-  static const Color outlineDark = Color(0xFF404040);
-  static const Color textPrimaryDark = Color(0xFFFAFAFA);
-  static const Color textSecondaryDark = Color(0xFFA3A3A3);
+  static const Color backgroundDark = Color(0xFF0B132B);
+  static const Color surfaceDark = Color(0xFF1E293B); // slate-800
+  static const Color surfaceVariantDark = Color(0xFF334155); // slate-700
+  static const Color outlineDark = Color(0xFF334155);
+  static const Color textPrimaryDark = Color(0xFFF8FAFC);
+  static const Color textSecondaryDark = Color(0xFF94A3B8);
 
-  // Gradient Definitions
+  // Gradient Definitions (Matching Skilloka Web)
+  // Web: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%)
   static const LinearGradient primaryGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [primaryLight, primary],
+    colors: [
+      Color(0xFF2563EB), // brand-600
+      Color(0xFF4F46E5), // indigo-600
+    ],
   );
 
+  // Web: linear-gradient(135deg, #f97316 0%, #ea580c 100%)
   static const LinearGradient secondaryGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [secondaryLight, secondary],
+    colors: [
+      Color(0xFFF59E0B),
+      Color(0xFFD97706),
+    ],
   );
 
   static const LinearGradient heroGradient = LinearGradient(
@@ -110,7 +119,7 @@ class AppColors {
     end: Alignment.bottomCenter,
     colors: [
       Color(0xFF0F172A), // slate-900
-      Color(0xFF1E3A8A), // brand-900
+      Color(0xFF1E293B), // slate-800
     ],
   );
 }

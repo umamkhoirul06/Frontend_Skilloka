@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_shapes.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -201,8 +202,25 @@ class _FavoritesScreenState extends State<FavoritesScreen>
   Widget _buildFavCard(Map<String, dynamic> item, String type) {
     final id = item['id']?.toString() ?? '';
     final title = item['name'] ?? item['title'] ?? '-';
-    final imageUrl = ApiService.toFullUrl(
-        item['image_url'] ?? item['image'] ?? item['logo_url'] ?? item['logo']);
+    String rawImg = '';
+    if (item['images'] != null) {
+      final imgs = item['images'];
+      if (imgs is List && imgs.isNotEmpty) {
+        rawImg = imgs[0].toString();
+      } else if (imgs is String && imgs.isNotEmpty) {
+        rawImg = imgs;
+      }
+    }
+    if (rawImg.isEmpty) {
+      rawImg = (item['image_url'] ??
+              item['image'] ??
+              item['logo_url'] ??
+              item['logo'] ??
+              item['thumbnail'] ??
+              '')
+          .toString();
+    }
+    final imageUrl = ApiService.toFullUrl(rawImg);
     final price = item['price'];
     final rating = item['rating'];
     final lpkName = item['lpk']?['name'] ?? item['lpk_name'] ?? '';
@@ -243,11 +261,14 @@ class _FavoritesScreenState extends State<FavoritesScreen>
                   bottomLeft: Radius.circular(16),
                 ),
                 child: imageUrl.isNotEmpty
-                    ? Image.network(imageUrl,
+                    ? CachedNetworkImage(
+                        imageUrl: imageUrl,
                         width: 90,
                         height: 90,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _imagePlaceholder())
+                        placeholder: (_, __) => _imagePlaceholder(),
+                        errorWidget: (_, __, ___) => _imagePlaceholder(),
+                      )
                     : _imagePlaceholder(),
               ),
               const SizedBox(width: 12),

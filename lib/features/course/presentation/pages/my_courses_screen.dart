@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/services/api_service.dart';
@@ -297,9 +298,26 @@ class _MyCourseCard extends StatelessWidget {
         course['schedule_start']?.toString();
     final endDate = course['end_date']?.toString() ??
         course['schedule_end']?.toString();
-    final imageUrl = ApiService.toFullUrl(
-        course['course_image'] ?? course['image'] ?? course['image_url']);
-    final bookingId = course['booking_id']?.toString() ?? course['id']?.toString() ?? '';
+    String rawImg = '';
+    if (course['images'] != null) {
+      final imgs = course['images'];
+      if (imgs is List && imgs.isNotEmpty) {
+        rawImg = imgs[0].toString();
+      } else if (imgs is String && imgs.isNotEmpty) {
+        rawImg = imgs;
+      }
+    }
+    if (rawImg.isEmpty) {
+      rawImg = (course['course_image'] ??
+              course['image'] ??
+              course['image_url'] ??
+              course['thumbnail'] ??
+              '')
+          .toString();
+    }
+    final imageUrl = ApiService.toFullUrl(rawImg);
+    final bookingId =
+        course['booking_id']?.toString() ?? course['id']?.toString() ?? '';
     final courseId = course['course_id']?.toString() ?? '';
 
     String statusLabel = '';
@@ -329,7 +347,8 @@ class _MyCourseCard extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () {
-          if (type == 'ongoing' && courseId.isNotEmpty) {
+          if ((type == 'ongoing' || type == 'completed') &&
+              courseId.isNotEmpty) {
             context.push(AppRouter.courseContentPath(courseId));
           } else if (type == 'upcoming' && bookingId.isNotEmpty) {
             context.push(AppRouter.pendingBookingPath(bookingId));
@@ -346,15 +365,17 @@ class _MyCourseCard extends StatelessWidget {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(10),
                     child: imageUrl.isNotEmpty
-                        ? Image.network(
-                            imageUrl,
+                        ? CachedNetworkImage(
+                            imageUrl: imageUrl,
                             width: 64,
                             height: 64,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
-                                _PlaceholderImage(size: 64),
+                            placeholder: (_, __) =>
+                                const _PlaceholderImage(size: 64),
+                            errorWidget: (_, __, ___) =>
+                                const _PlaceholderImage(size: 64),
                           )
-                        : _PlaceholderImage(size: 64),
+                        : const _PlaceholderImage(size: 64),
                   ),
                   const SizedBox(width: 12),
                   Expanded(

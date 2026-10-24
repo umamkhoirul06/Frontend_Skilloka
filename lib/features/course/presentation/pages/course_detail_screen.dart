@@ -1,6 +1,7 @@
 /// Course Detail Screen with image gallery, syllabus, and booking CTA
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_shapes.dart';
@@ -97,12 +98,37 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     final String categoryName = courseData!['category']?['name'] ?? 'Umum';
     final String duration = '${courseData!['duration_hours'] ?? 0} Jam';
     final String lpkName = courseData!['lpk']?['name'] ?? 'LPK Tidak Diketahui';
-    final String? lpkLogo = courseData!['lpk']?['logo'];
+    final String? lpkLogo = courseData!['lpk']?['logo'] != null
+        ? ApiService.toFullUrl(courseData!['lpk']!['logo'].toString())
+        : (courseData!['lpk']?['logo_url'] != null
+            ? ApiService.toFullUrl(courseData!['lpk']!['logo_url'].toString())
+            : null);
 
-    final List<dynamic> rawImages = courseData!['images'] ?? [];
-    final List<String> images = rawImages.isNotEmpty
-        ? rawImages.map((e) => e.toString()).toList()
-        : ['https://ui-avatars.com/api/?name=Skilloka&background=random'];
+    final List<String> images = [];
+    final rawImagesData = courseData!['images'];
+    if (rawImagesData is List) {
+      for (final e in rawImagesData) {
+        if (e != null && e.toString().trim().isNotEmpty) {
+          final full = ApiService.toFullUrl(e.toString().trim());
+          if (full.isNotEmpty) images.add(full);
+        }
+      }
+    } else if (rawImagesData is String && rawImagesData.trim().isNotEmpty) {
+      final s = rawImagesData.trim();
+      final full = ApiService.toFullUrl(s);
+      if (full.isNotEmpty) images.add(full);
+    }
+
+    if (images.isEmpty) {
+      final single = courseData!['image_url'] ??
+          courseData!['image'] ??
+          courseData!['thumbnail'] ??
+          courseData!['cover_image'];
+      if (single != null && single.toString().trim().isNotEmpty) {
+        final full = ApiService.toFullUrl(single.toString().trim());
+        if (full.isNotEmpty) images.add(full);
+      }
+    }
 
     return Scaffold(
       body: CustomScrollView(
@@ -128,53 +154,117 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                 icon: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.3),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    _isFavorite ? Icons.favorite : Icons.favorite_border,
-                    color: _isFavorite ? AppColors.error : Colors.white,
-                  ),
+                  color: Colors.black.withValues(alpha: 0.3),
+                  shape: BoxShape.circle,
                 ),
-                onPressed: () async {
-                  final result = await _api.toggleFavorite(
-                    courseId: widget.courseId,
-                  );
-
-                  if (result['success']) {
-                    setState(() {
-                      _isFavorite = !_isFavorite;
-                    });
-                  }
-                },
+                child: Icon(
+                  _isFavorite ? Icons.favorite : Icons.favorite_border,
+                  color: _isFavorite ? AppColors.error : Colors.white,
+                ),
               ),
-              const SizedBox(width: 8),
-            ],
-            flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
-                children: [
-                  PageView.builder(
-                    itemCount: images.length,
-                    onPageChanged: (index) {
-                      setState(() => _currentImageIndex = index);
-                    },
-                    itemBuilder: (context, index) {
-                      return Hero(
-                        tag: '${AppAnimations.heroTagCourse}${widget.courseId}',
-                        child: Image.network(
-                          images[index],
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          errorBuilder: (context, error, stackTrace) =>
-                              Container(
-                            color: Colors.grey[300],
-                            child: const Icon(Icons.broken_image,
-                                size: 50, color: Colors.grey),
+              onPressed: () async {
+                final result = await _api.toggleFavorite(
+                  courseId: widget.courseId,
+                );
+
+                if (result['success']) {
+                  setState(() {
+                    _isFavorite = !_isFavorite;
+                  });
+                }
+              },
+            ),
+            const SizedBox(width: 8),
+          ],
+          flexibleSpace: FlexibleSpaceBar(
+            background: Stack(
+              children: [
+                images.isNotEmpty
+                    ? PageView.builder(
+                        itemCount: images.length,
+                        onPageChanged: (index) {
+                          setState(() => _currentImageIndex = index);
+                        },
+                        itemBuilder: (context, index) {
+                          return Hero(
+                            tag: '${AppAnimations.heroTagCourse}${widget.courseId}',
+                            child: CachedNetworkImage(
+                              imageUrl: images[index],
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              placeholder: (context, url) => Container(
+                                color: AppColors.surfaceVariant,
+                                child: const Center(
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ),
+                              errorWidget: (context, url, error) => Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      AppColors.primary.withValues(alpha: 0.15),
+                                      AppColors.secondary.withValues(alpha: 0.1),
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(Icons.school_rounded,
+                                          size: 64, color: AppColors.primary),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        title,
+                                        style: AppTypography.titleMedium.copyWith(
+                                          color: AppColors.primary,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      )
+                    : Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              AppColors.primary.withValues(alpha: 0.15),
+                              AppColors.secondary.withValues(alpha: 0.1),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
                         ),
-                      );
-                    },
-                  ),
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.school_rounded,
+                                  size: 64, color: AppColors.primary),
+                              const SizedBox(height: 8),
+                              Text(
+                                title,
+                                style: AppTypography.titleMedium.copyWith(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                   if (images.length > 1)
                     Positioned(
                       bottom: 16,
@@ -249,13 +339,19 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                             color: AppColors.surfaceVariant,
                             borderRadius: AppShapes.borderRadiusSM,
                           ),
-                          child: lpkLogo != null
+                          child: (lpkLogo != null && lpkLogo.isNotEmpty)
                               ? ClipRRect(
                                   borderRadius: AppShapes.borderRadiusSM,
-                                  child: Image.network(lpkLogo,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (c, e, s) =>
-                                          const Icon(Icons.business, size: 18)))
+                                  child: CachedNetworkImage(
+                                    imageUrl: lpkLogo,
+                                    fit: BoxFit.cover,
+                                    placeholder: (_, __) => Container(
+                                      color: AppColors.surfaceVariant,
+                                    ),
+                                    errorWidget: (c, e, s) =>
+                                        const Icon(Icons.business, size: 18),
+                                  ),
+                                )
                               : const Icon(Icons.business,
                                   size: 18, color: AppColors.textTertiary),
                         ),

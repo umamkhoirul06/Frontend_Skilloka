@@ -1,3 +1,5 @@
+import '../../../../core/services/api_service.dart';
+
 /// Model untuk data LPK dari API
 class LpkModel {
   final String id;
@@ -37,13 +39,21 @@ class LpkModel {
   });
 
   factory LpkModel.fromJson(Map<String, dynamic> json) {
+    final rawLogo = json['logo_url']?.toString() ?? json['logo']?.toString();
+    final parsedLogo = (rawLogo != null && rawLogo.trim().isNotEmpty)
+        ? ApiService.toFullUrl(rawLogo.trim())
+        : null;
+
     return LpkModel(
       id: json['id']?.toString() ?? '',
       name: json['name']?.toString() ?? '',
       legalName: json['legal_name']?.toString(),
       address: json['address']?.toString() ?? '',
-      logoUrl: json['logo_url']?.toString() ?? json['logo']?.toString(),
-      images: _parseStringList(json['images']),
+      logoUrl: parsedLogo,
+      images: _parseStringList(json['images'])
+          .map((e) => ApiService.toFullUrl(e))
+          .where((e) => e.isNotEmpty)
+          .toList(),
       rating: json['rating'] != null ? double.tryParse(json['rating'].toString()) ?? 0.0 : 0.0,
       reviewCount: json['review_count'] != null ? int.tryParse(json['review_count'].toString()) ?? 0 : 0,
       isVerified: json['is_verified'] == true || json['is_verified'] == 1 || json['is_verified'] == '1',

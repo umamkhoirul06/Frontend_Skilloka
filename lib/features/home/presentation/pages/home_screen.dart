@@ -1,6 +1,7 @@
-/// Home Screen with greeting, search, categories, and content sections
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/navigation/app_router.dart';
@@ -10,9 +11,9 @@ import '../../../../core/widgets/molecules/lpk_card.dart';
 import '../../../../core/widgets/organisms/hero_banner.dart';
 import '../../../../core/widgets/organisms/filter_bottom_sheet.dart';
 import '../../../../core/widgets/skeleton/skeleton_loader.dart';
-import '../../../../core/widgets/chatbot_avatar_3d.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/services/api_service.dart';
+import '../../../../core/services/course_relevance_service.dart';
 import '../../data/repositories/home_repository.dart';
 import '../../data/models/lpk_model.dart';
 import '../../../course/data/models/course_model.dart';
@@ -26,7 +27,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
-  String _searchQuery = '';
   String? _selectedCategory;       // slug untuk API
   String? _selectedCategoryName;   // nama tampilan untuk chip highlight
   String _currentLocation = 'Semua';
@@ -34,6 +34,8 @@ class _HomeScreenState extends State<HomeScreen>
 
   List<LpkModel> _lpks = [];
   List<CourseModel> _courses = [];
+  List<ScoredCourse> _relevantCourses = [];
+  UserProfilePreference? _userPreference;
   List<BannerItem> _banners = [];
 
   String _userName = 'Pengguna';
@@ -148,9 +150,9 @@ class _HomeScreenState extends State<HomeScreen>
       debugPrint('CATEGORY = $_selectedCategory');
 
       final responses = await Future.wait([
-        _homeRepository.getLpks(search: _searchQuery),
+        _homeRepository.getLpks(search: ''),
         _homeRepository.getCourses(
-          search: _searchQuery,
+          search: '',
           category: _selectedCategory,
         ),
       ]);
@@ -174,16 +176,42 @@ class _HomeScreenState extends State<HomeScreen>
       } catch (_) {}
 
       if (bannerItems.isEmpty) {
-        bannerItems = lpks
-            .where((lpk) => lpk.logoUrl != null && lpk.logoUrl!.isNotEmpty)
-            .take(5)
-            .map((lpk) => BannerItem(
-                  imageUrl: ApiService.toFullUrl(lpk.logoUrl ?? ''),
-                  title: lpk.name,
-                  subtitle: lpk.address,
-                  id: lpk.id,
-                ))
-            .toList();
+        bannerItems = [
+          const BannerItem(
+            imageUrl:
+                'https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=1000&auto=format&fit=crop&q=80',
+            title: 'LPK Merah Putih Indramayu',
+            subtitle: 'Pelatihan Teknik Mesin, Bubut & Otomotif Standar Industri',
+            id: 'banner-1',
+            tag: 'RESMI DISNAKER',
+          ),
+          const BannerItem(
+            imageUrl:
+                'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=1000&auto=format&fit=crop&q=80',
+            title: 'Techno Skill Center Indramayu',
+            subtitle: 'Kursus Komputer, Web Coding & Desain Grafis Komersial',
+            id: 'banner-2',
+            tag: 'SERTIFIKASI BNSP',
+          ),
+          const BannerItem(
+            imageUrl:
+                'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=1000&auto=format&fit=crop&q=80',
+            title: 'Global English House Indramayu',
+            subtitle: 'Program Bahasa Asing & Magang Kerja ke Jepang Resmi',
+            id: 'banner-3',
+            tag: 'PENEMPATAN KERJA',
+          ),
+        ];
+      }
+
+      // Compute algorithmically relevant courses based on user education & career profile
+      final pref = await CourseRelevanceService.getPreference();
+      List<ScoredCourse> scored = [];
+      if (pref != null && courses.isNotEmpty) {
+        scored = CourseRelevanceService.rankCourses(
+          courses: courses,
+          preference: pref,
+        );
       }
 
       if (mounted) {
@@ -191,6 +219,8 @@ class _HomeScreenState extends State<HomeScreen>
           _lpks = lpks;
           _courses = courses;
           _banners = bannerItems;
+          _userPreference = pref;
+          _relevantCourses = scored;
           _isLoading = false;
         });
         _animController.forward(from: 0);
@@ -337,7 +367,12 @@ class _HomeScreenState extends State<HomeScreen>
                         await _loadData();
                       },
                     ),
+                    const SizedBox(height: 24),
+
+                    // Personalized Recommendations Section (PRD 2.3 & 8.3)
+                    if (!_isLoading) _buildPersonalizedSection(context),
                     const SizedBox(height: 28),
+
                     // LPK Section
                     _buildSectionHeader(
                       context,
@@ -372,6 +407,278 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  Widget _buildPersonalizedSection(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (_userPreference != null && _relevantCourses.isNotEmpty) {
+      final majorTitle = _userPreference!.major.isNotEmpty
+          ? 'Kurasi Spesial: ${_userPreference!.major}'
+          : 'Rekomendasi Profilmu';
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader(
+            context,
+            title: majorTitle,
+            subtitle: '${_relevantCourses.length} kursus disesuaikan latar belakangmu',
+            icon: Icons.auto_awesome_rounded,
+            onSeeAll: () => context.push(
+              AppRouter.relevantCourses,
+              extra: _userPreference,
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 220,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: math.min(6, _relevantCourses.length),
+              itemBuilder: (context, index) {
+                final item = _relevantCourses[index];
+                final course = item.course;
+                return Container(
+                  width: 255,
+                  margin: const EdgeInsets.only(right: 12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark ? AppColors.outlineDark : AppColors.outline,
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF0F172A).withValues(alpha: 0.05),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () => context.push(AppRouter.courseDetailPath(course.id)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Match badge & category (Constrained to prevent overflow)
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.successContainer,
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: AppColors.verifiedBorder,
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    '${item.score}% Cocok',
+                                    style: AppTypography.badge.copyWith(
+                                      color: AppColors.success,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    course.categoryName,
+                                    style: AppTypography.labelSmall.copyWith(
+                                      color: AppColors.textTertiary,
+                                      fontSize: 10,
+                                    ),
+                                    textAlign: TextAlign.end,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+
+                            // Thumbnail Image with dynamic loaded photo & fallback
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: SizedBox(
+                                height: 86,
+                                width: double.infinity,
+                                child: course.firstImage.isNotEmpty
+                                    ? CachedNetworkImage(
+                                        imageUrl: course.firstImage,
+                                        fit: BoxFit.cover,
+                                        placeholder: (_, __) => Container(
+                                          color: AppColors.surfaceVariant,
+                                          child: const Center(
+                                            child: SizedBox(
+                                              width: 18,
+                                              height: 18,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: AppColors.primary,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        errorWidget: (_, url, error) => Container(
+                                          color: AppColors.surfaceVariant,
+                                          child: const Icon(Icons.school,
+                                              color: AppColors.textTertiary),
+                                        ),
+                                      )
+                                    : Container(
+                                        color: AppColors.primary.withValues(alpha: 0.1),
+                                        child: const Center(
+                                          child: Icon(Icons.school_rounded,
+                                              color: AppColors.primary),
+                                        ),
+                                      ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+
+                            // Title
+                            Text(
+                              course.title,
+                              style: AppTypography.titleSmall.copyWith(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 3),
+
+                            // Price & LPK
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    course.lpkName,
+                                    style: AppTypography.bodySmall.copyWith(
+                                      color: AppColors.textSecondary,
+                                      fontSize: 11,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                Text(
+                                  course.price > 0
+                                      ? 'Rp ${(course.price / 1000).toInt()}rb'
+                                      : 'Gratis',
+                                  style: AppTypography.labelLarge.copyWith(
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Callout card if user hasn't set education profile yet
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E293B) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDark ? const Color(0xFF334155) : AppColors.outline,
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.primaryContainer,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.auto_awesome_rounded,
+                color: AppColors.primary,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Personalisasi Kursus',
+                    style: AppTypography.titleSmall.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Isi minat & jenjang studi agar pelatihan relevan muncul otomatis.',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.textSecondary,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            FilledButton(
+              onPressed: () => context.push(AppRouter.educationOnboarding),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: Text(
+                'Atur Minat',
+                style: AppTypography.labelSmall.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildHeader(BuildContext context) {
     return Row(
       children: [
@@ -383,11 +690,20 @@ class _HomeScreenState extends State<HomeScreen>
                 children: [
                   Text(
                     _greeting,
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: Colors.white.withValues(alpha: 0.8),
+                    style: AppTypography.labelMedium.copyWith(
+                      color: Colors.white.withValues(alpha: 0.85),
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                  Text(' $_emoji', style: const TextStyle(fontSize: 14)),
+                  const SizedBox(width: 6),
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF10B981),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 2),
@@ -492,19 +808,47 @@ class _HomeScreenState extends State<HomeScreen>
         const SizedBox(width: 8),
         // Chatbot shortcut
         Material(
-          color: const Color(0xFFF59E0B).withValues(alpha: 0.9),
+          color: Colors.white.withValues(alpha: 0.18),
           borderRadius: BorderRadius.circular(12),
           child: InkWell(
             borderRadius: BorderRadius.circular(12),
             onTap: () => context.push(AppRouter.chatbot),
-            child: Container(
-              width: 44,
-              height: 44,
-              alignment: Alignment.center,
-              child: const ChatBotAvatar3D(
-                size: 34,
-                showShadow: false,
-                showRing: true,
+            child: Tooltip(
+              message: 'Tanya Loka AI',
+              child: Container(
+                width: 44,
+                height: 44,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    const Icon(
+                      Icons.smart_toy_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: Container(
+                        width: 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF4ADE80),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 1.2),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -519,14 +863,6 @@ class _HomeScreenState extends State<HomeScreen>
     if (hour < 15) return 'Selamat siang';
     if (hour < 18) return 'Selamat sore';
     return 'Selamat malam';
-  }
-
-  String get _emoji {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return '☀️';
-    if (hour < 15) return '🌤️';
-    if (hour < 18) return '🌅';
-    return '🌙';
   }
 
   Widget _buildSectionHeader(
@@ -653,22 +989,18 @@ class _HomeScreenState extends State<HomeScreen>
         itemCount: _courses.length,
         itemBuilder: (context, index) {
           final course = _courses[index];
-          final String rawImg =
-              course.images.isNotEmpty ? course.images.first.toString() : '';
-          final String imageUrl = rawImg.isNotEmpty
-              ? ApiService.toFullUrl(rawImg)
-              : 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(course.title)}&background=2563EB&color=fff&size=400';
+          final String imageUrl = course.firstImage;
 
           return CourseCard(
             id: course.id.toString(),
             title: course.title,
-            lpkName: course.lpk['name']?.toString() ?? 'LPK Mitra',
+            lpkName: course.lpkName,
             imageUrl: imageUrl,
             rating: 0.0,
             reviewCount: 0,
             distanceKm: 0.0,
             price: course.price.toInt(),
-            category: course.category['name']?.toString() ?? 'Umum',
+            category: course.categoryName,
             isVerified: true,
             onTap: () => context
                 .push(AppRouter.courseDetailPath(course.id.toString())),
