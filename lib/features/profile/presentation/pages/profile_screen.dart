@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'package:go_router/go_router.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/theme/app_colors.dart';
 
 import '../../../../core/theme/app_shapes.dart';
@@ -270,7 +269,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     isCustomPhoto: _avatarType != 'dummy',
                     imagePath: _userPhotoUrl,
                     selectedAvatar: _getSelectedAvatar(),
-                  ),
                   ),
                   Positioned(
                     bottom: 0,
