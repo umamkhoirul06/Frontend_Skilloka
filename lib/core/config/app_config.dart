@@ -10,11 +10,11 @@ class AppConfig {
   //                - iOS Simulator         → http://localhost:8000
   // • devDevice  : HP fisik di WiFi       → http://<deviceIp>:8000
   // • dev/prod   : Server remote skilloka.my.id
-  static AppEnvironment environment = AppEnvironment.devLocal;
+  static AppEnvironment environment = AppEnvironment.devDevice;
 
   /// IP PC kamu di jaringan WiFi lokal (hanya untuk devDevice).
   /// Cek dengan: `ipconfig` (Windows) → IPv4 Address
-  static const String _deviceIp = '192.168.0.116';
+  static const String _deviceIp = '192.168.0.112';
 
   static String get _localHost {
     if (kIsWeb ||
@@ -54,5 +54,24 @@ class AppConfig {
     'GEMINI_API_KEY',
     defaultValue: '', // Leave empty to use built-in local reasoning; set real key via settings or --dart-define
   );
+
+  // ─── MIDTRANS CONFIGURATION ───────────────────────────────────────────────
+  static const String midtransMerchantId = 'G068252610';
+  static const String midtransClientKey = 'Mid-client-Vr_iP7ruEQNSptDT';
+
+
+  /// Cek apakah menggunakan sandbox atau production environment
+  static bool get isMidtransProduction =>
+      !midtransClientKey.startsWith('SB-');
+
+  /// URL dasar untuk Snap checkout Midtrans
+  static String get midtransSnapBaseUrl => isMidtransProduction
+      ? 'https://app.midtrans.com/snap/v2/vtweb/'
+      : 'https://app.sandbox.midtrans.com/snap/v2/vtweb/';
+
+  /// Helper untuk mendapatkan URL lengkap Snap Midtrans
+  static String getMidtransSnapUrl(String snapToken) {
+    return '$midtransSnapBaseUrl$snapToken';
+  }
 }
 

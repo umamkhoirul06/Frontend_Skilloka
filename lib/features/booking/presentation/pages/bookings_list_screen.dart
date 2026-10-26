@@ -210,8 +210,13 @@ class _BookingCard extends StatelessWidget {
         color: Colors.transparent,
         borderRadius: AppShapes.cardRadius,
         child: InkWell(
-          // ✅ FIX: Semua card bisa diklik
-          onTap: () => context.push(AppRouter.pendingBookingPath(booking.id)),
+          onTap: () {
+            if (booking.isConfirmed || booking.isCompleted) {
+              context.push(AppRouter.bookingSuccessPath(booking.id));
+            } else {
+              context.push(AppRouter.pendingBookingPath(booking.id));
+            }
+          },
           borderRadius: AppShapes.cardRadius,
           child: Padding(
             padding: const EdgeInsets.all(16),

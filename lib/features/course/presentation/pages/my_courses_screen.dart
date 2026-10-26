@@ -65,36 +65,37 @@ class _MyCourseScreenState extends State<MyCourseScreen>
 
         if (!mounted) return;
         setState(() {
-          _upcoming = all
-              .where((e) =>
-                  (e['status'] ?? '').toString().toLowerCase() == 'upcoming' ||
-                  (e['status'] ?? '').toString().toLowerCase() ==
-                      'pending_payment' ||
-                  (e['booking_status'] ?? '')
-                      .toString()
-                      .toLowerCase()
-                      .contains('upcoming'))
-              .toList();
+          _upcoming = all.where((e) {
+            final s = (e['status'] ?? '').toString().toLowerCase();
+            final bs = (e['booking_status'] ?? '').toString().toLowerCase();
+            return s == 'upcoming' ||
+                s == 'pending' ||
+                s == 'pending_payment' ||
+                s == 'menunggu' ||
+                bs.contains('upcoming') ||
+                bs.contains('pending');
+          }).toList();
 
-          _ongoing = all
-              .where((e) =>
-                  (e['status'] ?? '').toString().toLowerCase() == 'ongoing' ||
-                  (e['status'] ?? '').toString().toLowerCase() ==
-                      'confirmed' ||
-                  (e['booking_status'] ?? '')
-                      .toString()
-                      .toLowerCase()
-                      .contains('ongoing'))
-              .toList();
+          _ongoing = all.where((e) {
+            final s = (e['status'] ?? '').toString().toLowerCase();
+            final bs = (e['booking_status'] ?? '').toString().toLowerCase();
+            return s == 'ongoing' ||
+                s == 'confirmed' ||
+                s == 'approved' ||
+                s == 'paid' ||
+                s == 'lunas' ||
+                s == 'berjalan' ||
+                s == 'active' ||
+                bs.contains('ongoing') ||
+                bs.contains('confirmed') ||
+                bs.contains('paid');
+          }).toList();
 
-          _completed = all
-              .where((e) =>
-                  (e['status'] ?? '').toString().toLowerCase() == 'completed' ||
-                  (e['booking_status'] ?? '')
-                      .toString()
-                      .toLowerCase()
-                      .contains('completed'))
-              .toList();
+          _completed = all.where((e) {
+            final s = (e['status'] ?? '').toString().toLowerCase();
+            final bs = (e['booking_status'] ?? '').toString().toLowerCase();
+            return s == 'completed' || s == 'selesai' || bs.contains('completed');
+          }).toList();
 
           _isLoading = false;
         });
@@ -318,7 +319,36 @@ class _MyCourseCard extends StatelessWidget {
     final imageUrl = ApiService.toFullUrl(rawImg);
     final bookingId =
         course['booking_id']?.toString() ?? course['id']?.toString() ?? '';
-    final courseId = course['course_id']?.toString() ?? '';
+    final courseId = (course['course_id'] ??
+            course['course']?['id'] ??
+            (type != 'upcoming' ? course['id'] : null) ??
+            '')
+        .toString();
+
+    String cleanDate(String? raw) {
+      if (raw == null || raw.isEmpty) return '';
+      if (raw.contains('T')) {
+        try {
+          final dt = DateTime.parse(raw);
+          const months = [
+            'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+            'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'
+          ];
+          return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
+        } catch (_) {
+          return raw.split('T').first;
+        }
+      }
+      return raw;
+    }
+
+    final cleanStart = cleanDate(startDate);
+    final cleanEnd = cleanDate(endDate);
+    final dateRangeText = (cleanStart.isNotEmpty && cleanEnd.isNotEmpty)
+        ? '$cleanStart – $cleanEnd'
+        : cleanStart.isNotEmpty
+            ? cleanStart
+            : cleanEnd;
 
     String statusLabel = '';
     Color statusColor = AppColors.info;
@@ -404,7 +434,7 @@ class _MyCourseCard extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.12),
+                      color: statusColor.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -417,26 +447,28 @@ class _MyCourseCard extends StatelessWidget {
                   ),
                 ],
               ),
-              if (startDate != null) ...[
+              if (dateRangeText.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 const Divider(height: 1, color: AppColors.outline),
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Icon(Icons.calendar_today_outlined,
+                    const Icon(Icons.calendar_today_outlined,
                         size: 14, color: AppColors.textSecondary),
                     const SizedBox(width: 6),
-                    Text(
-                      endDate != null
-                          ? '$startDate – $endDate'
-                          : startDate,
-                      style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.textSecondary,
+                    Expanded(
+                      child: Text(
+                        dateRangeText,
+                        style: AppTypography.bodySmall.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const Spacer(),
+                    const SizedBox(width: 8),
                     if (type == 'completed') ...[
-                      Icon(Icons.workspace_premium_outlined,
+                      const Icon(Icons.workspace_premium_outlined,
                           size: 14, color: AppColors.warning),
                       const SizedBox(width: 4),
                       Text(

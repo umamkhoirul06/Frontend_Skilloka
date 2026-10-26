@@ -996,22 +996,34 @@ class ApiService {
     required String paymentMethod,
   }) async {
     try {
-      final r = await http.post(
-        Uri.parse(
-          '$baseUrl/bookings/$bookingId/payment',
-        ),
-        headers: await _authHeaders(),
+      final headers = await _authHeaders();
+      // 1. Coba endpoint standar PRD & REST: /bookings/{id}/payment
+      var r = await http.post(
+        Uri.parse('$baseUrl/bookings/$bookingId/payment'),
+        headers: headers,
         body: jsonEncode({
           'payment_method': paymentMethod,
         }),
       );
 
+      // 2. Fallback jika backend memakai route alternatif /payment/create-transaction
+      if (r.statusCode == 404 || r.statusCode == 405) {
+        r = await http.post(
+          Uri.parse('$baseUrl/payment/create-transaction'),
+          headers: headers,
+          body: jsonEncode({
+            'order_id': bookingId,
+            'booking_id': bookingId,
+            'payment_method': paymentMethod,
+          }),
+        );
+      }
+
       return _handleResponse(r);
     } catch (e) {
       return {
         'success': false,
-        'message':
-            'Koneksi gagal: $e',
+        'message': 'Koneksi gagal: $e',
       };
     }
   }

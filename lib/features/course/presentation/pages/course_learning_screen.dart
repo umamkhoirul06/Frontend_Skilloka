@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/services/api_service.dart';
@@ -115,114 +116,129 @@ class _CourseLearningScreenState extends State<CourseLearningScreen>
 
   Widget _buildContentTab() {
     if (_contents.isEmpty) {
-      return _buildEmpty(
-        icon: Icons.library_books_outlined,
-        title: 'Belum ada materi',
-        subtitle: 'Instruktur belum menambahkan materi untuk kursus ini.',
+      return RefreshIndicator(
+        onRefresh: _loadData,
+        color: AppColors.primary,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: SizedBox(
+            height: MediaQuery.of(context).size.height * 0.65,
+            child: _buildEmpty(
+              icon: Icons.library_books_outlined,
+              title: 'Belum ada materi',
+              subtitle: 'Instruktur belum menambahkan materi untuk kursus ini. Tarik ke bawah untuk memuat ulang.',
+            ),
+          ),
+        ),
       );
     }
     final bool hasUnlocked = _contents.any((c) => c['is_locked'] != true);
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _contents.length + 1,
-      itemBuilder: (context, i) {
-        if (i == 0) {
-          return Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: (hasUnlocked ? AppColors.success : AppColors.warning)
-                  .withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      color: AppColors.primary,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        itemCount: _contents.length + 1,
+        itemBuilder: (context, i) {
+          if (i == 0) {
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
                 color: (hasUnlocked ? AppColors.success : AppColors.warning)
-                    .withValues(alpha: 0.3),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  hasUnlocked
-                      ? Icons.verified_user_outlined
-                      : Icons.lock_outline,
-                  size: 18,
-                  color: hasUnlocked ? AppColors.success : AppColors.warning,
+                    .withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: (hasUnlocked ? AppColors.success : AppColors.warning)
+                      .withValues(alpha: 0.3),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
+              ),
+              child: Row(
+                children: [
+                  Icon(
                     hasUnlocked
-                        ? 'Langganan Aktif • Akses penuh materi & modul digital'
-                        : 'Materi terbuka bagi peserta terdaftar dengan paket langganan aktif',
-                    style: AppTypography.bodySmall.copyWith(
-                      color: hasUnlocked
-                          ? AppColors.success
-                          : AppColors.warning,
-                      fontWeight: FontWeight.w600,
+                        ? Icons.verified_user_outlined
+                        : Icons.lock_outline,
+                    size: 18,
+                    color: hasUnlocked ? AppColors.success : AppColors.warning,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      hasUnlocked
+                          ? 'Langganan Aktif • Akses penuh materi & modul digital'
+                          : 'Materi terbuka bagi peserta terdaftar dengan paket langganan aktif',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: hasUnlocked
+                            ? AppColors.success
+                            : AppColors.warning,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
+                ],
+              ),
+            );
+          }
+
+          final item = _contents[i - 1];
+          final title = item['title']?.toString() ?? 'Materi $i';
+          final type = item['type']?.toString() ?? 'document';
+          final isLocked = item['is_locked'] == true;
+
+          return Card(
+            elevation: 0,
+            margin: const EdgeInsets.only(bottom: 10),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: const BorderSide(color: AppColors.outline),
+            ),
+            color: AppColors.surface,
+            child: ListTile(
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: isLocked
+                      ? AppColors.surfaceVariant
+                      : AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-              ],
+                child: Icon(
+                  isLocked ? Icons.lock_outline : _contentIcon(type),
+                  size: 20,
+                  color: isLocked ? AppColors.textTertiary : AppColors.primary,
+                ),
+              ),
+              title: Text(
+                title,
+                style: AppTypography.titleSmall.copyWith(
+                  color: isLocked ? AppColors.textTertiary : AppColors.textPrimary,
+                ),
+              ),
+              subtitle: Text(
+                _contentTypeLabel(type),
+                style: AppTypography.bodySmall.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              trailing: Icon(
+                isLocked ? Icons.lock_outline : Icons.chevron_right,
+                color: isLocked ? AppColors.textTertiary : AppColors.textSecondary,
+                size: 20,
+              ),
+              onTap: () {
+                if (isLocked) {
+                  _showLockedDialog();
+                } else {
+                  _showMaterialDetail(item);
+                }
+              },
             ),
           );
-        }
-
-        final item = _contents[i - 1];
-        final title = item['title']?.toString() ?? 'Materi $i';
-        final type = item['type']?.toString() ?? 'document';
-        final isLocked = item['is_locked'] == true;
-
-        return Card(
-          elevation: 0,
-          margin: const EdgeInsets.only(bottom: 10),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: AppColors.outline),
-          ),
-          color: AppColors.surface,
-          child: ListTile(
-            leading: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: isLocked
-                    ? AppColors.surfaceVariant
-                    : AppColors.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                isLocked ? Icons.lock_outline : _contentIcon(type),
-                size: 20,
-                color: isLocked ? AppColors.textTertiary : AppColors.primary,
-              ),
-            ),
-            title: Text(
-              title,
-              style: AppTypography.titleSmall.copyWith(
-                color: isLocked ? AppColors.textTertiary : AppColors.textPrimary,
-              ),
-            ),
-            subtitle: Text(
-              _contentTypeLabel(type),
-              style: AppTypography.bodySmall.copyWith(
-                color: AppColors.textSecondary,
-              ),
-            ),
-            trailing: Icon(
-              isLocked ? Icons.lock_outline : Icons.chevron_right,
-              color: isLocked ? AppColors.textTertiary : AppColors.textSecondary,
-              size: 20,
-            ),
-            onTap: () {
-              if (isLocked) {
-                _showLockedDialog();
-              } else {
-                _showMaterialDetail(item);
-              }
-            },
-          ),
-        );
-      },
+        },
+      ),
     );
   }
 
@@ -286,217 +302,621 @@ class _CourseLearningScreenState extends State<CourseLearningScreen>
 
   void _showMaterialDetail(Map<String, dynamic> item) {
     final title = item['title']?.toString() ?? 'Materi Pembelajaran';
-    final desc = item['description']?.toString() ??
-        item['content']?.toString() ??
+    final desc = item['content']?.toString() ??
+        item['body']?.toString() ??
+        item['description']?.toString() ??
         'Silakan pelajari materi berikut sesuai panduan dan arahan instruktur LPK.';
-    final type = item['type']?.toString() ?? 'document';
+    final type = (item['type']?.toString() ?? 'document').toLowerCase();
+    final rawUrl = item['url']?.toString() ??
+        item['content_url']?.toString() ??
+        item['file_url']?.toString() ??
+        item['file_path']?.toString();
+    final url = (rawUrl != null && rawUrl.isNotEmpty) ? ApiService.toFullUrl(rawUrl) : null;
+    final isPdf = type == 'document' ||
+        type == 'pdf' ||
+        (url != null && url.toLowerCase().contains('.pdf'));
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.outline,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
+        return DraggableScrollableSheet(
+          initialChildSize: 0.88,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
-              const SizedBox(height: 16),
-              Row(
+              child: Column(
                 children: [
-                  Icon(_contentIcon(type), color: AppColors.primary, size: 24),
-                  const SizedBox(width: 8),
+                  // Drag Handle
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    margin: const EdgeInsets.only(top: 12, bottom: 8),
+                    width: 44,
+                    height: 5,
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(6),
+                      color: AppColors.outlineVariant,
+                      borderRadius: BorderRadius.circular(3),
                     ),
-                    child: Text(
-                      _contentTypeLabel(type),
-                      style: AppTypography.labelSmall.copyWith(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w600,
+                  ),
+
+                  // Header Bar
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(_contentIcon(type), color: AppColors.primary, size: 16),
+                              const SizedBox(width: 6),
+                              Text(
+                                _contentTypeLabel(type),
+                                style: AppTypography.labelSmall.copyWith(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.close, color: AppColors.textSecondary),
+                          splashRadius: 20,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const Divider(height: 1, color: AppColors.outline),
+
+                  // Content Body
+                  Expanded(
+                    child: ListView(
+                      controller: scrollController,
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                      children: [
+                        // Title
+                        Text(
+                          title,
+                          style: AppTypography.headlineSmall.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Video Player Card (If video)
+                        if (type == 'video') ...[
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.15),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                )
+                              ],
+                            ),
+                            child: Column(
+                              children: [
+                                Container(
+                                  width: 60,
+                                  height: 60,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.15),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.play_arrow_rounded,
+                                    size: 40,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
+                                const Text(
+                                  'Video Pembelajaran & Peragaan Praktik',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'Durasi video ± 25 Menit • Kualitas HD',
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.7),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                if (url != null && url.isNotEmpty)
+                                  ElevatedButton.icon(
+                                    onPressed: () async {
+                                      final uri = Uri.parse(url);
+                                      try {
+                                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                      } catch (_) {}
+                                    },
+                                    icon: const Icon(Icons.play_circle_filled, size: 18),
+                                    label: const Text('Tonton Video Sekarang'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.primary,
+                                      foregroundColor: Colors.white,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                        ],
+
+                        // Document PDF Banner (If PDF / URL exists)
+                        if (isPdf && url != null && url.isNotEmpty) ...[
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryContainer.withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.picture_as_pdf, color: AppColors.primary, size: 28),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text('Modul PDF Resmi Tersedia', style: AppTypography.labelMedium.copyWith(fontWeight: FontWeight.bold)),
+                                      const SizedBox(height: 2),
+                                      Text('Dapat dibaca langsung atau diunduh', style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
+                                    ],
+                                  ),
+                                ),
+                                FilledButton.icon(
+                                  onPressed: () async {
+                                    final uri = Uri.parse(url);
+                                    try {
+                                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                    } catch (_) {}
+                                  },
+                                  icon: const Icon(Icons.open_in_new, size: 16),
+                                  label: const Text('Buka PDF'),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                        ],
+
+                        // Structured Content Reader
+                        _buildFormattedContent(desc),
+
+                        const SizedBox(height: 32),
+                      ],
+                    ),
+                  ),
+
+                  // Bottom Action
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: const BoxDecoration(
+                      color: AppColors.surface,
+                      border: Border(top: BorderSide(color: AppColors.outline)),
+                    ),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.check_circle_outline),
+                        label: const Text('Selesai Membaca Modul'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              Text(title, style: AppTypography.titleLarge),
-              const SizedBox(height: 12),
-              Text(
-                desc,
-                style: AppTypography.bodyMedium.copyWith(
-                  color: AppColors.textSecondary,
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.check_circle_outline),
-                  label: const Text('Selesai Membaca'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
   }
 
+  /// Parser sederhana untuk menampilkan materi terstruktur dengan tampilan modern
+  Widget _buildFormattedContent(String rawText) {
+    final lines = rawText.split('\n');
+    final widgets = <Widget>[];
+
+    for (int i = 0; i < lines.length; i++) {
+      final line = lines[i].trim();
+      if (line.isEmpty) {
+        widgets.add(const SizedBox(height: 10));
+        continue;
+      }
+
+      if (line.startsWith('## ')) {
+        widgets.add(Padding(
+          padding: const EdgeInsets.only(top: 14, bottom: 6),
+          child: Text(
+            line.replaceFirst('## ', ''),
+            style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.bold, color: AppColors.primary),
+          ),
+        ));
+      } else if (line.startsWith('### ')) {
+        widgets.add(Padding(
+          padding: const EdgeInsets.only(top: 10, bottom: 4),
+          child: Text(
+            line.replaceFirst('### ', ''),
+            style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w600),
+          ),
+        ));
+      } else if (line.startsWith('- ')) {
+        widgets.add(Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(top: 6, right: 8),
+                child: Icon(Icons.circle, size: 6, color: AppColors.primary),
+              ),
+              Expanded(
+                child: Text(
+                  line.replaceFirst('- ', ''),
+                  style: AppTypography.bodyMedium.copyWith(height: 1.5),
+                ),
+              ),
+            ],
+          ),
+        ));
+      } else {
+        widgets.add(Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(
+            line,
+            style: AppTypography.bodyMedium.copyWith(
+              color: AppColors.textSecondary,
+              height: 1.6,
+            ),
+          ),
+        ));
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: widgets,
+    );
+  }
+
   Widget _buildAttendanceTab() {
     if (_attendances.isEmpty) {
-      return _buildEmpty(
-        icon: Icons.fact_check_outlined,
-        title: 'Belum ada data absensi',
-        subtitle: 'Absensi akan tercatat oleh instruktur setiap sesi pelatihan.',
+      return RefreshIndicator(
+        onRefresh: _loadData,
+        color: AppColors.primary,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(height: 32),
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryContainer.withValues(alpha: 0.6),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.event_available_outlined, size: 40, color: AppColors.primary),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Presensi Sesi Belum Dimulai',
+                style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Pendaftaran pelatihan Anda telah terkonfirmasi resmi. Presensi kehadiran akan dicatat oleh instruktur LPK saat jadwal sesi kelas tatap muka atau praktik dimulai.',
+                style: AppTypography.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.successContainer.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.success.withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.verified, color: AppColors.success, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Pendaftaran Lunas • Akses Langganan Aktif',
+                      style: AppTypography.labelMedium.copyWith(
+                        color: AppColors.success,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 32),
+              Text(
+                'Tarik ke bawah untuk memuat ulang data presensi',
+                style: AppTypography.bodySmall.copyWith(color: AppColors.textTertiary),
+              ),
+            ],
+          ),
+        ),
       );
     }
 
     // Count present/absent
-    final presentCount = _attendances.where((a) =>
-        (a['status'] ?? '').toString().toLowerCase() == 'present' ||
-        (a['is_present'] == true)).length;
+    final presentCount = _attendances.where((a) {
+      final s = (a['status'] ?? '').toString().toLowerCase();
+      return s == 'present' || s == 'hadir' || a['is_present'] == true;
+    }).length;
     final totalCount = _attendances.length;
     final percentage = totalCount > 0
         ? (presentCount / totalCount * 100).toStringAsFixed(0)
         : '0';
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        // Summary card
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.outline),
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      color: AppColors.primary,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        children: [
+          // Summary card
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.outline),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Kehadiran', style: AppTypography.labelMedium.copyWith(
+                        color: AppColors.textSecondary,
+                      )),
+                      const SizedBox(height: 4),
+                      Text(
+                        '$presentCount / $totalCount sesi',
+                        style: AppTypography.titleLarge,
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(
+                  width: 64,
+                  height: 64,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      CircularProgressIndicator(
+                        value: totalCount > 0 ? presentCount / totalCount : 0,
+                        backgroundColor: AppColors.surfaceVariant,
+                        valueColor: AlwaysStoppedAnimation(
+                          double.parse(percentage) >= 80
+                              ? AppColors.success
+                              : AppColors.warning,
+                        ),
+                        strokeWidth: 6,
+                      ),
+                      Text(
+                        '$percentage%',
+                        style: AppTypography.labelSmall.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Kehadiran', style: AppTypography.labelMedium.copyWith(
-                      color: AppColors.textSecondary,
-                    )),
-                    const SizedBox(height: 4),
-                    Text(
-                      '$presentCount / $totalCount sesi',
-                      style: AppTypography.titleLarge,
+          const SizedBox(height: 16),
+          ..._attendances.map((a) {
+            final sessionName = a['session_name']?.toString() ?? 'Sesi Pelatihan';
+            final date = a['session_date']?.toString() ?? a['date']?.toString() ?? '-';
+            final statusRaw = (a['status'] ?? '').toString().toLowerCase();
+            final notes = a['notes']?.toString();
+
+            Color statusColor;
+            Color statusBg;
+            String statusLabel;
+            IconData statusIcon;
+
+            if (statusRaw == 'present' || statusRaw == 'hadir' || a['is_present'] == true) {
+              statusColor = AppColors.success;
+              statusBg = AppColors.successContainer;
+              statusLabel = 'Hadir';
+              statusIcon = Icons.check_circle;
+            } else if (statusRaw == 'sick' || statusRaw == 'sakit') {
+              statusColor = AppColors.warning;
+              statusBg = AppColors.warning.withValues(alpha: 0.12);
+              statusLabel = 'Sakit';
+              statusIcon = Icons.healing_outlined;
+            } else if (statusRaw == 'excused' || statusRaw == 'izin') {
+              statusColor = AppColors.primary;
+              statusBg = AppColors.primaryContainer;
+              statusLabel = 'Izin';
+              statusIcon = Icons.info_outline;
+            } else {
+              statusColor = AppColors.error;
+              statusBg = AppColors.error.withValues(alpha: 0.12);
+              statusLabel = 'Alpa';
+              statusIcon = Icons.cancel_outlined;
+            }
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.outline),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(statusIcon, size: 20, color: statusColor),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(sessionName, style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 2),
+                            Text(date, style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: statusBg,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          statusLabel,
+                          style: AppTypography.labelSmall.copyWith(
+                            color: statusColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (notes != null && notes.trim().isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceVariant,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'Catatan Instruktur: $notes',
+                        style: AppTypography.bodySmall.copyWith(fontStyle: FontStyle.italic, color: AppColors.textSecondary),
+                      ),
                     ),
                   ],
-                ),
+                ],
               ),
-              SizedBox(
-                width: 64,
-                height: 64,
-                child: Stack(
-                  alignment: Alignment.center,
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCertificateTab() {
+    if (_certificate == null) {
+      return Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.workspace_premium_outlined, size: 40, color: AppColors.warning),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Sertifikat Belum Diterbitkan',
+                style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Sertifikat resmi kompetensi (BNSP & Disnaker) akan diterbitkan oleh Admin LPK setelah Anda menyelesaikan seluruh rangkaian sesi pelatihan dan evaluasi kelulusan.',
+                style: AppTypography.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.outline),
+                ),
+                child: Column(
                   children: [
-                    CircularProgressIndicator(
-                      value: totalCount > 0 ? presentCount / totalCount : 0,
-                      backgroundColor: AppColors.surfaceVariant,
-                      valueColor: AlwaysStoppedAnimation(
-                        double.parse(percentage) >= 80
-                            ? AppColors.success
-                            : AppColors.warning,
-                      ),
-                      strokeWidth: 6,
-                    ),
-                    Text(
-                      '$percentage%',
-                      style: AppTypography.labelSmall.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
+                    _buildStepRow(1, 'Pendaftaran & Pembayaran Pelatihan', true),
+                    const SizedBox(height: 12),
+                    _buildStepRow(2, 'Mengikuti Seluruh Sesi Materi & Presensi', false, isCurrent: true),
+                    const SizedBox(height: 12),
+                    _buildStepRow(3, 'Evaluasi Akhir & Penerbitan Sertifikat LPK', false),
                   ],
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 16),
-        ..._attendances.map((a) {
-          final date = a['session_date']?.toString() ?? a['date']?.toString() ?? '-';
-          final isPresent = (a['status'] ?? '').toString().toLowerCase() ==
-                  'present' ||
-              a['is_present'] == true;
-          return Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.outline),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  isPresent ? Icons.check_circle : Icons.cancel_outlined,
-                  size: 20,
-                  color: isPresent ? AppColors.success : AppColors.error,
-                ),
-                const SizedBox(width: 12),
-                Text(date, style: AppTypography.bodyMedium),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: (isPresent ? AppColors.success : AppColors.error)
-                        .withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    isPresent ? 'Hadir' : 'Tidak Hadir',
-                    style: AppTypography.labelSmall.copyWith(
-                      color: isPresent ? AppColors.success : AppColors.error,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }),
-      ],
-    );
-  }
-
-  Widget _buildCertificateTab() {
-    if (_certificate == null) {
-      return _buildEmpty(
-        icon: Icons.workspace_premium_outlined,
-        title: 'Sertifikat belum tersedia',
-        subtitle:
-            'Sertifikat akan diterbitkan oleh instruktur setelah kursus selesai dan kehadiran memenuhi syarat.',
       );
     }
 
@@ -507,66 +927,93 @@ class _CourseLearningScreenState extends State<CourseLearningScreen>
     final issuedAt = _certificate!['issued_at']?.toString() ??
         _certificate!['created_at']?.toString() ?? '-';
 
-    return Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.primary.withOpacity(0.15),
-                  AppColors.secondary.withOpacity(0.1),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      color: AppColors.primary,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.primary.withValues(alpha: 0.15),
+                    AppColors.secondary.withValues(alpha: 0.1),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.3)),
               ),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                  color: AppColors.primary.withOpacity(0.3)),
+              child: Column(
+                children: [
+                  const Icon(Icons.workspace_premium,
+                      size: 64, color: AppColors.warning),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Sertifikat Pelatihan',
+                    style: AppTypography.titleLarge.copyWith(
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'No. $certNo',
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Diterbitkan: $issuedAt',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            child: Column(
-              children: [
-                Icon(Icons.workspace_premium,
-                    size: 64, color: AppColors.warning),
-                const SizedBox(height: 16),
-                Text(
-                  'Sertifikat Pelatihan',
-                  style: AppTypography.titleLarge.copyWith(
-                    color: AppColors.textPrimary,
+            if (certUrl != null && certUrl.isNotEmpty) ...[
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () async {
+                    final uri = Uri.parse(certUrl);
+                    try {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    } catch (_) {}
+                  },
+                  icon: const Icon(Icons.download),
+                  label: const Text('Unduh Sertifikat'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'No. $certNo',
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Diterbitkan: $issuedAt',
-                  style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (certUrl != null && certUrl.isNotEmpty) ...[
-            const SizedBox(height: 24),
+              ),
+            ],
+            const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: () {
-                  // Download / view certificate
-                },
-                icon: const Icon(Icons.download),
-                label: const Text('Unduh Sertifikat'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
+              child: OutlinedButton.icon(
+                onPressed: () => context.push(
+                  AppRouter.courseReviewPath(widget.courseId),
+                ),
+                icon: const Icon(Icons.star_outline_rounded),
+                label: const Text('Beri Ulasan Kursus'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: const BorderSide(color: AppColors.primary),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -575,29 +1022,49 @@ class _CourseLearningScreenState extends State<CourseLearningScreen>
               ),
             ),
           ],
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () => context.push(
-                AppRouter.courseReviewPath(widget.courseId),
-              ),
-              icon: const Icon(Icons.star_outline_rounded),
-              label: const Text('Beri Ulasan Kursus'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.primary,
-                side: const BorderSide(color: AppColors.primary),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
+
+  Widget _buildStepRow(int step, String title, bool isDone, {bool isCurrent = false}) {
+    Color bg;
+    Widget icon;
+
+    if (isDone) {
+      bg = AppColors.successContainer;
+      icon = const Icon(Icons.check, size: 14, color: AppColors.success);
+    } else if (isCurrent) {
+      bg = AppColors.primaryContainer;
+      icon = Text('$step', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.primary));
+    } else {
+      bg = AppColors.surfaceVariant;
+      icon = Text('$step', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.textTertiary));
+    }
+
+    return Row(
+      children: [
+        Container(
+          width: 24,
+          height: 24,
+          decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
+          alignment: Alignment.center,
+          child: icon,
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            title,
+            style: AppTypography.bodySmall.copyWith(
+              fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+              color: isCurrent ? AppColors.textPrimary : AppColors.textSecondary,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
 
   Widget _buildEmpty({
     required IconData icon,
