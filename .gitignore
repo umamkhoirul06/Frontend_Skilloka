@@ -23,8 +23,9 @@ migrate_working_dir/
 # is commented out by default.
 #.vscode/
 
-/.PRD_SKILLOKA_FINAL_V2.md
-/.SKILLOKA_FLUTTER_SPEC.md
+# Internal Project Specs & Documentation
+PRD_SKILLOKA_FINAL_V2.md
+SKILLOKA_FLUTTER_SPEC.md
 
 # Flutter/Dart/Pub related
 **/doc/api/
