@@ -5,6 +5,9 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_shapes.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/services/api_service.dart';
+import '../../../../core/navigation/app_router.dart';
+import '../../../../core/widgets/molecules/empty_state.dart';
+import '../../../../core/widgets/atoms/skilloka_loader.dart';
 
 class FavoritesScreen extends StatefulWidget {
   const FavoritesScreen({super.key});
@@ -132,7 +135,7 @@ class _FavoritesScreenState extends State<FavoritesScreen>
         ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const SkillokaLoading.inline(message: 'Memuat favorit tersimpan...')
           : _error != null
               ? _buildError()
               : TabBarView(
@@ -146,46 +149,23 @@ class _FavoritesScreenState extends State<FavoritesScreen>
   }
 
   Widget _buildError() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.error_outline, size: 48, color: AppColors.error),
-          const SizedBox(height: 12),
-          Text(_error ?? 'Terjadi kesalahan', textAlign: TextAlign.center),
-          const SizedBox(height: 16),
-          ElevatedButton(
-              onPressed: _fetchFavorites, child: const Text('Coba Lagi')),
-        ],
-      ),
+    return AppEmptyState.error(
+      title: 'Gagal Memuat Favorit',
+      message: _error ?? 'Terjadi kesalahan saat memuat daftar favorit.',
+      onRetry: _fetchFavorites,
     );
   }
 
   Widget _buildList(List<Map<String, dynamic>> items, String type) {
     if (items.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: const BoxDecoration(
-                  color: AppColors.surfaceVariant, shape: BoxShape.circle),
-              child: const Icon(Icons.favorite_border,
-                  size: 40, color: AppColors.textTertiary),
-            ),
-            const SizedBox(height: 16),
-            Text('Belum ada favorit', style: AppTypography.titleSmall),
-            const SizedBox(height: 8),
-            Text(
-              'Simpan kursus atau LPK favorit\nuntuk akses cepat',
-              textAlign: TextAlign.center,
-              style: AppTypography.bodyMedium
-                  .copyWith(color: AppColors.textSecondary),
-            ),
-          ],
-        ),
+      return AppEmptyState.favorite(
+        title: type == 'course'
+            ? 'Belum ada kursus favorit'
+            : 'Belum ada LPK favorit',
+        message: type == 'course'
+            ? 'Simpan kursus pilihanmu dengan menekan ikon hati untuk akses cepat kapan saja.'
+            : 'Tandai Lembaga Pelatihan Kerja (LPK) favoritmu untuk kemudahan pendaftaran.',
+        onExplore: () => context.go(AppRouter.home),
       );
     }
 

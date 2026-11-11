@@ -14,6 +14,8 @@ class CourseModel {
   final String level;
   final List<String> facilities;
   final List<dynamic> schedules;
+  final String syllabus;
+  final List<dynamic> contents;
 
   CourseModel({
     required this.id,
@@ -22,6 +24,8 @@ class CourseModel {
     required this.price,
     required this.durationHours,
     this.description = '',
+    this.syllabus = '',
+    this.contents = const [],
     required this.lpk,
     required this.category,
     required this.images,
@@ -116,6 +120,8 @@ class CourseModel {
           ? List<String>.from(json['facilities'].map((e) => e.toString()))
           : const [],
       schedules: json['schedules'] is List ? json['schedules'] : const [],
+      syllabus: json['syllabus']?.toString() ?? '',
+      contents: json['contents'] is List ? json['contents'] : const [],
     );
   }
 

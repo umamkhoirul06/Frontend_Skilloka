@@ -6,6 +6,9 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/navigation/app_router.dart';
+import '../../../../core/animations/app_animations.dart';
+import '../../../../core/widgets/molecules/empty_state.dart';
+import '../../../../core/widgets/atoms/skilloka_loader.dart';
 
 /// Search Screen — PRD: pencarian kursus dan LPK dengan filter
 /// Fitur: debounce search, filter kategori, sort, bottom sheet filter
@@ -378,39 +381,32 @@ class _SearchScreenState extends State<SearchScreen>
   }
 
   Widget _buildLoading() {
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.all(32),
-        child: CircularProgressIndicator(),
-      ),
+    return const SkillokaLoading.inline(
+      message: 'Mencari kursus dan LPK terbaik...',
     );
   }
 
   Widget _buildNoResult(String type) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.search_off, size: 56, color: AppColors.textTertiary),
-            const SizedBox(height: 16),
-            Text(
-              'Tidak ada $type ditemukan',
-              style: AppTypography.titleMedium,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Coba kata kunci lain atau hapus filter yang aktif.',
-              style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
+    return AppEmptyState.search(
+      title: 'Tidak ada $type ditemukan',
+      message: 'Coba kata kunci lain atau pilih rekomendasi kategori populer berikut.',
+      suggestions: const [
+        'Teknologi',
+        'Desain',
+        'Otomotif',
+        'Bahasa',
+        'Manajemen',
+        'Pariwisata',
+      ],
+      onSuggestionTap: (cat) {
+        _searchController.text = cat;
+        _search();
+      },
+      onReset: () {
+        _searchController.clear();
+        setState(() => _selectedCategory = null);
+        _search();
+      },
     );
   }
 }
@@ -474,38 +470,41 @@ class _CourseResultCard extends StatelessWidget {
                 child: SizedBox(
                   width: 90,
                   height: 90,
-                  child: imageUrl.isNotEmpty
-                      ? CachedNetworkImage(
-                          imageUrl: imageUrl,
-                          fit: BoxFit.cover,
-                          placeholder: (_, __) => Container(
-                            color: AppColors.surfaceVariant,
-                            child: const Center(
-                              child: SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: AppColors.primary,
+                  child: Hero(
+                    tag: '${AppAnimations.heroTagCourse}$id',
+                    child: imageUrl.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: imageUrl,
+                            fit: BoxFit.cover,
+                            placeholder: (_, __) => Container(
+                              color: AppColors.surfaceVariant,
+                              child: const Center(
+                                child: SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.primary,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                          errorWidget: (_, __, ___) => Container(
+                            errorWidget: (_, __, ___) => Container(
+                              color: AppColors.primary.withValues(alpha: 0.1),
+                              child: const Center(
+                                child: Icon(Icons.school_rounded,
+                                    color: AppColors.primary, size: 28),
+                              ),
+                            ),
+                          )
+                        : Container(
                             color: AppColors.primary.withValues(alpha: 0.1),
                             child: const Center(
                               child: Icon(Icons.school_rounded,
                                   color: AppColors.primary, size: 28),
                             ),
                           ),
-                        )
-                      : Container(
-                          color: AppColors.primary.withValues(alpha: 0.1),
-                          child: const Center(
-                            child: Icon(Icons.school_rounded,
-                                color: AppColors.primary, size: 28),
-                          ),
-                        ),
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -647,16 +646,19 @@ class _LPKResultCard extends StatelessWidget {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
-                child: logoUrl.isNotEmpty
-                    ? CachedNetworkImage(
-                        imageUrl: logoUrl,
-                        width: 56,
-                        height: 56,
-                        fit: BoxFit.cover,
-                        placeholder: (_, __) => const _LPKPlaceholder(),
-                        errorWidget: (_, __, ___) => const _LPKPlaceholder(),
-                      )
-                    : const _LPKPlaceholder(),
+                child: Hero(
+                  tag: '${AppAnimations.heroTagLPK}$id',
+                  child: logoUrl.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: logoUrl,
+                          width: 56,
+                          height: 56,
+                          fit: BoxFit.cover,
+                          placeholder: (_, __) => const _LPKPlaceholder(),
+                          errorWidget: (_, __, ___) => const _LPKPlaceholder(),
+                        )
+                      : const _LPKPlaceholder(),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(

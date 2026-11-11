@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/navigation/app_router.dart';
+import '../../../../core/widgets/molecules/empty_state.dart';
+import '../../../../core/widgets/atoms/skilloka_loader.dart';
 
 /// Course Learning Screen - akses materi, absensi, sertifikat PRD 8.8
 class CourseLearningScreen extends StatefulWidget {
@@ -24,12 +28,162 @@ class _CourseLearningScreenState extends State<CourseLearningScreen>
   List<Map<String, dynamic>> _attendances = [];
   Map<String, dynamic>? _certificate;
   bool _isLoading = true;
+  Set<String> _completedModuleIds = {};
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) {
+        HapticFeedback.selectionClick();
+      }
+    });
     _loadData();
+    _loadProgress();
+  }
+
+  Future<void> _loadProgress() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final list = prefs.getStringList('completed_modules_${widget.courseId}') ?? [];
+      if (mounted) {
+        setState(() {
+          _completedModuleIds = list.toSet();
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _toggleModuleCompletion(String moduleId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      HapticFeedback.mediumImpact();
+      setState(() {
+        if (_completedModuleIds.contains(moduleId)) {
+          _completedModuleIds.remove(moduleId);
+        } else {
+          _completedModuleIds.add(moduleId);
+        }
+      });
+      await prefs.setStringList(
+        'completed_modules_${widget.courseId}',
+        _completedModuleIds.toList(),
+      );
+    } catch (_) {}
+  }
+
+  Widget _buildProgressCard() {
+    final total = _contents.length;
+    final completed = _completedModuleIds.length;
+    final progress = total > 0 ? (completed / total).clamp(0.0, 1.0) : 0.0;
+    final percent = (progress * 100).toInt();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.primary.withValues(alpha: 0.2),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: (percent == 100 ? AppColors.success : AppColors.primary)
+                      .withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Icon(
+                    percent == 100
+                        ? Icons.emoji_events_rounded
+                        : Icons.local_fire_department_rounded,
+                    color: percent == 100 ? AppColors.success : AppColors.secondary,
+                    size: 24,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      percent == 100
+                          ? 'Semua Modul Tuntas! 🎉'
+                          : (percent > 0 ? 'Progres Belajar Aktif' : 'Mulai Langkah Belajar'),
+                      style: AppTypography.titleSmall.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$completed dari $total materi diselesaikan',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: percent == 100 ? AppColors.success : AppColors.primary,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '$percent%',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween<double>(begin: 0, end: progress),
+              duration: const Duration(milliseconds: 600),
+              curve: Curves.easeOutCubic,
+              builder: (context, value, _) {
+                return LinearProgressIndicator(
+                  value: value,
+                  backgroundColor: AppColors.surfaceVariant,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    value >= 1.0
+                        ? AppColors.success
+                        : (value >= 0.5 ? AppColors.primary : AppColors.secondary),
+                  ),
+                  minHeight: 8,
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -102,7 +256,9 @@ class _CourseLearningScreenState extends State<CourseLearningScreen>
         ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const SkillokaLoading.inline(
+              message: 'Menyiapkan modul pembelajaran & silabus...',
+            )
           : TabBarView(
               controller: _tabController,
               children: [
@@ -139,9 +295,12 @@ class _CourseLearningScreenState extends State<CourseLearningScreen>
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
-        itemCount: _contents.length + 1,
+        itemCount: _contents.length + 2,
         itemBuilder: (context, i) {
           if (i == 0) {
+            return _buildProgressCard();
+          }
+          if (i == 1) {
             return Container(
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -182,17 +341,24 @@ class _CourseLearningScreenState extends State<CourseLearningScreen>
             );
           }
 
-          final item = _contents[i - 1];
-          final title = item['title']?.toString() ?? 'Materi $i';
+          final item = _contents[i - 2];
+          final title = item['title']?.toString() ?? 'Materi ${i - 1}';
           final type = item['type']?.toString() ?? 'document';
           final isLocked = item['is_locked'] == true;
+          final moduleId = item['id']?.toString() ?? 'mod_${i - 2}';
+          final isCompleted = _completedModuleIds.contains(moduleId);
 
           return Card(
             elevation: 0,
             margin: const EdgeInsets.only(bottom: 10),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
-              side: const BorderSide(color: AppColors.outline),
+              side: BorderSide(
+                color: isCompleted
+                    ? AppColors.success.withValues(alpha: 0.5)
+                    : AppColors.outline,
+                width: isCompleted ? 1.2 : 1.0,
+              ),
             ),
             color: AppColors.surface,
             child: ListTile(
@@ -202,19 +368,28 @@ class _CourseLearningScreenState extends State<CourseLearningScreen>
                 decoration: BoxDecoration(
                   color: isLocked
                       ? AppColors.surfaceVariant
-                      : AppColors.primary.withValues(alpha: 0.1),
+                      : (isCompleted
+                          ? AppColors.success.withValues(alpha: 0.12)
+                          : AppColors.primary.withValues(alpha: 0.1)),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
-                  isLocked ? Icons.lock_outline : _contentIcon(type),
+                  isLocked
+                      ? Icons.lock_outline
+                      : (isCompleted
+                          ? Icons.check_circle_rounded
+                          : _contentIcon(type)),
                   size: 20,
-                  color: isLocked ? AppColors.textTertiary : AppColors.primary,
+                  color: isLocked
+                      ? AppColors.textTertiary
+                      : (isCompleted ? AppColors.success : AppColors.primary),
                 ),
               ),
               title: Text(
                 title,
                 style: AppTypography.titleSmall.copyWith(
                   color: isLocked ? AppColors.textTertiary : AppColors.textPrimary,
+                  fontWeight: isCompleted ? FontWeight.w600 : FontWeight.normal,
                 ),
               ),
               subtitle: Text(
@@ -223,12 +398,36 @@ class _CourseLearningScreenState extends State<CourseLearningScreen>
                   color: AppColors.textSecondary,
                 ),
               ),
-              trailing: Icon(
-                isLocked ? Icons.lock_outline : Icons.chevron_right,
-                color: isLocked ? AppColors.textTertiary : AppColors.textSecondary,
-                size: 20,
-              ),
+              trailing: isLocked
+                  ? const Icon(Icons.lock_outline,
+                      color: AppColors.textTertiary, size: 20)
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            isCompleted
+                                ? Icons.check_circle_rounded
+                                : Icons.radio_button_unchecked_rounded,
+                            color: isCompleted
+                                ? AppColors.success
+                                : AppColors.textTertiary,
+                            size: 22,
+                          ),
+                          onPressed: () => _toggleModuleCompletion(moduleId),
+                          tooltip: isCompleted
+                              ? 'Tandai belum selesai'
+                              : 'Tandai selesai',
+                        ),
+                        const Icon(
+                          Icons.chevron_right,
+                          color: AppColors.textSecondary,
+                          size: 20,
+                        ),
+                      ],
+                    ),
               onTap: () {
+                HapticFeedback.lightImpact();
                 if (isLocked) {
                   _showLockedDialog();
                 } else {
@@ -535,17 +734,33 @@ class _CourseLearningScreenState extends State<CourseLearningScreen>
                     ),
                     child: SizedBox(
                       width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.check_circle_outline),
-                        label: const Text('Selesai Membaca Modul'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
+                      child: Builder(
+                        builder: (context) {
+                          final modId = item['id']?.toString() ?? '';
+                          final isDone = _completedModuleIds.contains(modId);
+                          return FilledButton.icon(
+                            onPressed: () {
+                              if (modId.isNotEmpty && !isDone) {
+                                _toggleModuleCompletion(modId);
+                              }
+                              Navigator.pop(context);
+                            },
+                            icon: Icon(isDone
+                                ? Icons.check_circle_rounded
+                                : Icons.check_circle_outline_rounded),
+                            label: Text(isDone
+                                ? 'Selesai Dibaca ✓'
+                                : 'Tandai Selesai & Lanjut'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor:
+                                  isDone ? AppColors.success : AppColors.primary,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ),
@@ -1071,28 +1286,10 @@ class _CourseLearningScreenState extends State<CourseLearningScreen>
     required String title,
     required String subtitle,
   }) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 56, color: AppColors.textTertiary),
-            const SizedBox(height: 16),
-            Text(title,
-                style: AppTypography.titleMedium,
-                textAlign: TextAlign.center),
-            const SizedBox(height: 8),
-            Text(
-              subtitle,
-              style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
+    return AppEmptyState(
+      customIcon: icon,
+      title: title,
+      message: subtitle,
     );
   }
 

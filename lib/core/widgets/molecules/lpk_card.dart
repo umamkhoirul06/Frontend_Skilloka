@@ -1,5 +1,8 @@
 /// LPK Card with verified badge and map thumbnail
+library;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_shapes.dart';
@@ -66,8 +69,7 @@ class _LPKCardState extends State<LPKCard> with SingleTickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    return Hero(
-      tag: '${AppAnimations.heroTagLPK}${widget.id}',
+    return RepaintBoundary(
       child: Container(
         width: 200,
         decoration: BoxDecoration(
@@ -91,7 +93,10 @@ class _LPKCardState extends State<LPKCard> with SingleTickerProviderStateMixin {
           color: Colors.transparent,
           borderRadius: AppShapes.cardRadius,
           child: InkWell(
-            onTap: widget.onTap,
+            onTap: () {
+              HapticFeedback.lightImpact();
+              widget.onTap?.call();
+            },
             borderRadius: AppShapes.cardRadius,
             splashColor: AppColors.primary.withValues(alpha: 0.1),
             highlightColor: AppColors.primary.withValues(alpha: 0.05),
@@ -115,19 +120,37 @@ class _LPKCardState extends State<LPKCard> with SingleTickerProviderStateMixin {
                   // Verified Badge
                   if (widget.isVerified) _buildVerifiedBadge(),
                   const SizedBox(height: 8),
-                  // Rating
-                  Row(
-                    children: [
-                      const Icon(Icons.star, color: AppColors.warning, size: 14),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${widget.rating.toStringAsFixed(1)} (${widget.reviewCount})',
-                        style: AppTypography.labelSmall.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  // Rating / Status
+                  if (widget.rating > 0)
+                    Row(
+                      children: [
+                        const Icon(Icons.star_rounded, color: AppColors.secondary, size: 15),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${widget.rating.toStringAsFixed(1)} (${widget.reviewCount})',
+                          style: AppTypography.labelSmall.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimaryFor(context),
+                          ),
+                        ),
+                      ],
+                    )
+                  else
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        'Mitra Resmi LPK',
+                        style: AppTypography.badge.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 10,
                         ),
                       ),
-                    ],
-                  ),
+                    ),
                   const SizedBox(height: 8),
                   // Address with map icon
                   Row(
@@ -163,10 +186,12 @@ class _LPKCardState extends State<LPKCard> with SingleTickerProviderStateMixin {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        // Logo
-        Container(
-          width: 60,
-          height: 60,
+        // Logo with Hero
+        Hero(
+          tag: '${AppAnimations.heroTagLPK}${widget.id}',
+          child: Container(
+            width: 60,
+            height: 60,
           decoration: BoxDecoration(
             color: AppColors.surfaceVariant,
             borderRadius: AppShapes.borderRadiusMD,
@@ -180,6 +205,8 @@ class _LPKCardState extends State<LPKCard> with SingleTickerProviderStateMixin {
                     child: CachedNetworkImage(
                       imageUrl: resolvedLogo,
                       fit: BoxFit.cover,
+                      memCacheWidth: 150,
+                      memCacheHeight: 150,
                       placeholder: (context, url) =>
                           const SkeletonLoader(width: 60, height: 60),
                       errorWidget: (context, url, error) {
@@ -198,6 +225,7 @@ class _LPKCardState extends State<LPKCard> with SingleTickerProviderStateMixin {
                     size: 28,
                   );
           }(),
+          ),
         ),
         // Verified badge overlay
         if (widget.isVerified)
@@ -222,25 +250,27 @@ class _LPKCardState extends State<LPKCard> with SingleTickerProviderStateMixin {
   }
 
   Widget _buildVerifiedBadge() {
-    return ScaleTransition(
-      scale: _badgeAnimation,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: AppColors.successContainer,
-          borderRadius: AppShapes.chipRadius,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedCheckmark(animate: true),
-            const SizedBox(width: 4),
-            Text(
-              'Terverifikasi Dinas',
-              style: AppTypography.badge.copyWith(color: AppColors.success),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: const Color(0xFFECFDF5),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: const Color(0xFFA7F3D0)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.verified_rounded, color: Color(0xFF059669), size: 13),
+          const SizedBox(width: 4),
+          Text(
+            'Terverifikasi Dinas',
+            style: AppTypography.badge.copyWith(
+              color: const Color(0xFF059669),
+              fontWeight: FontWeight.w700,
+              fontSize: 10.5,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

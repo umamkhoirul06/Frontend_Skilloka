@@ -1,5 +1,8 @@
 /// Course Card with parallax, rolling price, and rating animations
+library;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_colors.dart';
@@ -77,13 +80,12 @@ class _CourseCardState extends State<CourseCard>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
+    return RepaintBoundary(
+      child: AnimatedBuilder(
       animation: _scaleAnimation,
       builder: (context, child) =>
           Transform.scale(scale: _scaleAnimation.value, child: child),
-      child: Hero(
-        tag: '${AppAnimations.heroTagCourse}${widget.id}',
-        child: AnimatedContainer(
+      child: AnimatedContainer(
           duration: AppAnimations.fast,
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
@@ -114,7 +116,10 @@ class _CourseCardState extends State<CourseCard>
             color: Colors.transparent,
             borderRadius: AppShapes.cardRadius,
             child: InkWell(
-              onTap: widget.onTap,
+              onTap: () {
+                HapticFeedback.lightImpact();
+                widget.onTap?.call();
+              },
               onHighlightChanged: _handleHighlightChanged,
               borderRadius: AppShapes.cardRadius,
               splashColor: AppColors.primary.withValues(alpha: 0.1),
@@ -193,29 +198,38 @@ class _CourseCardState extends State<CourseCard>
                         ),
                         const SizedBox(height: 4),
 
-                        // --- FIX: Rating Saja (Ikon Lokasi & Jarak Dihapus) ---
+                        // --- Dynamic Rating & Price Row ---
+                        _buildRatingStars(),
+                        const SizedBox(height: 6),
                         Row(
                           children: [
-                            _buildRatingStars(),
-                            const SizedBox(width: 4),
                             Expanded(
-                              child: Text(
-                                '${widget.rating.toStringAsFixed(1)} (${widget.reviewCount})',
-                                style: AppTypography.labelSmall.copyWith(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
+                              child: RollingPrice(
+                                price: widget.price,
+                                style: AppTypography.titleMedium.copyWith(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 15,
                                 ),
-                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'Resmi',
+                                style: AppTypography.badge.copyWith(
+                                  color: AppColors.primary,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ),
                           ],
                         ),
-
-                        // -----------------------------------------------------
-                        const SizedBox(height: 4),
-                        // Price with rolling animation
-                        RollingPrice(price: widget.price),
                       ],
                     ),
                   ),
@@ -304,7 +318,9 @@ class _CourseCardState extends State<CourseCard>
     final String rawUrl = widget.imageUrl.trim();
     final String resolvedUrl = ApiService.toFullUrl(rawUrl);
 
-    return ClipRRect(
+    return Hero(
+      tag: '${AppAnimations.heroTagCourse}${widget.id}',
+      child: ClipRRect(
       borderRadius: BorderRadius.only(
         topLeft: Radius.circular(AppShapes.radiusLG),
         topRight: Radius.circular(AppShapes.radiusLG),
@@ -313,6 +329,8 @@ class _CourseCardState extends State<CourseCard>
           ? CachedNetworkImage(
               imageUrl: resolvedUrl,
               fit: BoxFit.cover,
+              memCacheWidth: 400,
+              memCacheHeight: 300,
               placeholder: (context, url) => Container(
                 color: AppColors.surfaceVariant,
                 child: const Center(
@@ -332,58 +350,81 @@ class _CourseCardState extends State<CourseCard>
               },
             )
           : _buildPlaceholder(),
+      ),
     );
   }
 
   Widget _buildRatingStars() {
+    if (widget.rating <= 0 && widget.reviewCount <= 0) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFEF3C7),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.auto_awesome, color: Color(0xFFD97706), size: 10),
+            const SizedBox(width: 3),
+            Text(
+              'Baru',
+              style: AppTypography.badge.copyWith(
+                color: const Color(0xFFD97706),
+                fontWeight: FontWeight.w700,
+                fontSize: 10,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Row(
       mainAxisSize: MainAxisSize.min,
-      children: List.generate(5, (index) {
-        final starValue = index + 1;
-        IconData icon;
-        Color color;
-
-        if (widget.rating >= starValue) {
-          icon = Icons.star;
-          color = AppColors.warning;
-        } else if (widget.rating >= starValue - 0.5) {
-          icon = Icons.star_half;
-          color = AppColors.warning;
-        } else {
-          icon = Icons.star_border;
-          color = AppColors.textDisabled;
-        }
-
-        return TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0, end: 1),
-          duration: Duration(milliseconds: 200 + (index * 100)),
-          curve: AppAnimations.overshoot,
-          builder: (context, value, child) {
-            return Transform.scale(scale: value, child: child);
-          },
-          child: Icon(icon, color: color, size: 12),
-        );
-      }),
+      children: [
+        const Icon(Icons.star_rounded, color: AppColors.secondary, size: 15),
+        const SizedBox(width: 3),
+        Text(
+          widget.rating.toStringAsFixed(1),
+          style: AppTypography.labelSmall.copyWith(
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimaryFor(context),
+            fontSize: 11,
+          ),
+        ),
+        const SizedBox(width: 2),
+        Text(
+          '(${widget.reviewCount})',
+          style: AppTypography.labelSmall.copyWith(
+            color: AppColors.textTertiaryFor(context),
+            fontSize: 11,
+          ),
+        ),
+      ],
     );
   }
 
   Color _getCategoryColor() {
-    switch (widget.category?.toLowerCase()) {
-      case 'las':
-        return AppColors.categoryLas;
-      case 'it':
-        return AppColors.categoryIT;
-      case 'otomotif':
-        return AppColors.categoryOtomotif;
-      case 'tata busana':
-        return AppColors.categoryTataBusana;
-      case 'tata boga':
-        return AppColors.categoryTataBoga;
-      case 'bahasa':
-        return AppColors.categoryBahasa;
-      default:
-        return AppColors.primary;
+    final cat = (widget.category ?? '').toLowerCase();
+    if (cat.contains('teknologi') || cat.contains('digital') || cat.contains('it') || cat.contains('komputer')) {
+      return AppColors.categoryIT;
+    } else if (cat.contains('otomotif') || cat.contains('manufaktur') || cat.contains('mesin')) {
+      return AppColors.categoryOtomotif;
+    } else if (cat.contains('las') || cat.contains('welding')) {
+      return AppColors.categoryLas;
+    } else if (cat.contains('bisnis') || cat.contains('manajemen')) {
+      return const Color(0xFF0D9488); // Modern Teal
+    } else if (cat.contains('bahasa')) {
+      return AppColors.categoryBahasa;
+    } else if (cat.contains('hotel') || cat.contains('wisata') || cat.contains('pariwisata')) {
+      return const Color(0xFFE11D48); // Rose
+    } else if (cat.contains('boga') || cat.contains('kuliner')) {
+      return AppColors.categoryTataBoga;
+    } else if (cat.contains('busana') || cat.contains('fashion')) {
+      return AppColors.categoryTataBusana;
     }
+    return AppColors.primary;
   }
 }
 

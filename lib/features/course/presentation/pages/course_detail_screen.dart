@@ -1,5 +1,8 @@
 /// Course Detail Screen with image gallery, syllabus, and booking CTA
+library;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
@@ -10,6 +13,7 @@ import '../../../../core/animations/app_animations.dart';
 import '../../../../core/navigation/app_router.dart';
 import '../../../../core/widgets/atoms/animated_button.dart';
 import '../../../../core/widgets/molecules/course_card.dart';
+import '../../../../core/widgets/atoms/skilloka_loader.dart';
 import '../../../../core/services/api_service.dart';
 
 class CourseDetailScreen extends StatefulWidget {
@@ -61,26 +65,155 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     }
   }
 
-  final List<Map<String, dynamic>> _syllabus = [
+  static final List<Map<String, dynamic>> _defaultSyllabus = [
     {
-      'title': 'Modul 1: Pengenalan',
+      'title': 'Modul 1: Pengenalan & K3',
       'duration': '2 Jam',
-      'items': ['Pengantar materi', 'Peralatan dasar', 'Keselamatan kerja'],
+      'items': [
+        'Pengantar materi kejuruan & keselamatan kerja (K3)',
+        'Pengenalan peralatan dan standar operasional bengkel/lab',
+      ],
     },
     {
-      'title': 'Modul 2: Praktik Dasar',
+      'title': 'Modul 2: Teori & Praktik Dasar',
       'duration': '8 Jam',
-      'items': ['Teknik dasar', 'Latihan terbimbing', 'Evaluasi awal'],
+      'items': [
+        'Teknik dan prosedur dasar kejuruan',
+        'Latihan terbimbing instruktur',
+        'Praktik penggunaan instrumen & bahan pelatihan',
+      ],
+    },
+    {
+      'title': 'Modul 3: Praktik Lanjutan & Proyek',
+      'duration': '12 Jam',
+      'items': [
+        'Penerapan teknik lanjutan standar industri',
+        'Studi kasus dan penyelesaian proyek kerja nyata',
+      ],
+    },
+    {
+      'title': 'Modul 4: Uji Kompetensi & Sertifikasi',
+      'duration': '4 Jam',
+      'items': [
+        'Evaluasi hasil kerja praktik',
+        'Persiapan uji kompetensi kejuruan',
+        'Penerbitan sertifikat kelulusan LPK',
+      ],
     },
   ];
+
+  List<Map<String, dynamic>> get _syllabus {
+    final rawSyllabus = courseData?['syllabus']?.toString();
+    final rawContents = courseData?['contents'];
+
+    // 1. Prioritas 1: Jika admin LPK mengunggah materi digital / contents
+    if (rawContents is List && rawContents.isNotEmpty) {
+      return rawContents.asMap().entries.map((entry) {
+        final item = Map<String, dynamic>.from(entry.value as Map);
+        final title = item['title']?.toString() ?? 'Materi ${entry.key + 1}';
+        final type = (item['type']?.toString() ?? 'MODUL').toUpperCase();
+        final dur = type == 'VIDEO' ? 'Video Pembelajaran' : 'Modul Digital';
+        return {
+          'title': title,
+          'duration': dur,
+          'items': [
+            item['description']?.toString() ??
+                'Materi pokok bahasan resmi dari instruktur LPK.'
+          ],
+        };
+      }).toList();
+    }
+
+    // 2. Prioritas 2: Jika admin LPK mengisi teks Silabus Materi / Pokok Pembahasan
+    if (rawSyllabus != null && rawSyllabus.trim().isNotEmpty) {
+      final parsed = _parseSyllabusText(rawSyllabus.trim());
+      if (parsed.isNotEmpty) {
+        return parsed;
+      }
+    }
+
+    // 3. Fallback: Gunakan template default jika data kosong / belum diisi admin LPK
+    return _defaultSyllabus;
+  }
+
+  List<Map<String, dynamic>> _parseSyllabusText(String text) {
+    final rawLines = text
+        .split(RegExp(r'\r?\n'))
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty)
+        .toList();
+
+    if (rawLines.isEmpty) return [];
+
+    final List<Map<String, dynamic>> modules = [];
+    Map<String, dynamic>? currentModule;
+    List<String> currentItems = [];
+
+    for (final line in rawLines) {
+      final isBullet = RegExp(r'^[\-\*•–—]\s*').hasMatch(line);
+      final isNumbered = RegExp(
+        r'^(\d+[\.\)]|modul\s*\d+|bab\s*\d+|sesi\s*\d+|pertemuan\s*\d+|topik\s*\d+)',
+        caseSensitive: false,
+      ).hasMatch(line);
+
+      if (isBullet && currentModule != null) {
+        // Sub-item pokok bahasan di bawah modul
+        final cleanItem = line.replaceFirst(RegExp(r'^[\-\*•–—]\s*'), '').trim();
+        if (cleanItem.isNotEmpty) {
+          currentItems.add(cleanItem);
+        }
+      } else if (isNumbered || currentModule == null) {
+        if (currentModule != null) {
+          currentModule['items'] = currentItems.isNotEmpty
+              ? List<String>.from(currentItems)
+              : ['Pokok pembahasan & materi kejuruan sesuai kurikulum'];
+          modules.add(currentModule);
+          currentItems = [];
+        }
+
+        String cleanLine = line.replaceFirst(RegExp(r'^\d+[\.\)]\s*'), '').trim();
+        String title = cleanLine;
+        String? detailDesc;
+
+        if (cleanLine.contains(':')) {
+          final parts = cleanLine.split(':');
+          title = parts[0].trim();
+          detailDesc = parts.sublist(1).join(':').trim();
+        } else if (cleanLine.contains(' - ')) {
+          final parts = cleanLine.split(' - ');
+          title = parts[0].trim();
+          detailDesc = parts.sublist(1).join(' - ').trim();
+        }
+
+        if (detailDesc != null && detailDesc.isNotEmpty) {
+          currentItems.add(detailDesc);
+        }
+
+        currentModule = {
+          'title': title.isNotEmpty ? title : 'Pokok Pembahasan',
+          'duration': 'Pokok Pembahasan',
+          'items': <String>[],
+        };
+      } else {
+        currentItems.add(line);
+      }
+    }
+
+    if (currentModule != null) {
+      currentModule['items'] = currentItems.isNotEmpty
+          ? List<String>.from(currentItems)
+          : ['Pokok pembahasan & materi kejuruan sesuai kurikulum'];
+      modules.add(currentModule);
+    }
+
+    return modules;
+  }
 
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return Scaffold(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        body: const Center(
-            child: CircularProgressIndicator(color: AppColors.primary)),
+      return const SkillokaLoading.page(
+        message: 'Memuat kurikulum & silabus pelatihan...',
       );
     }
 
@@ -154,26 +287,38 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                 icon: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  shape: BoxShape.circle,
+                    color: Colors.black.withValues(alpha: 0.35),
+                    shape: BoxShape.circle,
+                  ),
+                  child: TweenAnimationBuilder<double>(
+                    key: ValueKey<bool>(_isFavorite),
+                    tween: Tween<double>(begin: 0.7, end: 1.0),
+                    duration: const Duration(milliseconds: 350),
+                    curve: Curves.elasticOut,
+                    builder: (context, scale, child) {
+                      return Transform.scale(
+                        scale: scale,
+                        child: Icon(
+                          _isFavorite ? Icons.favorite : Icons.favorite_border,
+                          color: _isFavorite ? AppColors.error : Colors.white,
+                        ),
+                      );
+                    },
+                  ),
                 ),
-                child: Icon(
-                  _isFavorite ? Icons.favorite : Icons.favorite_border,
-                  color: _isFavorite ? AppColors.error : Colors.white,
-                ),
-              ),
-              onPressed: () async {
-                final result = await _api.toggleFavorite(
-                  courseId: widget.courseId,
-                );
+                onPressed: () async {
+                  HapticFeedback.mediumImpact();
+                  final result = await _api.toggleFavorite(
+                    courseId: widget.courseId,
+                  );
 
-                if (result['success']) {
-                  setState(() {
-                    _isFavorite = !_isFavorite;
-                  });
-                }
-              },
-            ),
+                  if (result['success']) {
+                    setState(() {
+                      _isFavorite = !_isFavorite;
+                    });
+                  }
+                },
+              ),
             const SizedBox(width: 8),
           ],
           flexibleSpace: FlexibleSpaceBar(
@@ -518,33 +663,63 @@ class _SyllabusAccordionState extends State<_SyllabusAccordion> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return AnimatedContainer(
+      duration: AppAnimations.medium,
+      curve: Curves.easeOutCubic,
+      margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
+        color: _isExpanded
+            ? (isDark
+                ? AppColors.primary.withValues(alpha: 0.12)
+                : AppColors.primary.withValues(alpha: 0.04))
+            : Theme.of(context).colorScheme.surface,
         borderRadius: AppShapes.borderRadiusMD,
+        border: Border.all(
+          color: _isExpanded
+              ? AppColors.primary.withValues(alpha: 0.35)
+              : (isDark ? AppColors.outlineDark : AppColors.outline),
+          width: _isExpanded ? 1.5 : 1.0,
+        ),
+        boxShadow: _isExpanded
+            ? [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.06),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                )
+              ]
+            : null,
       ),
       child: Column(
         children: [
           InkWell(
-            onTap: () => setState(() => _isExpanded = !_isExpanded),
+            onTap: () {
+              HapticFeedback.lightImpact();
+              setState(() => _isExpanded = !_isExpanded);
+            },
             borderRadius: AppShapes.borderRadiusMD,
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  Container(
-                    width: 32,
-                    height: 32,
+                  AnimatedContainer(
+                    duration: AppAnimations.medium,
+                    width: 34,
+                    height: 34,
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
+                      color: _isExpanded
+                          ? AppColors.primary
+                          : AppColors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
                     ),
                     child: Center(
                       child: Text(
                         '${widget.index}',
-                        style: AppTypography.labelLarge
-                            .copyWith(color: AppColors.primary),
+                        style: AppTypography.labelLarge.copyWith(
+                          color: _isExpanded ? Colors.white : AppColors.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
@@ -553,21 +728,51 @@ class _SyllabusAccordionState extends State<_SyllabusAccordion> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(widget.title, style: AppTypography.labelMedium),
                         Text(
-                          widget.duration,
-                          style: AppTypography.bodySmall
-                              .copyWith(color: AppColors.textSecondary),
+                          widget.title,
+                          style: AppTypography.labelMedium.copyWith(
+                            fontWeight: _isExpanded ? FontWeight.w700 : FontWeight.w600,
+                            color: _isExpanded ? AppColors.primary : null,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Text(
+                              widget.duration,
+                              style: AppTypography.bodySmall
+                                  .copyWith(color: AppColors.textSecondary),
+                            ),
+                            if (widget.items.isNotEmpty) ...[
+                              Container(
+                                width: 3,
+                                height: 3,
+                                margin: const EdgeInsets.symmetric(horizontal: 6),
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: AppColors.textTertiary,
+                                ),
+                              ),
+                              Text(
+                                '${widget.items.length} materi',
+                                style: AppTypography.bodySmall.copyWith(
+                                  color: _isExpanded ? AppColors.primary : AppColors.textTertiary,
+                                  fontWeight: _isExpanded ? FontWeight.w600 : FontWeight.normal,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ],
                     ),
                   ),
                   AnimatedRotation(
                     turns: _isExpanded ? 0.5 : 0,
-                    duration: AppAnimations.fast,
-                    child: const Icon(
-                      Icons.keyboard_arrow_down,
-                      color: AppColors.textSecondary,
+                    duration: AppAnimations.medium,
+                    curve: Curves.easeOutBack,
+                    child: Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: _isExpanded ? AppColors.primary : AppColors.textSecondary,
                     ),
                   ),
                 ],
@@ -575,36 +780,46 @@ class _SyllabusAccordionState extends State<_SyllabusAccordion> {
             ),
           ),
           AnimatedCrossFade(
-            duration: AppAnimations.fast,
+            duration: AppAnimations.medium,
+            firstCurve: Curves.easeOutCubic,
+            secondCurve: Curves.easeOutCubic,
             crossFadeState: _isExpanded
                 ? CrossFadeState.showSecond
                 : CrossFadeState.showFirst,
             firstChild: const SizedBox.shrink(),
             secondChild: Padding(
-              padding: const EdgeInsets.fromLTRB(60, 0, 16, 16),
+              padding: const EdgeInsets.fromLTRB(62, 0, 16, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: widget.items.map((item) {
                   return Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
+                    padding: const EdgeInsets.only(bottom: 8),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Container(
-                          width: 6,
-                          height: 6,
-                          margin: const EdgeInsets.only(top: 6),
-                          decoration: const BoxDecoration(
+                          width: 20,
+                          height: 20,
+                          margin: const EdgeInsets.only(top: 1),
+                          decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: AppColors.textTertiary,
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                          ),
+                          child: const Icon(
+                            Icons.play_arrow_rounded,
+                            size: 13,
+                            color: AppColors.primary,
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Text(
                             item,
-                            style: AppTypography.bodySmall
-                                .copyWith(color: AppColors.textSecondary),
+                            style: AppTypography.bodySmall.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              height: 1.45,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                       ],

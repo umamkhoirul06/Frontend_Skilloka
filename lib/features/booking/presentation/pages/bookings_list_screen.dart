@@ -6,6 +6,8 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/navigation/app_router.dart';
 import '../../data/models/booking_model.dart';
 import '../../../../core/services/api_service.dart';
+import '../../../../core/widgets/molecules/empty_state.dart';
+import '../../../../core/widgets/atoms/skilloka_loader.dart';
 
 class BookingsListScreen extends StatefulWidget {
   const BookingsListScreen({super.key});
@@ -107,7 +109,9 @@ class _BookingsListScreenState extends State<BookingsListScreen>
         future: _bookingsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const SkillokaLoading.inline(
+              message: 'Memuat riwayat transaksi pesanan...',
+            );
           }
           if (snapshot.hasError) {
             return _buildError(snapshot.error.toString());
@@ -135,42 +139,21 @@ class _BookingsListScreenState extends State<BookingsListScreen>
   }
 
   Widget _buildError(String error) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.error_outline, size: 48, color: AppColors.error),
-          const SizedBox(height: 16),
-          Text(error,
-              style: AppTypography.bodyMedium, textAlign: TextAlign.center),
-          const SizedBox(height: 24),
-          ElevatedButton(onPressed: _refresh, child: const Text('Coba Lagi')),
-        ],
-      ),
+    return AppEmptyState.error(
+      title: 'Gagal Memuat Pesanan',
+      message: error,
+      onRetry: _refresh,
     );
   }
 
   Widget _buildEmpty() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.receipt_long_outlined,
-              size: 64, color: AppColors.textTertiary),
-          const SizedBox(height: 16),
-          Text('Belum ada pesanan', style: AppTypography.titleMedium),
-          const SizedBox(height: 8),
-          Text('Daftarkan diri ke kursus favoritmu!',
-              style: AppTypography.bodyMedium
-                  .copyWith(color: AppColors.textSecondary)),
-          const SizedBox(height: 24),
-          FilledButton.icon(
-            onPressed: () => context.go(AppRouter.home),
-            icon: const Icon(Icons.explore_outlined),
-            label: const Text('Cari Kursus'),
-          ),
-        ],
-      ),
+    return AppEmptyState(
+      type: EmptyStateType.booking,
+      title: 'Belum ada pesanan',
+      message: 'Daftarkan diri ke kursus favoritmu dan raih sertifikasi kompetensi impianmu!',
+      actionLabel: 'Cari Kursus Sekarang',
+      actionIcon: Icons.explore_outlined,
+      onAction: () => context.go(AppRouter.home),
     );
   }
 }

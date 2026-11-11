@@ -1,4 +1,6 @@
 /// Hero Banner Carousel with parallax and time-based content
+library;
+
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -143,6 +145,7 @@ class _BannerCard extends StatelessWidget {
                     ? CachedNetworkImage(
                         imageUrl: resolvedUrl,
                         fit: BoxFit.cover,
+                        memCacheWidth: 800,
                         placeholder: (context, url) =>
                             Container(decoration: BoxDecoration(gradient: AppColors.heroGradient)),
                         errorWidget: (context, url, error) => CachedNetworkImage(

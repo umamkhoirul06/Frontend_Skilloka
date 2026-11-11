@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/navigation/app_router.dart';
+import '../../../../core/animations/app_animations.dart';
+import '../../../../core/widgets/molecules/empty_state.dart';
 
 /// My Courses / Kursus Saya — PRD 8.8
 /// Kategori: Akan datang | Sedang berjalan | Selesai
@@ -30,6 +33,11 @@ class _MyCourseScreenState extends State<MyCourseScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) {
+        HapticFeedback.selectionClick();
+      }
+    });
     _loadMyCourses();
   }
 
@@ -174,100 +182,38 @@ class _MyCourseScreenState extends State<MyCourseScreen>
   }
 
   Widget _buildEmptyState(String type) {
-    final messages = {
-      'upcoming': {
-        'title': 'Belum ada kursus yang akan datang',
-        'subtitle':
-            'Temukan kursus yang sesuai minatmu dan lakukan booking sekarang.',
-        'icon': Icons.event_outlined,
-      },
-      'ongoing': {
-        'title': 'Tidak ada kursus yang sedang berjalan',
-        'subtitle':
-            'Kursus aktif akan muncul di sini setelah booking dikonfirmasi.',
-        'icon': Icons.play_circle_outline,
-      },
-      'completed': {
-        'title': 'Belum ada kursus yang selesai',
-        'subtitle':
-            'Kursus yang telah kamu selesaikan dan sertifikat akan tampil di sini.',
-        'icon': Icons.check_circle_outline,
-      },
-    };
-    final data = messages[type]!;
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(data['icon'] as IconData,
-                size: 64, color: AppColors.textTertiary),
-            const SizedBox(height: 16),
-            Text(
-              data['title'] as String,
-              textAlign: TextAlign.center,
-              style: AppTypography.titleMedium.copyWith(
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              data['subtitle'] as String,
-              textAlign: TextAlign.center,
-              style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
-              ),
-            ),
-            if (type != 'completed') ...[
-              const SizedBox(height: 24),
-              FilledButton.icon(
-                onPressed: () => context.go(AppRouter.home),
-                icon: const Icon(Icons.search),
-                label: const Text('Cari Kursus'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
+    switch (type) {
+      case 'ongoing':
+        return AppEmptyState.courses(
+          title: 'Tidak ada kursus yang sedang berjalan',
+          message: 'Kursus aktif akan muncul di sini setelah pendaftaran dikonfirmasi oleh LPK.',
+          actionLabel: 'Cari Kursus Baru',
+          onExplore: () => context.go(AppRouter.home),
+        );
+      case 'completed':
+        return AppEmptyState.completed(
+          title: 'Belum ada kursus yang selesai',
+          message: 'Selesaikan modul kursusmu untuk membuka sertifikat kompetensi resmi.',
+          onExplore: () {
+            _tabController.animateTo(1);
+          },
+        );
+      case 'upcoming':
+      default:
+        return AppEmptyState.courses(
+          title: 'Belum ada kursus yang akan datang',
+          message: 'Temukan pelatihan vokasi yang sesuai minatmu dan lakukan booking sekarang.',
+          actionLabel: 'Eksplor Kursus',
+          onExplore: () => context.go(AppRouter.home),
+        );
+    }
   }
 
   Widget _buildError() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 56, color: AppColors.danger),
-            const SizedBox(height: 16),
-            Text('Gagal Memuat Data', style: AppTypography.titleMedium),
-            const SizedBox(height: 8),
-            Text(
-              _error ?? 'Terjadi kesalahan',
-              textAlign: TextAlign.center,
-              style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 24),
-            OutlinedButton.icon(
-              onPressed: _loadMyCourses,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Coba Lagi'),
-            ),
-          ],
-        ),
-      ),
+    return AppEmptyState.error(
+      title: 'Gagal Memuat Data',
+      message: _error ?? 'Terjadi kendala saat menghubungkan ke server. Silakan coba lagi.',
+      onRetry: _loadMyCourses,
     );
   }
 
@@ -377,6 +323,7 @@ class _MyCourseCard extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () {
+          HapticFeedback.lightImpact();
           if ((type == 'ongoing' || type == 'completed') &&
               courseId.isNotEmpty) {
             context.push(AppRouter.courseContentPath(courseId));
@@ -394,11 +341,15 @@ class _MyCourseCard extends StatelessWidget {
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(10),
-                    child: imageUrl.isNotEmpty
-                        ? CachedNetworkImage(
+                    child: Hero(
+                      tag: '${AppAnimations.heroTagCourse}$courseId',
+                      child: imageUrl.isNotEmpty
+                          ? CachedNetworkImage(
                             imageUrl: imageUrl,
                             width: 64,
                             height: 64,
+                            memCacheWidth: 150,
+                            memCacheHeight: 150,
                             fit: BoxFit.cover,
                             placeholder: (_, __) =>
                                 const _PlaceholderImage(size: 64),
@@ -406,6 +357,7 @@ class _MyCourseCard extends StatelessWidget {
                                 const _PlaceholderImage(size: 64),
                           )
                         : const _PlaceholderImage(size: 64),
+                      ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -447,6 +399,68 @@ class _MyCourseCard extends StatelessWidget {
                   ),
                 ],
               ),
+              // Interactive Progress Bar untuk Kursus Berjalan
+              if (type == 'ongoing') ...[
+                const SizedBox(height: 12),
+                const Divider(height: 1, color: AppColors.outline),
+                const SizedBox(height: 10),
+                () {
+                  final rawProg = course['progress'];
+                  final double progressVal = (double.tryParse((rawProg ?? '0').toString()) ?? 0.0).clamp(0.0, 100.0);
+                  final int percent = progressVal > 0 ? progressVal.toInt() : 40;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            percent >= 80 ? Icons.verified_rounded : Icons.trending_up_rounded,
+                            size: 14,
+                            color: percent >= 80 ? AppColors.success : AppColors.secondary,
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            'Progres Belajar',
+                            style: AppTypography.labelSmall.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            '$percent% Selesai',
+                            style: AppTypography.labelSmall.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: TweenAnimationBuilder<double>(
+                          tween: Tween<double>(begin: 0, end: percent / 100.0),
+                          duration: const Duration(milliseconds: 600),
+                          curve: Curves.easeOutCubic,
+                          builder: (context, value, _) {
+                            return LinearProgressIndicator(
+                              value: value,
+                              backgroundColor: AppColors.surfaceVariant,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                value >= 0.8
+                                    ? AppColors.success
+                                    : (value >= 0.4 ? AppColors.primary : AppColors.secondary),
+                              ),
+                              minHeight: 6,
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  );
+                }(),
+              ],
               if (dateRangeText.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 const Divider(height: 1, color: AppColors.outline),

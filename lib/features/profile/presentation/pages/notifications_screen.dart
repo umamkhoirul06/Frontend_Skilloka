@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_shapes.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../core/widgets/molecules/empty_state.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -127,19 +128,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Widget _buildInbox() {
     if (_inbox.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.notifications_none_outlined,
-              size: 64,
-              color: AppColors.textTertiary,
-            ),
-            const SizedBox(height: 16),
-            Text('Tidak ada notifikasi', style: AppTypography.titleSmall),
-          ],
-        ),
+      return const AppEmptyState(
+        type: EmptyStateType.notification,
+        title: 'Belum ada notifikasi',
+        message: 'Semua informasi pendaftaran, promo, dan update kursusmu akan muncul di sini.',
       );
     }
 

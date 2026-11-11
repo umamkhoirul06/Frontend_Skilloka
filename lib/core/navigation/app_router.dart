@@ -1,5 +1,6 @@
 /// App Router configuration using GoRouter
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/splash/presentation/pages/splash_screen.dart';
@@ -495,7 +496,10 @@ class MainShell extends StatelessWidget {
         shadowColor: const Color(0xFF2563EB).withValues(alpha: 0.35),
         child: InkWell(
           borderRadius: BorderRadius.circular(28),
-          onTap: () => context.push(AppRouter.chatbot),
+          onTap: () {
+            HapticFeedback.mediumImpact();
+            context.push(AppRouter.chatbot);
+          },
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
@@ -569,6 +573,9 @@ class MainBottomNavigation extends StatelessWidget {
   }
 
   void _onItemTapped(BuildContext context, int index) {
+    if (index != _calculateSelectedIndex(context)) {
+      HapticFeedback.selectionClick();
+    }
     switch (index) {
       case 0:
         context.go(AppRouter.home);
