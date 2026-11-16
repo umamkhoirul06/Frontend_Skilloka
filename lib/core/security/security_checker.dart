@@ -1,4 +1,4 @@
-/// Security checker for root/jailbreak detection
+﻿/// Security checker for root/jailbreak detection
 import 'package:flutter/foundation.dart';
 import 'package:flutter_jailbreak_detection/flutter_jailbreak_detection.dart';
 import '../error/failures.dart';

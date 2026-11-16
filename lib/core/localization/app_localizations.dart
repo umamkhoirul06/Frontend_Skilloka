@@ -1,4 +1,4 @@
-// App Localizations - Simple implementation for development
+﻿// App Localizations - Simple implementation for development
 // This is a placeholder until I10n is fully set up
 
 import 'package:flutter/material.dart';

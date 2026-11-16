@@ -1,4 +1,4 @@
-/// Course Detail Screen with image gallery, syllabus, and booking CTA
+﻿/// Course Detail Screen with image gallery, syllabus, and booking CTA
 library;
 
 import 'package:flutter/material.dart';

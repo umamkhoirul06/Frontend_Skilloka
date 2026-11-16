@@ -1,4 +1,4 @@
-/// Shape system for consistent border radius and shapes
+﻿/// Shape system for consistent border radius and shapes
 import 'package:flutter/material.dart';
 
 class AppShapes {

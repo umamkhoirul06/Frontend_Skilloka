@@ -1,4 +1,4 @@
-import 'package:equatable/equatable.dart';
+﻿import 'package:equatable/equatable.dart';
 import '../error/failures.dart';
 
 enum StateStatus { initial, loading, success, failure, loadingMore }

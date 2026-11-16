@@ -1,4 +1,4 @@
-class ScheduleInfo {
+﻿class ScheduleInfo {
   final String? id;
   final String? courseId;
   final String? courseTitle;

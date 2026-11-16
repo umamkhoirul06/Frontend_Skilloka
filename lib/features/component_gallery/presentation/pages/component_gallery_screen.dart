@@ -1,4 +1,4 @@
-/// Component Gallery Screen for Development
+﻿/// Component Gallery Screen for Development
 import 'package:flutter/material.dart';
 
 class ComponentGalleryScreen extends StatelessWidget {

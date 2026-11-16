@@ -9,6 +9,7 @@ import '../network/api_client.dart';
 import '../network/network_info.dart';
 import '../security/secure_storage.dart';
 import '../security/security_checker.dart';
+import '../config/app_config.dart';
 
 import '../services/sync_service.dart';
 
@@ -22,6 +23,7 @@ Future<void> init() async {
 
   // External dependencies
   final sharedPrefs = await SharedPreferences.getInstance();
+  await AppConfig.init(sharedPrefs);
   sl.registerLazySingleton<SharedPreferences>(() => sharedPrefs);
   sl.registerLazySingleton<Connectivity>(() => Connectivity());
   sl.registerLazySingleton<Dio>(() => Dio());

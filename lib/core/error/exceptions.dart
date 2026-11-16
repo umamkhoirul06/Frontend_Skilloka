@@ -1,4 +1,4 @@
-/// Exception classes for error handling
+﻿/// Exception classes for error handling
 class ServerException implements Exception {
   final String message;
   final int? statusCode;

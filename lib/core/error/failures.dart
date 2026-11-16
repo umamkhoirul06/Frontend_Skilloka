@@ -1,4 +1,4 @@
-/// Failure classes for domain layer error handling
+﻿/// Failure classes for domain layer error handling
 import 'package:equatable/equatable.dart';
 
 abstract class Failure extends Equatable {

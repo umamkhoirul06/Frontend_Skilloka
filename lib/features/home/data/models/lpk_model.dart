@@ -108,6 +108,24 @@ class LpkModel {
   static Map<String, dynamic> _parseContactInfo(dynamic raw) {
     if (raw == null) return const {};
     if (raw is Map) return Map<String, dynamic>.from(raw);
+    if (raw is List && raw.isNotEmpty) {
+      final map = <String, dynamic>{};
+      final combined = raw.map((e) => e.toString()).join(', ');
+      final parts = combined.split(',');
+      for (final part in parts) {
+        final item = part.trim();
+        if (item.contains('@') && !item.startsWith('@')) {
+          map['email'] = item;
+        } else if (item.startsWith('@')) {
+          map['instagram'] = item.substring(1);
+        } else if (RegExp(r'^[0-9+\-\s]{8,}$').hasMatch(item)) {
+          final cleanPhone = item.replaceAll(RegExp(r'\s+'), '');
+          map['phone'] = cleanPhone;
+          map['whatsapp'] = cleanPhone;
+        }
+      }
+      return map;
+    }
     return const {};
   }
 

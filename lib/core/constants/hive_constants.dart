@@ -1,4 +1,4 @@
-class HiveConstants {
+﻿class HiveConstants {
   static const String locationBox = 'locations_box';
   static const String categoryBox = 'categories_box';
   static const String userBox = 'user_box';

@@ -1,4 +1,4 @@
-/// Expandable Search Bar with voice input capability
+﻿/// Expandable Search Bar with voice input capability
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_shapes.dart';

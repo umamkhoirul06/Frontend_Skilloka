@@ -1,4 +1,4 @@
-/// Material 3 Theme Configuration
+﻿/// Material 3 Theme Configuration
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'app_colors.dart';

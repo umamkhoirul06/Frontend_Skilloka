@@ -1,4 +1,4 @@
-/// Localization configuration
+﻿/// Localization configuration
 import 'package:flutter/material.dart';
 import '../core/localization/app_localizations.dart';
 

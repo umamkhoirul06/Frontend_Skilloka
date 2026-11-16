@@ -1,4 +1,4 @@
-/// Network connectivity checker
+﻿/// Network connectivity checker
 import 'package:connectivity_plus/connectivity_plus.dart';
 
 abstract class NetworkInfo {

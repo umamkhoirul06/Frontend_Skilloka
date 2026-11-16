@@ -1,4 +1,4 @@
-/// Animated Primary Button with scale, haptic feedback, and gradient support
+﻿/// Animated Primary Button with scale, haptic feedback, and gradient support
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../theme/app_colors.dart';

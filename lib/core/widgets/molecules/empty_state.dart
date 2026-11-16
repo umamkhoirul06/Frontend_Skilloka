@@ -1,14 +1,12 @@
 /// Modern interactive Empty State and Error State component with floating animations
 library;
 
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../theme/app_colors.dart';
 import '../../theme/app_shapes.dart';
 import '../../theme/app_typography.dart';
-import '../../animations/app_animations.dart';
 
 enum EmptyStateType {
   general,

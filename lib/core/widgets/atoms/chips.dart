@@ -1,4 +1,4 @@
-/// Location Chip with GPS pulse animation
+﻿/// Location Chip with GPS pulse animation
 library;
 
 import 'package:flutter/material.dart';

@@ -1,4 +1,4 @@
-// Typography system matching Skilloka Web Platform (Outfit for Headings, Inter for Body)
+﻿// Typography system matching Skilloka Web Platform (Outfit for Headings, Inter for Body)
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 

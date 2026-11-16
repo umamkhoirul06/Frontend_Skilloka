@@ -76,10 +76,21 @@ class ApiService {
     }
     if (url.isEmpty) return '';
 
-    final origin = AppConfig.baseOrigin; // e.g. http://10.0.2.2:8000 atau http://127.0.0.1:8000
+    final origin = AppConfig.baseOrigin; // e.g. https://skilloka.my.id atau http://10.0.2.2:8000
 
     // Jika URL sudah menggunakan baseOrigin yang benar — kembalikan apa adanya
     if (url.startsWith(origin)) return url;
+
+    // Pastikan HTTPS untuk domain skilloka.my.id jika server aktif menggunakan HTTPS
+    if (url.startsWith('http://skilloka.my.id') && origin.startsWith('https://skilloka.my.id')) {
+      url = url.replaceFirst('http://skilloka.my.id', 'https://skilloka.my.id');
+      if (url.startsWith(origin)) return url;
+    }
+
+    // Jika sedang mode local (devLocal / devDevice), rewrite URL remote skilloka.my.id ke origin lokal
+    if (AppConfig.isLocal && (url.startsWith('https://skilloka.my.id') || url.startsWith('http://skilloka.my.id'))) {
+      return url.replaceFirst(RegExp(r'^https?://skilloka\.my\.id'), origin);
+    }
 
     // Ganti domain lokal apapun (127.0.0.1:8000, localhost:8000, 10.0.2.2:8000, 192.168.x.x:8000)
     // ke baseOrigin yang aktif saat ini.

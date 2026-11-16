@@ -1,4 +1,4 @@
-/// LPK Card with verified badge and map thumbnail
+﻿/// LPK Card with verified badge and map thumbnail
 library;
 
 import 'package:flutter/material.dart';

@@ -2,6 +2,8 @@ name: Build Release APK
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*.*.*'          # Trigger saat push tag, contoh: v1.0.0
   workflow_dispatch:       # Bisa dijalankan manual dari GitHub Actions tab
@@ -62,18 +64,30 @@ jobs:
             --release \
             --split-per-abi
 
-      # ── 8. Rename APK dengan versi (Skilloka) ─────────────────────────
+      # ── 8. Rename APK dengan nama skilloka.apk ────────────────────────
       - name: Rename APKs
         run: |
           VERSION="${{ github.ref_name }}"
-          if [ -z "$VERSION" ] || [ "$VERSION" = "refs/heads/main" ]; then
+          if [ -z "$VERSION" ] || [ "$VERSION" = "refs/heads/main" ] || [ "$VERSION" = "main" ]; then
             VERSION="v${{ github.event.inputs.version_name || '1.0.0' }}"
           fi
           mkdir -p release-apk
+
+          # 1. Sediakan file utama dengan nama skilloka.apk (dari build ARM64 optimal)
+          if [ -f build/app/outputs/flutter-apk/app-arm64-v8a-release.apk ]; then
+            cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk release-apk/skilloka.apk
+          elif [ -f build/app/outputs/flutter-apk/app-release.apk ]; then
+            cp build/app/outputs/flutter-apk/app-release.apk release-apk/skilloka.apk
+          fi
+
+          # 2. Sediakan juga varian arsitektur untuk artifact/release
           for apk in build/app/outputs/flutter-apk/app-*-release.apk; do
-            ARCH=$(echo "$apk" | grep -oP '(?<=app-).*(?=-release)')
-            cp "$apk" "release-apk/skilloka-${VERSION}-${ARCH}.apk"
+            if [ -f "$apk" ]; then
+              ARCH=$(echo "$apk" | grep -oP '(?<=app-).*(?=-release)')
+              cp "$apk" "release-apk/skilloka-${VERSION}-${ARCH}.apk"
+            fi
           done
+
           ls -lh release-apk/
 
       # ── 9. Upload APK sebagai artifact (selalu tersedia) ─────────────
@@ -94,18 +108,20 @@ jobs:
             ## 📦 Skilloka ${{ github.ref_name }}
 
             ### Download APK
-            Pilih sesuai arsitektur perangkat Anda:
-            - **arm64-v8a** → HP modern (64-bit), direkomendasikan
-            - **armeabi-v7a** → HP lama (32-bit)
-            - **x86_64** → Emulator / PC
+            - **skilloka.apk** → Versi utama siap install untuk HP Android modern (arm64-v8a)
+            - **skilloka-${{ github.ref_name }}-arm64-v8a.apk** → HP modern (64-bit)
+            - **skilloka-${{ github.ref_name }}-armeabi-v7a.apk** → HP lama (32-bit)
+            - **skilloka-${{ github.ref_name }}-x86_64.apk** → Emulator / PC
+
+            ### Backend Server
+            - **Production URL**: `https://skilloka.my.id`
+            - **API Endpoint**: `https://skilloka.my.id/api`
+            - **Media Storage**: `https://skilloka.my.id/storage`
 
             ### Cara Install
-            1. Download APK sesuai arsitektur
+            1. Download `skilloka.apk`
             2. Aktifkan *Install from unknown sources* di pengaturan HP
-            3. Buka file APK dan install
-
-            ### Changelog
-            ${{ github.event.head_commit.message }}
+            3. Buka file APK dan jalankan instalasi
           files: release-apk/*.apk
           draft: false
           prerelease: false
@@ -125,42 +141,36 @@ jobs:
           fi
 
           VERSION="${{ github.ref_name }}"
-          if [ -z "$VERSION" ] || [ "$VERSION" = "refs/heads/main" ]; then
+          if [ -z "$VERSION" ] || [ "$VERSION" = "refs/heads/main" ] || [ "$VERSION" = "main" ]; then
             VERSION="v${{ github.event.inputs.version_name || '1.0.0' }}"
           fi
 
-          COMMIT_MSG="${{ github.event.head_commit.message }}"
-          COMMIT_AUTHOR="${{ github.event.head_commit.author.name }}"
           SHORT_SHA="${GITHUB_SHA:0:7}"
           BUILD_TIME=$(date '+%d %b %Y %H:%M UTC')
-          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-          for apk in release-apk/*.apk; do
-            FILENAME=$(basename "$apk")
-            FILE_SIZE=$(du -sh "$apk" | cut -f1)
+          # Kirim file skilloka.apk (di bawah limit 50MB Telegram)
+          TARGET_APK="release-apk/skilloka.apk"
+          if [ ! -f "$TARGET_APK" ]; then
+            TARGET_APK=$(ls release-apk/*.apk | head -n 1)
+          fi
 
-            if [[ "$FILENAME" == *"arm64-v8a"* ]]; then
-              ARCH_LABEL="arm64-v8a (Rekomendasi)"
-            elif [[ "$FILENAME" == *"armeabi-v7a"* ]]; then
-              ARCH_LABEL="armeabi-v7a (HP Lama)"
-            elif [[ "$FILENAME" == *"x86_64"* ]]; then
-              ARCH_LABEL="x86_64 (Emulator)"
-            else
-              ARCH_LABEL="Universal"
-            fi
+          if [ -f "$TARGET_APK" ]; then
+            FILE_SIZE=$(du -sh "$TARGET_APK" | cut -f1)
+            CAPTION="🚀 <b>Skilloka Mobile APK</b>%0A🏷️ <b>Versi:</b> ${VERSION}%0A📱 <b>File:</b> $(basename "$TARGET_APK") (${FILE_SIZE})%0A🌐 <b>Server:</b> skilloka.my.id (Live)%0A📝 <b>Commit:</b> ${SHORT_SHA}%0A⏰ <b>Waktu Build:</b> ${BUILD_TIME}"
 
-            CAPTION="APK Skilloka ${VERSION} | ${ARCH_LABEL} | ${FILE_SIZE} | Commit: ${SHORT_SHA} | ${BUILD_TIME}"
-
+            echo "Mengirim $TARGET_APK ke Telegram..."
             RESPONSE=$(curl -s -o /tmp/tg_response.txt -w "%{http_code}" \
               -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
               -F "chat_id=${CHAT_ID}" \
-              -F "document=@${apk}" \
-              -F "caption=${CAPTION}")
+              -F "document=@${TARGET_APK}" \
+              -F "caption=${CAPTION}" \
+              -F "parse_mode=HTML")
 
             if [ "$RESPONSE" = "200" ]; then
-              echo "Terkirim: $FILENAME"
+              echo "✅ Berhasil terkirim ke Telegram: $(basename "$TARGET_APK")"
             else
-              echo "Gagal ($RESPONSE): $(cat /tmp/tg_response.txt)"
+              echo "❌ Gagal kirim Telegram ($RESPONSE): $(cat /tmp/tg_response.txt)"
             fi
-            sleep 2
-          done
+          else
+            echo "File APK tidak ditemukan di release-apk/"
+          fi

@@ -148,24 +148,14 @@ class _BannerCard extends StatelessWidget {
                         memCacheWidth: 800,
                         placeholder: (context, url) =>
                             Container(decoration: BoxDecoration(gradient: AppColors.heroGradient)),
-                        errorWidget: (context, url, error) => CachedNetworkImage(
-                          imageUrl:
-                              'https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=1000&auto=format&fit=crop&q=80',
-                          fit: BoxFit.cover,
-                          errorWidget: (context, url, error) => Container(
-                            decoration:
-                                const BoxDecoration(gradient: AppColors.primaryGradient),
-                          ),
-                        ),
-                      )
-                    : CachedNetworkImage(
-                        imageUrl:
-                            'https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=1000&auto=format&fit=crop&q=80',
-                        fit: BoxFit.cover,
                         errorWidget: (context, url, error) => Container(
                           decoration:
                               const BoxDecoration(gradient: AppColors.primaryGradient),
                         ),
+                      )
+                    : Container(
+                        decoration:
+                            const BoxDecoration(gradient: AppColors.primaryGradient),
                       );
               }(),
             ),

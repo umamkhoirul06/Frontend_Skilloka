@@ -1,4 +1,4 @@
-/// Secure storage service for tokens and sensitive data
+﻿/// Secure storage service for tokens and sensitive data
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 abstract class SecureStorageService {

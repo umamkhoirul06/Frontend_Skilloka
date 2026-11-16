@@ -6,7 +6,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../theme/app_colors.dart';
-import '../../theme/app_shapes.dart';
 import '../../theme/app_typography.dart';
 
 class SkillokaLoading extends StatefulWidget {

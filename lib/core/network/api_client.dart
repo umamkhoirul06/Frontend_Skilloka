@@ -19,6 +19,10 @@ class ApiClient {
     _configureDio();
   }
 
+  void updateBaseUrl() {
+    dio.options.baseUrl = AppConfig.baseUrl;
+  }
+
   void _configureDio() {
     dio.options = BaseOptions(
       baseUrl: baseUrl,

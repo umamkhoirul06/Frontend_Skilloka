@@ -1,4 +1,4 @@
-/// Course Card with parallax, rolling price, and rating animations
+﻿/// Course Card with parallax, rolling price, and rating animations
 library;
 
 import 'package:flutter/material.dart';

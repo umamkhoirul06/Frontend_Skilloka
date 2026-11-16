@@ -1,4 +1,4 @@
-// App color palette for Skilloka
+﻿// App color palette for Skilloka
 // Primary: Royal Blue (matching Skilloka Web platform brand)
 // Secondary: Amber Gold (matching Skilloka Web upskilling arrow)
 import 'package:flutter/material.dart';

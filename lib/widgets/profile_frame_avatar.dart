@@ -1,4 +1,4 @@
-
+﻿
 import 'package:flutter/material.dart';
 import '../models/avatar_frame_data.dart';
 

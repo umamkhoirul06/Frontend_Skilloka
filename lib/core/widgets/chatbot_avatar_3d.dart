@@ -1,4 +1,4 @@
-import 'dart:math' as math;
+﻿import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 /// 3D Animated AI Bot Avatar matching the Skilloka web & 3D mascot design.

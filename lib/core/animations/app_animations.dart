@@ -1,4 +1,4 @@
-/// Animation curves and durations for Skilloka
+﻿/// Animation curves and durations for Skilloka
 import 'package:flutter/material.dart';
 
 class AppAnimations {
