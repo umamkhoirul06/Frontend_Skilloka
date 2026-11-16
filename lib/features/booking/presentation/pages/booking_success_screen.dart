@@ -348,6 +348,24 @@ class _BookingSuccessScreenState extends State<BookingSuccessScreen>
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      // Tombol Cetak / Lihat Struk Digital (2 Template)
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            context.push(AppRouter.digitalReceiptPath(widget.bookingId));
+                          },
+                          icon: const Icon(Icons.receipt_long_rounded, color: AppColors.primary, size: 20),
+                          label: const Text('Lihat Struk Pembayaran (Thermal & A4)'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            side: const BorderSide(color: AppColors.primary, width: 1.5),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+
                       // Tombol Akses Fitur Berlangganan jika ada subscription
                       if (_hasSubscription && _courseId != null && _courseId!.isNotEmpty) ...[
                         AnimatedPrimaryButton(

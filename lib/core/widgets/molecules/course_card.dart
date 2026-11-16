@@ -1,4 +1,4 @@
-﻿/// Course Card with parallax, rolling price, and rating animations
+/// Course Card with parallax, rolling price, and rating animations
 library;
 
 import 'package:flutter/material.dart';
@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_colors.dart';
-import '../../theme/app_shapes.dart';
 import '../../theme/app_typography.dart';
 import '../../animations/app_animations.dart';
 
@@ -89,87 +88,117 @@ class _CourseCardState extends State<CourseCard>
           duration: AppAnimations.fast,
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
-            borderRadius: AppShapes.cardRadius,
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: Theme.of(context).brightness == Brightness.dark
-                  ? AppColors.outlineDark
-                  : AppColors.outline,
-              width: 1,
+                  ? const Color(0xFF334155)
+                  : const Color(0xFFE2E8F0),
+              width: 1.2,
             ),
             boxShadow: _isPressed
                 ? [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.02),
-                      blurRadius: 4,
+                      color: const Color(0xFF1E3A8A).withValues(alpha: 0.03),
+                      blurRadius: 6,
                       offset: const Offset(0, 2),
                     ),
                   ]
                 : [
                     BoxShadow(
-                      color: const Color(0xFF0F172A).withValues(alpha: 0.05),
-                      blurRadius: 14,
-                      offset: const Offset(0, 4),
+                      color: const Color(0xFF1E3A8A).withValues(alpha: 0.07),
+                      blurRadius: 18,
+                      offset: const Offset(0, 6),
+                    ),
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.02),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
                     ),
                   ],
           ),
           child: Material(
             color: Colors.transparent,
-            borderRadius: AppShapes.cardRadius,
+            borderRadius: BorderRadius.circular(16),
             child: InkWell(
               onTap: () {
                 HapticFeedback.lightImpact();
                 widget.onTap?.call();
               },
               onHighlightChanged: _handleHighlightChanged,
-              borderRadius: AppShapes.cardRadius,
+              borderRadius: BorderRadius.circular(16),
               splashColor: AppColors.primary.withValues(alpha: 0.1),
               highlightColor: AppColors.primary.withValues(alpha: 0.05),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Gambar menggunakan Expanded agar dinamis
+                  // Gambar dengan subtle scrim gradient
                   Expanded(
                     child: SizedBox(
                       width: double.infinity,
                       child: _buildHeroImage(),
                     ),
                   ),
-                  // Padding diatur menjadi 8 agar lebih ringkas
+                  // Padding konten kartu
                   Padding(
-                    padding: const EdgeInsets.all(8.0),
+                    padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Category Badge
+                        // Category Pill Badge dengan micro-dot indicator
                         if (widget.category != null)
                           Container(
-                            margin: const EdgeInsets.only(bottom: 4),
+                            margin: const EdgeInsets.only(bottom: 5),
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
+                              horizontal: 7,
+                              vertical: 2.5,
                             ),
                             decoration: BoxDecoration(
-                              color: _getCategoryColor().withValues(
-                                alpha: 0.15,
+                              color: _getCategoryColor().withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: _getCategoryColor().withValues(alpha: 0.25),
+                                width: 0.8,
                               ),
-                              borderRadius: AppShapes.chipRadius,
                             ),
-                            child: Text(
-                              widget.category!,
-                              style: AppTypography.badge.copyWith(
-                                color: _getCategoryColor(),
-                                fontSize: 10,
-                              ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 5,
+                                  height: 5,
+                                  decoration: BoxDecoration(
+                                    color: _getCategoryColor(),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: Text(
+                                    widget.category!,
+                                    style: AppTypography.badge.copyWith(
+                                      color: _getCategoryColor(),
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 9.5,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         // Title
                         Text(
                           widget.title,
-                          style: AppTypography.titleSmall,
+                          style: AppTypography.titleSmall.copyWith(
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.2,
+                            height: 1.25,
+                          ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 3),
                         // LPK Name
                         Row(
                           children: [
@@ -180,6 +209,7 @@ class _CourseCardState extends State<CourseCard>
                                   color: Theme.of(context)
                                       .colorScheme
                                       .onSurfaceVariant,
+                                  fontSize: 11,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -189,14 +219,14 @@ class _CourseCardState extends State<CourseCard>
                               Container(
                                 margin: const EdgeInsets.only(left: 4),
                                 child: const Icon(
-                                  Icons.verified,
-                                  color: AppColors.success,
+                                  Icons.verified_rounded,
+                                  color: Color(0xFF10B981),
                                   size: 14,
                                 ),
                               ),
                           ],
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 5),
 
                         // --- Dynamic Rating & Price Row ---
                         _buildRatingStars(),
@@ -209,23 +239,39 @@ class _CourseCardState extends State<CourseCard>
                                 style: AppTypography.titleMedium.copyWith(
                                   color: AppColors.primary,
                                   fontWeight: FontWeight.w800,
-                                  fontSize: 15,
+                                  fontSize: 14.5,
                                 ),
                               ),
                             ),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
                               decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.08),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                'Resmi',
-                                style: AppTypography.badge.copyWith(
-                                  color: AppColors.primary,
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w700,
+                                gradient: LinearGradient(
+                                  colors: [
+                                    AppColors.primary.withValues(alpha: 0.12),
+                                    const Color(0xFF38BDF8).withValues(alpha: 0.08),
+                                  ],
                                 ),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: AppColors.primary.withValues(alpha: 0.25),
+                                  width: 0.8,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.verified_rounded, size: 9.5, color: AppColors.primary),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    'Resmi',
+                                    style: AppTypography.badge.copyWith(
+                                      color: AppColors.primary,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
@@ -321,35 +367,59 @@ class _CourseCardState extends State<CourseCard>
     return Hero(
       tag: '${AppAnimations.heroTagCourse}${widget.id}',
       child: ClipRRect(
-      borderRadius: BorderRadius.only(
-        topLeft: Radius.circular(AppShapes.radiusLG),
-        topRight: Radius.circular(AppShapes.radiusLG),
-      ),
-      child: resolvedUrl.isNotEmpty
-          ? CachedNetworkImage(
-              imageUrl: resolvedUrl,
-              fit: BoxFit.cover,
-              memCacheWidth: 400,
-              memCacheHeight: 300,
-              placeholder: (context, url) => Container(
-                color: AppColors.surfaceVariant,
-                child: const Center(
-                  child: SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: AppColors.primary,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(16),
+          topRight: Radius.circular(16),
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            resolvedUrl.isNotEmpty
+                ? CachedNetworkImage(
+                    imageUrl: resolvedUrl,
+                    fit: BoxFit.cover,
+                    memCacheWidth: 400,
+                    memCacheHeight: 300,
+                    placeholder: (context, url) => Container(
+                      color: AppColors.surfaceVariant,
+                      child: const Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
                     ),
+                    errorWidget: (context, url, error) {
+                      debugPrint('CourseCard failed to load image ($url): $error');
+                      return _buildPlaceholder();
+                    },
+                  )
+                : _buildPlaceholder(),
+            // Soft gradient overlay at bottom of image
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: 30,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.16),
+                    ],
                   ),
                 ),
               ),
-              errorWidget: (context, url, error) {
-                debugPrint('CourseCard failed to load image ($url): $error');
-                return _buildPlaceholder();
-              },
-            )
-          : _buildPlaceholder(),
+            ),
+          ],
+        ),
       ),
     );
   }

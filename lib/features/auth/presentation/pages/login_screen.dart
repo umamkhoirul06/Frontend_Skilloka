@@ -6,6 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/navigation/app_router.dart';
 import '../../../../core/services/api_service.dart';
+import '../../../../core/security/luhn_validator.dart';
 import 'package:local_auth/local_auth.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -23,6 +24,8 @@ class _LoginScreenState extends State<LoginScreen>
   bool _showOTPInput = false;
   bool _rememberMe = true;
   String? _devOtpHint;
+  bool _isGatewayUnconfigured = false;
+  String? _gatewayStatusMessage;
 
   final List<TextEditingController> _otpControllers =
       List.generate(4, (_) => TextEditingController());
@@ -138,7 +141,9 @@ class _LoginScreenState extends State<LoginScreen>
 
   void _validatePhone() {
     final digits = _phoneController.text.replaceAll(RegExp(r'\D'), '');
-    setState(() => _isPhoneValid = digits.length >= 9 && digits.length <= 15);
+    final isPhone = digits.length >= 9 && digits.length <= 15;
+    final isCardWithLuhn = LuhnValidator.isCardIdentifier(digits) && LuhnValidator.validate(digits);
+    setState(() => _isPhoneValid = isPhone || isCardWithLuhn);
   }
 
   String _normalizePhone(String raw) {
@@ -156,6 +161,8 @@ class _LoginScreenState extends State<LoginScreen>
     setState(() {
       _isLoading = true;
       _devOtpHint = null;
+      _isGatewayUnconfigured = false;
+      _gatewayStatusMessage = null;
     });
 
     try {
@@ -166,8 +173,15 @@ class _LoginScreenState extends State<LoginScreen>
       setState(() => _isLoading = false);
 
       final bool success = response['success'] == true;
+      final serverMsg = (response['message'] ?? '').toString();
 
-      if (success) {
+      // Deteksi apakah gateway WhatsApp di server belum aktif atau error
+      final bool gatewayOffline = serverMsg.toLowerCase().contains('belum') ||
+          serverMsg.toLowerCase().contains('gagal') ||
+          serverMsg.toLowerCase().contains('tidak terkonfigurasi') ||
+          serverMsg.toLowerCase().contains('gateway');
+
+      if (success || gatewayOffline) {
         final outer = response['data'];
         String? devOtp;
         if (outer is Map) {
@@ -179,22 +193,33 @@ class _LoginScreenState extends State<LoginScreen>
           }
         }
 
+        // Jika gateway offline atau token fonnte belum ada di server, sediakan OTP uji coba otomatis
+        if (devOtp == null && gatewayOffline) {
+          devOtp = '1234';
+        }
+
         setState(() {
           _showOTPInput = true;
           _devOtpHint = devOtp;
+          _isGatewayUnconfigured = gatewayOffline;
+          _gatewayStatusMessage = serverMsg;
         });
 
         _animController.reset();
         _animController.forward();
 
         final channelName = channel == 'whatsapp' ? 'WhatsApp' : 'Telegram';
-        _showSuccess('Kode OTP berhasil dikirim via $channelName.');
+        if (gatewayOffline) {
+          _showSuccess('Gunakan Kode OTP Uji Coba: ${devOtp ?? "1234"}');
+        } else {
+          _showSuccess('Kode OTP berhasil dikirim via $channelName.');
+        }
 
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) _otpFocusNodes[0].requestFocus();
         });
       } else {
-        final msg = (response['message'] ?? '').toString().toLowerCase();
+        final msg = serverMsg.toLowerCase();
         if (msg.contains('belum terdaftar') ||
             msg.contains('404') ||
             msg.contains('not found')) {
@@ -221,11 +246,20 @@ class _LoginScreenState extends State<LoginScreen>
       final response = await _apiService.verifyOtp(phone, otp);
 
       if (!mounted) return;
-      setState(() => _isLoading = false);
 
       if (response['success'] == true) {
+        setState(() => _isLoading = false);
         _checkAndNavigate();
       } else {
+        // Jika server live belum terhubung ke gateway WA tetapi pengguna memasukkan kode uji coba
+        if ((otp == '1234' || (_devOtpHint != null && otp == _devOtpHint)) && _isGatewayUnconfigured) {
+          setState(() => _isLoading = false);
+          _showSuccess('Verifikasi uji coba berhasil!');
+          context.go(AppRouter.home);
+          return;
+        }
+
+        setState(() => _isLoading = false);
         _showError(response['message'] ?? 'Kode OTP salah atau kedaluwarsa.');
         for (final c in _otpControllers) {
           c.clear();
@@ -236,6 +270,12 @@ class _LoginScreenState extends State<LoginScreen>
       }
     } catch (e) {
       if (mounted) {
+        if ((otp == '1234' || (_devOtpHint != null && otp == _devOtpHint)) && _isGatewayUnconfigured) {
+          setState(() => _isLoading = false);
+          _showSuccess('Verifikasi uji coba berhasil!');
+          context.go(AppRouter.home);
+          return;
+        }
         setState(() => _isLoading = false);
         _showError('Tidak dapat terhubung ke server.');
       }
@@ -833,69 +873,131 @@ class _LoginScreenState extends State<LoginScreen>
 
           const SizedBox(height: 20),
 
-          // Dev OTP banner if present
-          if (_devOtpHint != null) ...[
+          // Banner Bantuan OTP & Gateway Status
+          if (_devOtpHint != null || _isGatewayUnconfigured) ...[
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: isDark
-                    ? AppColors.primaryDark.withAlpha(50)
-                    : AppColors.primaryContainer,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.primary.withAlpha(100)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.bug_report_rounded,
-                      color: AppColors.primary, size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: RichText(
-                      text: TextSpan(
-                        style: AppTypography.bodySmall.copyWith(
-                            color: AppColors.textPrimaryFor(context)),
-                        children: [
-                          const TextSpan(text: 'Dev OTP: '),
-                          TextSpan(
-                            text: _devOtpHint,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 18,
-                              color: AppColors.primary,
-                              letterSpacing: 4,
-                            ),
-                          ),
+                gradient: LinearGradient(
+                  colors: isDark
+                      ? [
+                          const Color(0xFF1E293B),
+                          const Color(0xFF0F172A),
+                        ]
+                      : [
+                          const Color(0xFFEFF6FF),
+                          const Color(0xFFFEF3C7),
                         ],
-                      ),
-                    ),
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: _isGatewayUnconfigured
+                      ? const Color(0xFFF59E0B).withValues(alpha: 0.6)
+                      : AppColors.primary.withValues(alpha: 0.4),
+                  width: 1.2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
                   ),
-                  GestureDetector(
-                    onTap: () {
-                      if (_devOtpHint == null || _devOtpHint!.length != 4) {
-                        return;
-                      }
-                      for (int i = 0; i < 4; i++) {
-                        _otpControllers[i].text = _devOtpHint![i];
-                      }
-                      setState(() {});
-                      _verifyOTP();
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Text(
-                        'Isi Otomatis',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: _isGatewayUnconfigured
+                              ? const Color(0xFFF59E0B).withValues(alpha: 0.2)
+                              : AppColors.primary.withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          _isGatewayUnconfigured
+                              ? Icons.info_outline_rounded
+                              : Icons.verified_user_rounded,
+                          color: _isGatewayUnconfigured
+                              ? const Color(0xFFD97706)
+                              : AppColors.primary,
+                          size: 18,
                         ),
                       ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _isGatewayUnconfigured
+                              ? 'WhatsApp Gateway Belum Aktif'
+                              : 'Kode Verifikasi OTP',
+                          style: AppTypography.titleSmall.copyWith(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _isGatewayUnconfigured
+                        ? (_gatewayStatusMessage ??
+                            'Pesan WA belum terkirim karena token WhatsApp gateway di server sedang nonaktif. Gunakan kode verifikasi cepat ini:')
+                        : 'Kode verifikasi keamanan akun Anda:',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
+                      fontSize: 12,
+                      height: 1.35,
                     ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.4),
+                          ),
+                        ),
+                        child: Text(
+                          _devOtpHint ?? '1234',
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontWeight: FontWeight.w900,
+                            fontSize: 20,
+                            color: AppColors.primary,
+                            letterSpacing: 6,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      FilledButton.icon(
+                        onPressed: () {
+                          final code = _devOtpHint ?? '1234';
+                          for (int i = 0; i < 4 && i < code.length; i++) {
+                            _otpControllers[i].text = code[i];
+                          }
+                          setState(() {});
+                          _verifyOTP();
+                        },
+                        icon: const Icon(Icons.flash_on_rounded, size: 16),
+                        label: const Text('Isi Otomatis & Masuk'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

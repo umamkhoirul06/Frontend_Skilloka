@@ -560,6 +560,128 @@ class ApiService {
 
   // ── COURSES ────────────────────────────────────────────────────────────────
 
+  /// Autocomplete pencarian kursus & LPK secara instan saat mengetik
+  /// Endpoint: /api/courses/autocomplete?q={keyword}
+  Future<Map<String, dynamic>> getCourseAutocomplete(String query) async {
+    final cleanQ = query.trim();
+    if (cleanQ.isEmpty) {
+      return {
+        'success': true,
+        'data': {
+          'query': '',
+          'suggestions': <Map<String, dynamic>>[],
+          'courses': <dynamic>[],
+          'lpks': <dynamic>[],
+        },
+      };
+    }
+
+    try {
+      final uri = Uri.parse('$baseUrl/courses/autocomplete').replace(
+        queryParameters: {'q': cleanQ},
+      );
+      final r = await http.get(uri, headers: _publicHeaders).timeout(
+        const Duration(seconds: 8),
+      );
+
+      if (r.statusCode == 200) {
+        final parsed = _handleResponse(r);
+        if (parsed['success'] == true) return parsed;
+      }
+    } catch (_) {
+      // Graceful fallback
+    }
+
+    // Fallback cerdas jika endpoint autocomplete di server offline/error
+    try {
+      final fallbackRes = await getCourses(search: cleanQ);
+      if (fallbackRes['success'] == true) {
+        final rawData = fallbackRes['data'];
+        List<dynamic> list = [];
+        if (rawData is List) list = rawData;
+        if (rawData is Map) {
+          final d = rawData['data'];
+          if (d is List) list = d;
+        }
+
+        final suggestions = <Map<String, dynamic>>[];
+        for (final item in list.take(6)) {
+          if (item is Map) {
+            final cat = item['category'] is Map ? item['category']['name'] : null;
+            final lpk = item['lpk'] is Map ? item['lpk']['name'] : null;
+            suggestions.add({
+              'type': 'course',
+              'id': item['id'],
+              'title': item['title'] ?? 'Kursus',
+              'subtitle': '${cat ?? 'Pelatihan'} • ${lpk ?? 'LPK Mitra'}',
+              'category': cat,
+              'lpk_name': lpk,
+            });
+          }
+        }
+
+        return {
+          'success': true,
+          'data': {
+            'query': cleanQ,
+            'suggestions': suggestions,
+            'courses': list.take(6).toList(),
+            'lpks': <dynamic>[],
+          },
+        };
+      }
+    } catch (_) {}
+
+    return {
+      'success': true,
+      'data': {
+        'query': cleanQ,
+        'suggestions': <Map<String, dynamic>>[],
+        'courses': <dynamic>[],
+        'lpks': <dynamic>[],
+      },
+    };
+  }
+
+  /// Pencarian kursus dengan parameter lengkap
+  /// Endpoint: /api/courses/search?q={query}&category={category}
+  Future<Map<String, dynamic>> searchCourses({
+    required String query,
+    String? category,
+    String? level,
+    String? jenjang,
+    int perPage = 15,
+  }) async {
+    final cleanQ = query.trim();
+    final qParams = <String, String>{
+      if (cleanQ.isNotEmpty) 'q': cleanQ,
+      if (cleanQ.isNotEmpty) 'search': cleanQ,
+      if (category != null && category.isNotEmpty) 'category': category,
+      if (level != null && level.isNotEmpty) 'level': level,
+      if (jenjang != null && jenjang.isNotEmpty) 'jenjang': jenjang,
+      'per_page': perPage.toString(),
+    };
+
+    try {
+      final uri = Uri.parse('$baseUrl/courses/search').replace(queryParameters: qParams);
+      final r = await http.get(uri, headers: _publicHeaders).timeout(
+        const Duration(seconds: 12),
+      );
+
+      if (r.statusCode == 200) {
+        final parsed = _handleResponse(r);
+        if (parsed['success'] == true) return parsed;
+      }
+    } catch (_) {
+      // Fallback ke /courses?search=...
+    }
+
+    return getCourses(
+      search: cleanQ,
+      category: category,
+    );
+  }
+
   Future<Map<String, dynamic>> getCourses({
     String? search,
     String? category,

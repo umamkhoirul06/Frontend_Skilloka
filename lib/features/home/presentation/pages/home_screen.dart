@@ -245,194 +245,229 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: RefreshIndicator(
-        onRefresh: () async {
-          setState(() => _isLoading = true);
-          await Future.wait([_loadProfile(), _loadData()]);
-        },
-        color: AppColors.primary,
-        child: CustomScrollView(
-          slivers: [
-            // ── Premium App Bar ──────────────────────────────────────────
-            SliverAppBar(
-              floating: false,
-              pinned: true,
-              expandedHeight: 170,
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              flexibleSpace: FlexibleSpaceBar(
-                collapseMode: CollapseMode.pin,
-                background: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: isDark
-                          ? [
-                              const Color(0xFF0F172A),
-                              const Color(0xFF1E293B),
-                            ]
-                          : [
-                              const Color(0xFF1E40AF),
-                              const Color(0xFF2563EB),
-                              const Color(0xFF3B82F6),
-                            ],
-                    ),
-                  ),
-                  child: Stack(
-                    children: [
-                      // Decorative circles
-                      Positioned(
-                        right: -30,
-                        top: -30,
-                        child: Container(
-                          width: 160,
-                          height: 160,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white.withValues(alpha: 0.06),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        right: 40,
-                        bottom: -20,
-                        child: Container(
-                          width: 100,
-                          height: 100,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white.withValues(alpha: 0.04),
-                          ),
-                        ),
-                      ),
-                      SafeArea(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildHeader(context),
-                              const SizedBox(height: 14),
-                              _buildSearchRow(context),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+    final statusBar = MediaQuery.of(context).padding.top;
 
-            // ── Content ──────────────────────────────────────────────────
-            SliverToBoxAdapter(
-              child: FadeTransition(
-                opacity: _fadeAnim,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (_isLoading) ...[
-                      const SizedBox(height: 12),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: AppColors.primary.withValues(alpha: 0.2),
+    return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF090D16) : const Color(0xFFF8FAFC),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: isDark
+                ? [
+                    const Color(0xFF0F172A),
+                    const Color(0xFF090D16),
+                    const Color(0xFF05080E),
+                  ]
+                : [
+                    const Color(0xFFEEF4FF), // Soft smooth gradient near top
+                    const Color(0xFFF8FAFC),
+                    const Color(0xFFF1F5F9),
+                  ],
+            stops: const [0.0, 0.35, 1.0],
+          ),
+        ),
+        child: RefreshIndicator(
+          onRefresh: () async {
+            setState(() => _isLoading = true);
+            await Future.wait([_loadProfile(), _loadData()]);
+          },
+          color: AppColors.primary,
+          child: CustomScrollView(
+            slivers: [
+              // ── Premium App Bar dengan Proteksi Status Bar & Transisi Halus ──
+              SliverAppBar(
+                floating: false,
+                pinned: true,
+                expandedHeight: 180,
+                backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFF1E3A8A),
+                elevation: 3,
+                shadowColor: const Color(0xFF1E3A8A).withValues(alpha: 0.25),
+                systemOverlayStyle: SystemUiOverlayStyle.light,
+                flexibleSpace: LayoutBuilder(
+                  builder: (BuildContext context, BoxConstraints constraints) {
+                    final top = constraints.biggest.height;
+                    final isCollapsed = top <= (statusBar + kToolbarHeight + 25);
+
+                    return Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: isDark
+                              ? [
+                                  const Color(0xFF0A0F1D),
+                                  const Color(0xFF111827),
+                                  const Color(0xFF1E293B),
+                                ]
+                              : [
+                                  const Color(0xFF1E3A8A), // deep royal navy
+                                  const Color(0xFF2563EB), // brand royal blue
+                                  const Color(0xFF3B82F6), // vibrant blue
+                                ],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: (isDark ? Colors.black : const Color(0xFF1E3A8A))
+                                .withValues(alpha: 0.18),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Stack(
+                        children: [
+                          // Decorative ambient circles
+                          Positioned(
+                            right: -25,
+                            top: -25,
+                            child: Container(
+                              width: 155,
+                              height: 155,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white.withValues(alpha: 0.07),
+                              ),
                             ),
                           ),
-                          child: Row(
-                            children: [
-                              const SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: AppColors.primary,
-                                ),
+                          Positioned(
+                            right: 45,
+                            bottom: -30,
+                            child: Container(
+                              width: 110,
+                              height: 110,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white.withValues(alpha: 0.05),
                               ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  'Menyinkronkan data kursus & LPK resmi...',
-                                  style: AppTypography.labelSmall.copyWith(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 11.5,
-                                  ),
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
-                        ),
+                          SafeArea(
+                            bottom: false,
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 220),
+                              switchInCurve: Curves.easeOut,
+                              switchOutCurve: Curves.easeIn,
+                              child: isCollapsed
+                                  ? _buildCollapsedHeader(context)
+                                  : _buildExpandedHeader(context),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                    const SizedBox(height: 16),
-                    // Banner
-                    _isLoading
-                        ? const SkeletonBanner()
-                        : _banners.isEmpty
-                            ? const SizedBox(height: 8)
-                            : HeroBanner(items: _banners),
-                    const SizedBox(height: 24),
-                    // Category chips
-                    CategoryFilterChips(
-                      categories: _categories,
-                      selectedCategory: _selectedCategoryName,
-                      onSelected: (category) async {
-                        HapticFeedback.selectionClick();
-                        setState(() {
-                          _selectedCategoryName = category;
-                          _selectedCategory = category != null
-                              ? _categorySlugMap[category]
-                              : null;
-                          _isLoading = true;
-                        });
-                        await _loadData();
-                      },
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Personalized Recommendations Section (PRD 2.3 & 8.3)
-                    if (!_isLoading) _buildPersonalizedSection(context),
-                    const SizedBox(height: 28),
-
-                    // LPK Section
-                    _buildSectionHeader(
-                      context,
-                      title: 'LPK Terdekat',
-                      subtitle: '${_lpks.length} lembaga',
-                      icon: Icons.location_city_rounded,
-                      onSeeAll: () => context.push(AppRouter.search),
-                    ),
-                    const SizedBox(height: 12),
-                    _isLoading ? const SkeletonLPKList() : _buildLPKList(),
-                    const SizedBox(height: 28),
-                    // Course Section
-                    _buildSectionHeader(
-                      context,
-                      title: 'Kursus Populer',
-                      subtitle: '${_courses.length} kursus',
-                      icon: Icons.school_rounded,
-                      onSeeAll: () => context.push(AppRouter.search),
-                    ),
-                    const SizedBox(height: 12),
-                    _isLoading
-                        ? const SkeletonCourseGrid()
-                        : _buildCourseGrid(),
-                    const SizedBox(height: 100),
-                  ],
+                    );
+                  },
                 ),
               ),
-            ),
-          ],
+
+              // ── Content ──────────────────────────────────────────────────
+              SliverToBoxAdapter(
+                child: FadeTransition(
+                  opacity: _fadeAnim,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (_isLoading) ...[
+                        const SizedBox(height: 12),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: AppColors.primary.withValues(alpha: 0.2),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    'Menyinkronkan data kursus & LPK resmi...',
+                                    style: AppTypography.labelSmall.copyWith(
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 11.5,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 16),
+                      // Banner
+                      _isLoading
+                          ? const SkeletonBanner()
+                          : _banners.isEmpty
+                              ? const SizedBox(height: 8)
+                              : HeroBanner(items: _banners),
+                      const SizedBox(height: 24),
+                      // Category chips
+                      CategoryFilterChips(
+                        categories: _categories,
+                        selectedCategory: _selectedCategoryName,
+                        onSelected: (category) async {
+                          HapticFeedback.selectionClick();
+                          setState(() {
+                            _selectedCategoryName = category;
+                            _selectedCategory = category != null
+                                ? _categorySlugMap[category]
+                                : null;
+                            _isLoading = true;
+                          });
+                          await _loadData();
+                        },
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Personalized Recommendations Section (PRD 2.3 & 8.3)
+                      if (!_isLoading) _buildPersonalizedSection(context),
+                      const SizedBox(height: 28),
+
+                      // LPK Section
+                      _buildSectionHeader(
+                        context,
+                        title: 'LPK Terdekat',
+                        subtitle: '${_lpks.length} lembaga terverifikasi',
+                        icon: Icons.location_city_rounded,
+                        onSeeAll: () => context.push(AppRouter.search),
+                      ),
+                      const SizedBox(height: 12),
+                      _isLoading ? const SkeletonLPKList() : _buildLPKList(),
+                      const SizedBox(height: 28),
+                      // Course Section
+                      _buildSectionHeader(
+                        context,
+                        title: 'Kursus Populer',
+                        subtitle: '${_courses.length} pilihan kursus siap kerja',
+                        icon: Icons.school_rounded,
+                        onSeeAll: () => context.push(AppRouter.search),
+                      ),
+                      const SizedBox(height: 12),
+                      _isLoading
+                          ? const SkeletonCourseGrid()
+                          : _buildCourseGrid(),
+                      const SizedBox(height: 120),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -741,6 +776,146 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  Widget _buildExpandedHeader(BuildContext context) {
+    return Container(
+      key: const ValueKey('expanded_header'),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildHeader(context),
+          const SizedBox(height: 14),
+          _buildSearchRow(context),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCollapsedHeader(BuildContext context) {
+    return Container(
+      key: const ValueKey('collapsed_header'),
+      height: kToolbarHeight,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      alignment: Alignment.center,
+      child: Row(
+        children: [
+          // Brand Badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
+              ),
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.15),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.school_rounded, color: Colors.white, size: 14),
+                SizedBox(width: 5),
+                Text(
+                  'Skilloka',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          // Compact Search Pill
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                HapticFeedback.lightImpact();
+                context.push(AppRouter.search);
+              },
+              child: Container(
+                height: 38,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.20),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.35),
+                    width: 1.0,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.search_rounded,
+                        color: Colors.white, size: 17),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Cari kursus atau LPK...',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.85),
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Filter button
+          Material(
+            color: Colors.white.withValues(alpha: 0.18),
+            borderRadius: BorderRadius.circular(12),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () {
+                HapticFeedback.lightImpact();
+                _openFilter();
+              },
+              child: Container(
+                width: 38,
+                height: 38,
+                alignment: Alignment.center,
+                child: const Icon(Icons.tune_rounded,
+                    color: Colors.white, size: 18),
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          // Notification button
+          Material(
+            color: Colors.white.withValues(alpha: 0.18),
+            borderRadius: BorderRadius.circular(12),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => context.push(AppRouter.notifications),
+              child: Container(
+                width: 38,
+                height: 38,
+                alignment: Alignment.center,
+                child: const Icon(Icons.notifications_outlined,
+                    color: Colors.white, size: 18),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildHeader(BuildContext context) {
     return Row(
       children: [
@@ -961,28 +1136,45 @@ class _HomeScreenState extends State<HomeScreen>
     IconData? icon,
     VoidCallback? onSeeAll,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
           if (icon != null) ...[
             Container(
-              width: 36,
-              height: 36,
+              width: 38,
+              height: 38,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [
-                    AppColors.primary.withValues(alpha: 0.15),
-                    AppColors.secondary.withValues(alpha: 0.10),
-                  ],
+                  colors: isDark
+                      ? [
+                          const Color(0xFF1E3A8A).withValues(alpha: 0.5),
+                          const Color(0xFF2563EB).withValues(alpha: 0.3),
+                        ]
+                      : [
+                          const Color(0xFF2563EB).withValues(alpha: 0.14),
+                          const Color(0xFF3B82F6).withValues(alpha: 0.08),
+                        ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.20),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: Icon(icon, size: 20, color: AppColors.primary),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
           ],
           Expanded(
             child: Column(
@@ -992,16 +1184,18 @@ class _HomeScreenState extends State<HomeScreen>
                   title,
                   style: AppTypography.titleMedium.copyWith(
                     fontWeight: FontWeight.w800,
-                    letterSpacing: -0.3,
+                    letterSpacing: -0.4,
+                    fontSize: 17,
                   ),
                 ),
                 if (subtitle != null) ...[
-                  const SizedBox(height: 1),
+                  const SizedBox(height: 2),
                   Text(
                     subtitle,
                     style: AppTypography.bodySmall.copyWith(
                       color: AppColors.textSecondaryFor(context),
                       fontWeight: FontWeight.w500,
+                      fontSize: 11.5,
                     ),
                   ),
                 ],
@@ -1010,17 +1204,26 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           if (onSeeAll != null)
             Material(
-              color: AppColors.primary.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(20),
+              color: Colors.transparent,
               child: InkWell(
                 onTap: () {
                   HapticFeedback.lightImpact();
                   onSeeAll();
                 },
                 borderRadius: BorderRadius.circular(20),
-                child: Padding(
+                child: Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 5),
+                      horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? AppColors.primary.withValues(alpha: 0.15)
+                        : AppColors.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.18),
+                      width: 1,
+                    ),
+                  ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -1029,9 +1232,10 @@ class _HomeScreenState extends State<HomeScreen>
                         style: AppTypography.labelSmall.copyWith(
                           color: AppColors.primary,
                           fontWeight: FontWeight.w700,
+                          fontSize: 11.5,
                         ),
                       ),
-                      const SizedBox(width: 3),
+                      const SizedBox(width: 4),
                       const Icon(Icons.arrow_forward_rounded,
                           size: 13, color: AppColors.primary),
                     ],

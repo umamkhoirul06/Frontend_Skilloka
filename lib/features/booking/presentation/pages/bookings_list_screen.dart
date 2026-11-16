@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_shapes.dart';
@@ -317,6 +317,26 @@ class _BookingCard extends StatelessWidget {
                         size: 16, color: AppColors.primary),
                   ],
                 ),
+
+                // Tombol untuk pesanan yang lunas (Cetak Struk)
+                if (booking.isConfirmed || booking.isCompleted) ...[
+                  const SizedBox(height: 12),
+                  const Divider(height: 1),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.receipt_long_rounded, size: 16),
+                      label: const Text('Cetak Struk Digital (Thermal & A4)'),
+                      onPressed: () => context
+                          .push(AppRouter.digitalReceiptPath(booking.id)),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 9),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ),
+                ],
 
                 // Tombol untuk pending
                 if (booking.isPending) ...[

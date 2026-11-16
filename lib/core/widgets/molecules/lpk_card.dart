@@ -1,4 +1,4 @@
-﻿/// LPK Card with verified badge and map thumbnail
+/// LPK Card with verified badge and map thumbnail
 library;
 
 import 'package:flutter/material.dart';
@@ -74,24 +74,29 @@ class _LPKCardState extends State<LPKCard> with SingleTickerProviderStateMixin {
         width: 200,
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
-          borderRadius: AppShapes.cardRadius,
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: Theme.of(context).brightness == Brightness.dark
-                ? AppColors.outlineDark
-                : AppColors.outline,
-            width: 1,
+                ? const Color(0xFF334155)
+                : const Color(0xFFE2E8F0),
+            width: 1.2,
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF0F172A).withValues(alpha: 0.05),
-              blurRadius: 14,
-              offset: const Offset(0, 4),
+              color: const Color(0xFF1E3A8A).withValues(alpha: 0.06),
+              blurRadius: 16,
+              offset: const Offset(0, 5),
+            ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
             ),
           ],
         ),
         child: Material(
           color: Colors.transparent,
-          borderRadius: AppShapes.cardRadius,
+          borderRadius: BorderRadius.circular(16),
           child: InkWell(
             onTap: () {
               HapticFeedback.lightImpact();

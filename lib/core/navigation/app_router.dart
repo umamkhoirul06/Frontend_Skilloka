@@ -1,4 +1,4 @@
-﻿/// App Router configuration using GoRouter
+/// App Router configuration using GoRouter
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -20,6 +20,7 @@ import '../../features/booking/presentation/pages/booking_screen.dart';
 import '../../features/booking/presentation/pages/pending_booking_screen.dart';
 import '../../features/booking/presentation/pages/bookings_list_screen.dart';
 import '../../features/booking/presentation/pages/booking_success_screen.dart';
+import '../../features/booking/presentation/pages/digital_receipt_screen.dart';
 import '../../features/profile/presentation/pages/profile_screen.dart';
 import '../../features/profile/presentation/pages/edit_profile_screen.dart';
 import '../../features/profile/presentation/pages/certificates_screen.dart';
@@ -63,6 +64,9 @@ class AppRouter {
   // ✅ FIX: bookingSuccess pakai bookingId
   static const String bookingSuccess = '/booking-success/:bookingId';
 
+  // Digital Receipt (2 Template: Printer Kecil & Besar)
+  static const String digitalReceipt = '/receipt/:bookingId';
+
   static const String bookings = '/bookings';
   static const String profile = '/profile';
   static const String editProfile = '/profile/edit';
@@ -80,6 +84,8 @@ class AppRouter {
       '/pending-booking/$bookingId';
   static String bookingSuccessPath(String bookingId) =>
       '/booking-success/$bookingId';
+  static String digitalReceiptPath(String bookingId) =>
+      '/receipt/$bookingId';
   static String courseDetailPath(String id) => '/course/$id';
   static String lpkDetailPath(String id) => '/lpk/$id';
   static String courseContentPath(String courseId) => '/my-course/$courseId';
@@ -307,6 +313,23 @@ class AppRouter {
             key: state.pageKey,
             child: BookingSuccessScreen(bookingId: bookingId),
             transitionsBuilder: _fadeScaleTransition,
+          );
+        },
+      ),
+
+      // Struk Pembayaran Digital (2 Template: Printer Kecil & Besar)
+      GoRoute(
+        path: digitalReceipt,
+        pageBuilder: (context, state) {
+          final bookingId = state.pathParameters['bookingId']!;
+          final extra = state.extra as Map<String, dynamic>?;
+          return CustomTransitionPage(
+            key: state.pageKey,
+            child: DigitalReceiptScreen(
+              bookingId: bookingId,
+              initialData: extra,
+            ),
+            transitionsBuilder: _slideUpTransition,
           );
         },
       ),

@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -38,7 +38,10 @@ class _SearchScreenState extends State<SearchScreen>
   List<Map<String, dynamic>> _courses = [];
   List<Map<String, dynamic>> _lpks = [];
   List<Map<String, dynamic>> _categories = [];
+  List<Map<String, dynamic>> _autocompleteSuggestions = [];
   bool _isLoading = false;
+  bool _isAutocompleteLoading = false;
+  bool _showSuggestions = false;
   bool _initialLoad = true;
   String? _selectedCategory;
 
@@ -86,24 +89,71 @@ class _SearchScreenState extends State<SearchScreen>
     }
   }
 
+  /// ⚡ Mekanisme Debounce 350ms (300-400ms) untuk Autocomplete
   void _onSearchChanged(String value) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(const Duration(milliseconds: 500), () {
-      _search();
+    final trimmed = value.trim();
+
+    if (trimmed.length < 2) {
+      setState(() {
+        _autocompleteSuggestions = [];
+        _showSuggestions = false;
+        _isAutocompleteLoading = false;
+      });
+      return;
+    }
+
+    // Jeda Debounce 350ms agar tidak membebani server
+    _debounce = Timer(const Duration(milliseconds: 350), () async {
+      if (!mounted) return;
+      setState(() => _isAutocompleteLoading = true);
+
+      // Panggil endpoint /api/courses/autocomplete
+      final result = await _api.getCourseAutocomplete(trimmed);
+      if (!mounted) return;
+
+      if (_searchController.text.trim() == trimmed && result['success'] == true) {
+        final data = result['data'];
+        List<Map<String, dynamic>> suggestions = [];
+        if (data is Map && data['suggestions'] is List) {
+          suggestions = (data['suggestions'] as List)
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
+        }
+        setState(() {
+          _autocompleteSuggestions = suggestions;
+          _showSuggestions = suggestions.isNotEmpty;
+          _isAutocompleteLoading = false;
+        });
+      } else {
+        if (mounted) setState(() => _isAutocompleteLoading = false);
+      }
     });
   }
 
-  Future<void> _search() async {
+  /// 🚀 Eksekusi pencarian saat tombol cari ditekan (/api/courses/search)
+  Future<void> _search({String? explicitQuery}) async {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+
+    final q = (explicitQuery ?? _searchController.text).trim();
+    if (explicitQuery != null) {
+      _searchController.text = explicitQuery;
+    }
+
     setState(() {
       _isLoading = true;
       _initialLoad = false;
+      _showSuggestions = false;
+      _isAutocompleteLoading = false;
     });
 
-    final q = _searchController.text.trim();
+    _focusNode.unfocus();
     final cat = _selectedCategory;
 
     try {
-      final coursesFuture = _api.getCourses(search: q, category: cat);
+      // Menghubungkan input pencarian ke endpoint /api/courses/search
+      final coursesFuture = _api.searchCourses(query: q, category: cat);
       final lpksFuture = _api.getLpks(search: q, category: cat);
 
       final results = await Future.wait([coursesFuture, lpksFuture]);
@@ -182,16 +232,155 @@ class _SearchScreenState extends State<SearchScreen>
             _buildCategoryChips(),
             _buildTabBar(),
             Expanded(
-              child: TabBarView(
-                controller: _tabController,
+              child: Stack(
                 children: [
-                  _buildCourseResults(),
-                  _buildLPKResults(),
+                  TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildCourseResults(),
+                      _buildLPKResults(),
+                    ],
+                  ),
+                  if (_showSuggestions && _autocompleteSuggestions.isNotEmpty)
+                    Positioned.fill(
+                      child: _buildAutocompletePanel(),
+                    ),
                 ],
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Panel Rekomendasi / Saran Instan dari /api/courses/autocomplete
+  Widget _buildAutocompletePanel() {
+    final q = _searchController.text.trim();
+    return Container(
+      color: AppColors.background,
+      child: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        children: [
+          // Header info autocomplete
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.bolt_rounded, size: 18, color: AppColors.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Saran instan untuk "$q"',
+                    style: AppTypography.labelSmall.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                if (_isAutocompleteLoading)
+                  const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // Pilihan Submit langsung kalimat
+          ListTile(
+            dense: true,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            tileColor: AppColors.surface,
+            leading: const Icon(Icons.search_rounded, color: AppColors.primary, size: 20),
+            title: Text(
+              'Cari semua hasil untuk "$q"',
+              style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+            ),
+            trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.textSecondary),
+            onTap: () => _search(),
+          ),
+          const SizedBox(height: 6),
+
+          // Daftar saran dari autocomplete
+          ..._autocompleteSuggestions.map((item) {
+            final type = item['type']?.toString() ?? 'course';
+            final title = item['title']?.toString() ?? '';
+            final subtitle = item['subtitle']?.toString() ?? '';
+            final category = item['category']?.toString();
+            final isLpk = type == 'lpk';
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: ListTile(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: AppColors.outline.withValues(alpha: 0.5)),
+                ),
+                tileColor: AppColors.surface,
+                leading: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: isLpk
+                        ? const Color(0xFF10B981).withValues(alpha: 0.12)
+                        : AppColors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    isLpk ? Icons.business_rounded : Icons.school_rounded,
+                    color: isLpk ? const Color(0xFF10B981) : AppColors.primary,
+                    size: 20,
+                  ),
+                ),
+                title: Text(
+                  title,
+                  style: AppTypography.titleSmall.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13.5,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                subtitle: Text(
+                  subtitle,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
+                    fontSize: 11.5,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                trailing: category != null && category.isNotEmpty
+                    ? Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          category,
+                          style: AppTypography.labelSmall.copyWith(
+                            color: AppColors.primary,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      )
+                    : const Icon(Icons.north_west_rounded, size: 16, color: AppColors.textSecondary),
+                onTap: () {
+                  _search(explicitQuery: title);
+                },
+              ),
+            );
+          }),
+        ],
       ),
     );
   }
