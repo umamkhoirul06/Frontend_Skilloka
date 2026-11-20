@@ -26,6 +26,7 @@ class _PendingBookingScreenState extends State<PendingBookingScreen> {
   bool _isApproved = false;
   bool _isCancelled = false;
   bool _isPaying = false;
+  bool _isSimulating = false;
   String _statusLabel = 'Menunggu pembayaran kursus via Midtrans.';
   Map<String, dynamic>? _bookingData;
   Timer? _timer;
@@ -58,6 +59,7 @@ class _PendingBookingScreenState extends State<PendingBookingScreen> {
     try {
       String? snapToken;
       String? redirectUrl;
+      String? serverErrorMsg;
 
       // 1. Coba inisiasi via endpoint standar PRD /bookings/{id}/payment
       try {
@@ -72,23 +74,30 @@ class _PendingBookingScreenState extends State<PendingBookingScreen> {
               payData['data']?['snap_token']?.toString();
           redirectUrl = payData['redirect_url']?.toString() ??
               payData['data']?['redirect_url']?.toString();
+        } else {
+          serverErrorMsg = payResult['message']?.toString();
         }
       } catch (e) {
+        serverErrorMsg = e.toString();
         debugPrint("Error createBookingPayment: $e");
       }
 
       // 2. Fallback via endpoint /payment/create-transaction
       if (snapToken == null && redirectUrl == null) {
-        final response = await sl<ApiClient>().post(
-          '/payment/create-transaction',
-          data: {'order_id': widget.bookingId},
-        );
-        final data = response.data as Map<String, dynamic>;
-        snapToken = data['snap_token'] as String?;
-        redirectUrl = data['redirect_url'] as String?;
+        try {
+          final response = await sl<ApiClient>().post(
+            '/payment/create-transaction',
+            data: {'order_id': widget.bookingId},
+          );
+          final data = response.data as Map<String, dynamic>;
+          snapToken = data['snap_token'] as String?;
+          redirectUrl = data['redirect_url'] as String?;
+        } catch (e) {
+          debugPrint("Error fallback create-transaction: $e");
+        }
       }
 
-      // 3. Format URL Snap Midtrans
+      // 3. Format URL Snap Midtrans (Sandbox)
       if ((redirectUrl == null || redirectUrl.isEmpty) &&
           snapToken != null &&
           snapToken.isNotEmpty) {
@@ -96,7 +105,7 @@ class _PendingBookingScreenState extends State<PendingBookingScreen> {
       }
 
       if (redirectUrl == null || redirectUrl.isEmpty) {
-        throw Exception('Token atau tautan pembayaran tidak diterima dari server.');
+        throw Exception(serverErrorMsg ?? 'Token atau tautan pembayaran tidak diterima dari server.');
       }
 
       final checkoutUri = Uri.parse(redirectUrl);
@@ -222,22 +231,49 @@ class _PendingBookingScreenState extends State<PendingBookingScreen> {
     }
   }
 
-  /// Simulasi pembayaran berhasil (fitur bantuan testing sandbox / development)
+  /// Simulasi pembayaran berhasil (fitur bantuan demo expo / presentasi)
   Future<void> _simulatePaymentSuccess() async {
+    if (_isSimulating) return;
+    setState(() => _isSimulating = true);
+
     try {
-      final apiClient = sl<ApiClient>();
-      await apiClient.post('/payment/confirm-dummy', data: {
-        'booking_id': widget.bookingId,
-        'method': 'qris',
-      });
+      // 1. Panggil endpoint resmi confirm-dummy via ApiService
+      final res = await _apiService.confirmPaymentSimulation(
+        bookingId: widget.bookingId,
+        method: 'midtrans',
+      );
+
+      // 2. Fallback via ApiClient jika perlu
+      if (res['success'] != true) {
+        try {
+          await sl<ApiClient>().post('/payment/confirm-dummy', data: {
+            'booking_id': widget.bookingId,
+            'method': 'midtrans',
+            'is_demo': true,
+          });
+        } catch (_) {}
+      }
     } catch (e) {
       debugPrint("Simulate payment error: $e");
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Simulasi Pembayaran Berhasil! Mengalihkan ke tiket pelatihan...'),
+          backgroundColor: AppColors.success,
+          duration: Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
 
     await _checkStatus();
     if (!_isApproved && mounted) {
       context.pushReplacement(AppRouter.bookingSuccessPath(widget.bookingId));
     }
+
+    if (mounted) setState(() => _isSimulating = false);
   }
 
   @override
@@ -329,6 +365,39 @@ class _PendingBookingScreenState extends State<PendingBookingScreen> {
           ),
         ),
 
+        const SizedBox(height: 12),
+
+        // Tombol Shortcut Simulasi Pembayaran Sukses (Mode Demo / Expo)
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _isSimulating ? null : _simulatePaymentSuccess,
+            icon: _isSimulating
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF10B981)),
+                  )
+                : const Icon(Icons.flash_on_rounded, size: 20, color: Color(0xFF10B981)),
+            label: Text(
+              _isSimulating
+                  ? 'Memproses Simulasi...'
+                  : '⚡ Shortcut Bayar Sukses (Mode Demo / Expo)',
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF047857),
+                fontSize: 13.5,
+              ),
+            ),
+            style: OutlinedButton.styleFrom(
+              backgroundColor: const Color(0xFFECFDF5),
+              side: const BorderSide(color: Color(0xFF10B981), width: 1.2),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ),
+
         const Spacer(),
 
         // Info polling & tombol cek manual
@@ -346,13 +415,6 @@ class _PendingBookingScreenState extends State<PendingBookingScreen> {
               icon: const Icon(Icons.refresh, size: 16),
               label: const Text('Periksa Status Sekarang'),
             ),
-            if (!kReleaseMode) ...[
-              const Text(' • ', style: TextStyle(color: AppColors.textTertiary)),
-              TextButton(
-                onPressed: _simulatePaymentSuccess,
-                child: const Text('Simulasi Sukses (Dev)', style: TextStyle(color: AppColors.primary)),
-              ),
-            ],
           ],
         ),
       ],

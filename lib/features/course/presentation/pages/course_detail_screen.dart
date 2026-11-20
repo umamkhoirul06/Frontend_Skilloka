@@ -2,6 +2,7 @@
 library;
 
 import 'dart:convert';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -286,7 +287,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
         slivers: [
           // Image Gallery App Bar
           SliverAppBar(
-            expandedHeight: 280,
+            expandedHeight: 330,
             pinned: true,
             backgroundColor: Theme.of(context).scaffoldBackgroundColor,
             leading: IconButton(
@@ -351,50 +352,93 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                         itemBuilder: (context, index) {
                           return Hero(
                             tag: '${AppAnimations.heroTagCourse}${widget.courseId}',
-                            child: CachedNetworkImage(
-                              imageUrl: images[index],
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                              filterQuality: FilterQuality.high,
-                              placeholder: (context, url) => Container(
-                                color: AppColors.surfaceVariant,
-                                child: const Center(
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: AppColors.primary,
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                // Layer 1: Background Blur dari gambar asli agar tidak ada ruang kosong
+                                CachedNetworkImage(
+                                  imageUrl: images[index],
+                                  fit: BoxFit.cover,
+                                  filterQuality: FilterQuality.low,
+                                  memCacheWidth: 200,
+                                ),
+                                // Frosted Glass Overlay
+                                ClipRect(
+                                  child: BackdropFilter(
+                                    filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                                    child: Container(
+                                      color: Colors.black.withValues(alpha: 0.35),
+                                    ),
                                   ),
                                 ),
-                              ),
-                              errorWidget: (context, url, error) => Container(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      AppColors.primary.withValues(alpha: 0.15),
-                                      AppColors.secondary.withValues(alpha: 0.1),
-                                    ],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                ),
-                                child: Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Icon(Icons.school_rounded,
-                                          size: 64, color: AppColors.primary),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        title,
-                                        style: AppTypography.titleMedium.copyWith(
-                                          color: AppColors.primary,
-                                          fontWeight: FontWeight.w600,
+                                // Layer 2: Gambar Utama Sharp & Full Frame (Tidak ter-zoom / tidak terpotong)
+                                Center(
+                                  child: CachedNetworkImage(
+                                    imageUrl: images[index],
+                                    fit: BoxFit.contain,
+                                    width: double.infinity,
+                                    filterQuality: FilterQuality.high,
+                                    placeholder: (context, url) => Container(
+                                      color: Colors.transparent,
+                                      child: const Center(
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
                                         ),
-                                        textAlign: TextAlign.center,
                                       ),
-                                    ],
+                                    ),
+                                    errorWidget: (context, url, error) => Container(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            AppColors.primary.withValues(alpha: 0.15),
+                                            AppColors.secondary.withValues(alpha: 0.1),
+                                          ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                      ),
+                                      child: Center(
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            const Icon(Icons.school_rounded,
+                                                size: 64, color: AppColors.primary),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              title,
+                                              style: AppTypography.titleMedium.copyWith(
+                                                color: AppColors.primary,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
+                                // Layer 3: Gradient halus di bawah untuk blending transisi ke konten
+                                Positioned(
+                                  bottom: 0,
+                                  left: 0,
+                                  right: 0,
+                                  height: 35,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topCenter,
+                                        end: Alignment.bottomCenter,
+                                        colors: [
+                                          Colors.transparent,
+                                          Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.85),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           );
                         },

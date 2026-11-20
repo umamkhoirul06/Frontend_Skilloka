@@ -1164,6 +1164,38 @@ class ApiService {
     }
   }
 
+  /// Simulasi Pembayaran Sukses untuk Demo / Expo
+  /// Memanggil endpoint backend /api/payment/confirm-dummy
+  Future<Map<String, dynamic>> confirmPaymentSimulation({
+    required String bookingId,
+    String method = 'midtrans',
+  }) async {
+    try {
+      final headers = await _authHeaders();
+      final body = jsonEncode({
+        'booking_id': bookingId,
+        'method': method,
+        'is_demo': true,
+      });
+
+      final r = await http.post(
+        Uri.parse('$baseUrl/payment/confirm-dummy'),
+        headers: {
+          ...headers,
+          'X-Demo-Mode': 'true',
+        },
+        body: body,
+      );
+
+      return _handleResponse(r);
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Gagal melakukan simulasi pembayaran: $e',
+      };
+    }
+  }
+
   // ── REVIEWS ────────────────────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> getCourseReviews(

@@ -161,9 +161,8 @@ class AppConfig {
   static const String midtransMerchantId = 'G068252610';
   static const String midtransClientKey = 'Mid-client-Vr_iP7ruEQNSptDT';
 
-  /// Cek apakah menggunakan sandbox atau production environment
-  static bool get isMidtransProduction =>
-      !midtransClientKey.startsWith('SB-');
+  /// Cek apakah menggunakan sandbox atau production environment (Mode Sandbox Aktif)
+  static bool get isMidtransProduction => const bool.fromEnvironment('MIDTRANS_PROD', defaultValue: false);
 
   /// URL dasar untuk Snap checkout Midtrans
   static String get midtransSnapBaseUrl => isMidtransProduction
