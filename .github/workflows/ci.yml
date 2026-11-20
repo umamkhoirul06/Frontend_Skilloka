@@ -36,7 +36,21 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      # ── 3. Setup Flutter ─────────────────────────────────────────────
+      # ── 3. Pre-install Android NDK ───────────────────────────────────
+      - name: Pre-install Android NDK
+        run: |
+          echo "Accepting Android SDK licenses..."
+          yes | sdkmanager --licenses || true
+          rm -rf $ANDROID_HOME/.downloadIntermediates/ || true
+          echo "Pre-installing NDK 27.0.12077973..."
+          for i in 1 2 3; do
+            echo "Attempt $i to install NDK..."
+            yes | sdkmanager --install "ndk;27.0.12077973" && break || sleep 5
+          done
+          echo "Available NDKs on runner:"
+          ls -la $ANDROID_HOME/ndk/ || true
+
+      # ── 4. Setup Flutter ─────────────────────────────────────────────
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
