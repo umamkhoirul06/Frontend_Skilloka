@@ -1760,17 +1760,17 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  // ── Reference Component 3: Kategori Kelas Card Slider ───────────────────
+  // ── Reference Component 3: Kategori Kelas Card Slider (Data Riil & Bersih) ──
   Widget _buildCategoryCardSlider(BuildContext context) {
     final cardGradients = [
-      // Card 1: Dark Navy / Green accent
-      [const Color(0xFF0F1E36), const Color(0xFF132B52)],
+      // Card 1: Dark Navy / Blue
+      [const Color(0xFF0F1E36), const Color(0xFF1E3A8A)],
       // Card 2: Royal Blue gradient
       [const Color(0xFF1E40AF), const Color(0xFF2563EB)],
-      // Card 3: Deep Slate / Indigo
-      [const Color(0xFF1E293B), const Color(0xFF0F172A)],
-      // Card 4: Dark Amber / Navy
-      [const Color(0xFF1E1B4B), const Color(0xFF312E81)],
+      // Card 3: Deep Teal / Slate
+      [const Color(0xFF0F766E), const Color(0xFF115E59)],
+      // Card 4: Dark Indigo / Violet
+      [const Color(0xFF312E81), const Color(0xFF4338CA)],
     ];
 
     return Column(
@@ -1778,14 +1778,14 @@ class _HomeScreenState extends State<HomeScreen>
       children: [
         _buildSectionHeader(
           context,
-          title: 'Kategori Kelas',
-          subtitle: '${_categories.length} bidang kejuruan',
+          title: 'Kategori Kejuruan',
+          subtitle: '${_categories.length} bidang kejuruan resmi',
           icon: Icons.layers_rounded,
           onSeeAll: () => _openFilter(),
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 115,
+          height: 110,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1794,21 +1794,32 @@ class _HomeScreenState extends State<HomeScreen>
             itemBuilder: (context, index) {
               final cat = _categories[index];
               final gradient = cardGradients[index % cardGradients.length];
-              final isLocked = index >= 3;
-              final progress = index == 0 ? 0.75 : (index == 1 ? 0.40 : 0.0);
-              final courseCount = (index * 2 + 3);
+              final isSelected = _selectedCategoryName == cat;
+
+              // Hitung jumlah kursus yang tersedia di kategori ini secara riil dari list kursus
+              final realCourseCount = _courses.where((c) {
+                final cCat = c.categoryName.toLowerCase().trim();
+                final curCat = cat.toLowerCase().trim();
+                return cCat.contains(curCat) || curCat.contains(cCat);
+              }).length;
 
               return GestureDetector(
                 onTap: () async {
                   HapticFeedback.selectionClick();
                   setState(() {
-                    _selectedCategoryName = cat;
-                    _selectedCategory = _categorySlugMap[cat];
+                    if (isSelected) {
+                      _selectedCategoryName = null;
+                      _selectedCategory = null;
+                    } else {
+                      _selectedCategoryName = cat;
+                      _selectedCategory = _categorySlugMap[cat];
+                    }
                     _isLoading = true;
                   });
                   await _loadData();
                 },
-                child: Container(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
                   width: 160,
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
@@ -1819,13 +1830,15 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      width: 1,
+                      color: isSelected
+                          ? const Color(0xFF60A5FA)
+                          : Colors.white.withValues(alpha: 0.15),
+                      width: isSelected ? 2 : 1,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: gradient.first.withValues(alpha: 0.25),
-                        blurRadius: 10,
+                        color: gradient.first.withValues(alpha: isSelected ? 0.45 : 0.25),
+                        blurRadius: isSelected ? 14 : 8,
                         offset: const Offset(0, 4),
                       ),
                     ],
@@ -1846,48 +1859,48 @@ class _HomeScreenState extends State<HomeScreen>
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      // Subtitle
+                      // Real Course Count
                       Text(
-                        '*$courseCount Materi',
+                        realCourseCount > 0
+                            ? '$realCourseCount Kursus Tersedia'
+                            : 'Pelatihan Siap Kerja',
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.75),
+                          color: Colors.white.withValues(alpha: 0.8),
                           fontSize: 11.5,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      // Progress Bar & Lock Status matching reference image
+                      // Action pill / status (Real, Bersih, Tanpa Status Palsu)
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Expanded(
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(4),
-                              child: LinearProgressIndicator(
-                                value: progress,
-                                minHeight: 4,
-                                backgroundColor:
-                                    Colors.white.withValues(alpha: 0.2),
-                                valueColor: const AlwaysStoppedAnimation<Color>(
-                                  Color(0xFF10B981),
-                                ),
-                              ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? Colors.white
+                                  : Colors.white.withValues(alpha: 0.18),
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          if (isLocked)
-                            const Icon(
-                              Icons.lock_rounded,
-                              size: 13,
-                              color: Color(0xFFFBBF24),
-                            )
-                          else if (progress > 0)
-                            Text(
-                              '${(progress * 100).toInt()}%',
-                              style: const TextStyle(
-                                color: Color(0xFF10B981),
+                            child: Text(
+                              isSelected ? 'Terpilih' : 'Jelajahi',
+                              style: TextStyle(
+                                color: isSelected ? gradient.first : Colors.white,
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
+                          ),
+                          Icon(
+                            isSelected
+                                ? Icons.check_circle_rounded
+                                : Icons.arrow_forward_rounded,
+                            size: 15,
+                            color: isSelected
+                                ? const Color(0xFF60A5FA)
+                                : Colors.white.withValues(alpha: 0.8),
+                          ),
                         ],
                       ),
                     ],

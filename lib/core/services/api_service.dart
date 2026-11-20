@@ -486,9 +486,12 @@ class ApiService {
     String? search,
     String? category,
     String? location,
+    int perPage = 50,
   }) async {
     try {
-      final q = <String, String>{};
+      final q = <String, String>{
+        'per_page': perPage.toString(),
+      };
 
       if (search?.isNotEmpty == true) {
         q['search'] = search!;

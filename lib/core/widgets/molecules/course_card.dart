@@ -346,8 +346,8 @@ class _CourseCardState extends State<CourseCard>
                 ? CachedNetworkImage(
                     imageUrl: resolvedUrl,
                     fit: BoxFit.cover,
-                    memCacheWidth: 400,
-                    memCacheHeight: 300,
+                    filterQuality: FilterQuality.high,
+                    memCacheWidth: 800,
                     placeholder: (context, url) => Container(
                       color: AppColors.surfaceVariant,
                       child: const Center(

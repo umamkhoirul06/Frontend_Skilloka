@@ -1,6 +1,7 @@
-﻿/// Course Detail Screen with image gallery, syllabus, and booking CTA
+/// Course Detail Screen with image gallery, syllabus, and booking CTA
 library;
 
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -248,8 +249,25 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       }
     } else if (rawImagesData is String && rawImagesData.trim().isNotEmpty) {
       final s = rawImagesData.trim();
-      final full = ApiService.toFullUrl(s);
-      if (full.isNotEmpty) images.add(full);
+      if (s.startsWith('[') && s.endsWith(']')) {
+        try {
+          final decoded = jsonDecode(s);
+          if (decoded is List) {
+            for (final d in decoded) {
+              if (d != null) {
+                final full = ApiService.toFullUrl(d.toString().trim());
+                if (full.isNotEmpty) images.add(full);
+              }
+            }
+          }
+        } catch (_) {
+          final full = ApiService.toFullUrl(s);
+          if (full.isNotEmpty) images.add(full);
+        }
+      } else {
+        final full = ApiService.toFullUrl(s);
+        if (full.isNotEmpty) images.add(full);
+      }
     }
 
     if (images.isEmpty) {
@@ -337,6 +355,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                               imageUrl: images[index],
                               fit: BoxFit.cover,
                               width: double.infinity,
+                              filterQuality: FilterQuality.high,
                               placeholder: (context, url) => Container(
                                 color: AppColors.surfaceVariant,
                                 child: const Center(

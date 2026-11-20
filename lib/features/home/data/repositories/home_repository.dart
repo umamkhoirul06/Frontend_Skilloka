@@ -1,4 +1,4 @@
-﻿import 'package:dio/dio.dart';
+import 'package:dio/dio.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/services/api_service.dart';
 import '../models/lpk_model.dart';
@@ -13,11 +13,13 @@ class HomeRepository {
   Future<List<CourseModel>> getCourses({
     String? search,
     String? category,
+    int perPage = 50,
   }) async {
     try {
       final response = await apiClient.get(
         '/courses',
         queryParameters: {
+          'per_page': perPage,
           if (search != null && search.isNotEmpty)
             'search': search,
 
@@ -58,22 +60,24 @@ return data
   }
 
   Future<List<LpkModel>> getLpks({
-  String? search,
-  String? location,
-}) async {
+    String? search,
+    String? location,
+    int perPage = 50,
+  }) async {
     try {
       final response = await apiClient.get(
-  '/lpks',
-  queryParameters: {
-    if (search != null && search.isNotEmpty)
-      'search': search,
+        '/lpks',
+        queryParameters: {
+          'per_page': perPage,
+          if (search != null && search.isNotEmpty)
+            'search': search,
 
-    if (location != null &&
-        location.isNotEmpty &&
-        location != 'Semua')
-      'location': location,
-  },
-);
+          if (location != null &&
+              location.isNotEmpty &&
+              location != 'Semua')
+            'location': location,
+        },
+      );
 
       List<dynamic> data = [];
 

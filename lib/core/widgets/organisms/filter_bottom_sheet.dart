@@ -1,4 +1,4 @@
-﻿/// Filter Bottom Sheet with location, category, and price selectors
+/// Filter Bottom Sheet with location, category, and price selectors
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_shapes.dart';
@@ -170,7 +170,10 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
         .toList();
 
     return Container(
+      width: double.infinity,
       constraints: BoxConstraints(
+        minWidth: MediaQuery.of(context).size.width,
+        maxWidth: MediaQuery.of(context).size.width,
         maxHeight: MediaQuery.of(context).size.height * 0.85,
       ),
       decoration: BoxDecoration(
@@ -218,13 +221,13 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                     builder: (context) {
                       final isDark = Theme.of(context).brightness == Brightness.dark;
                       return Container(
+                        width: double.infinity,
                         margin: const EdgeInsets.only(bottom: 14),
-                        padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: _useGpsLocation
                               ? AppColors.primary.withValues(alpha: 0.10)
                               : (isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9)),
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(16),
                           border: Border.all(
                             color: _useGpsLocation
                                 ? AppColors.primary
@@ -232,82 +235,93 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                             width: 1.2,
                           ),
                         ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 38,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                color: _useGpsLocation
-                                    ? AppColors.primary
-                                    : AppColors.primary.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: _isLocating
-                                  ? const Padding(
-                                      padding: EdgeInsets.all(9),
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: AppColors.primary,
-                                      ),
-                                    )
-                                  : Icon(
-                                      Icons.my_location_rounded,
-                                      color: _useGpsLocation ? Colors.white : AppColors.primary,
-                                      size: 20,
-                                    ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                        child: Material(
+                          color: Colors.transparent,
+                          borderRadius: BorderRadius.circular(16),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: _isLocating ? null : _detectLocation,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                              child: Row(
                                 children: [
-                                  Text(
-                                    _useGpsLocation
-                                        ? 'GPS Aktif: Kec. ${_gpsKecamatan ?? ''}'
-                                        : 'Gunakan Lokasi Saat Ini (Maps/GPS)',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 13,
+                                  Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
                                       color: _useGpsLocation
                                           ? AppColors.primary
-                                          : AppColors.textPrimaryFor(context),
+                                          : AppColors.primary.withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: _isLocating
+                                        ? const Padding(
+                                            padding: EdgeInsets.all(10),
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: AppColors.primary,
+                                            ),
+                                          )
+                                        : Icon(
+                                            Icons.my_location_rounded,
+                                            color: _useGpsLocation ? Colors.white : AppColors.primary,
+                                            size: 20,
+                                          ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          _useGpsLocation
+                                              ? 'GPS Aktif: Kec. ${_gpsKecamatan ?? ''}'
+                                              : 'Gunakan Lokasi Saat Ini (Maps/GPS)',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 13,
+                                            color: _useGpsLocation
+                                                ? AppColors.primary
+                                                : AppColors.textPrimaryFor(context),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          _useGpsLocation
+                                              ? 'LPK terdekat akan diprioritaskan otomatis.'
+                                              : 'Cari & rekomendasikan LPK terdekat dari posisi Anda.',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    _useGpsLocation
-                                        ? 'LPK terdekat akan diprioritaskan otomatis.'
-                                        : 'Cari & rekomendasikan LPK terdekat dari posisi Anda.',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                  const SizedBox(width: 10),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: _useGpsLocation ? AppColors.primary : Colors.white,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: AppColors.primary.withValues(alpha: _useGpsLocation ? 1.0 : 0.35),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      _useGpsLocation ? 'Ganti' : 'Aktifkan',
+                                      style: TextStyle(
+                                        color: _useGpsLocation ? Colors.white : AppColors.primary,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 11,
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            ElevatedButton(
-                              onPressed: _isLocating ? null : _detectLocation,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: _useGpsLocation ? AppColors.primary : Colors.white,
-                                foregroundColor: _useGpsLocation ? Colors.white : AppColors.primary,
-                                elevation: 0,
-                                side: BorderSide(
-                                  color: AppColors.primary.withValues(alpha: 0.35),
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                              ),
-                              child: Text(
-                                _useGpsLocation ? 'Ganti' : 'Aktifkan',
-                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       );
                     },
