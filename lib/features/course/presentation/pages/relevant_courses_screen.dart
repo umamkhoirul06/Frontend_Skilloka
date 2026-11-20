@@ -6,6 +6,9 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/navigation/app_router.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/services/course_relevance_service.dart';
+import '../../../../core/network/api_client.dart';
+import '../../../../core/di/injection_container.dart';
+import '../../../home/data/repositories/home_repository.dart';
 import '../../data/models/course_model.dart';
 
 /// Screen displaying algorithmically curated courses based on user's onboarding profiling
@@ -52,24 +55,44 @@ class _RelevantCoursesScreenState extends State<RelevantCoursesScreen> {
       preferredLocation: 'Indramayu',
     );
 
-    // 2. Load courses from API
+    // 2. Load courses from API using HomeRepository (primary) or ApiService (fallback)
     try {
-      final result = await _api.getCourses();
       List<CourseModel> loadedCourses = [];
 
-      if (result['success'] == true) {
-        final data = result['data'];
-        List<dynamic> list = [];
-        if (data is List) {
-          list = data;
-        } else if (data is Map) {
-          list = (data['items'] ?? data['data'] ?? []) as List<dynamic>;
-        }
+      try {
+        final homeRepo = HomeRepository(apiClient: sl<ApiClient>());
+        loadedCourses = await homeRepo.getCourses(search: '');
+        debugPrint('Loaded courses from HomeRepository: ${loadedCourses.length}');
+      } catch (e) {
+        debugPrint('HomeRepository getCourses error: $e');
+      }
 
-        loadedCourses = list
-            .whereType<Map>()
-            .map((item) => CourseModel.fromJson(Map<String, dynamic>.from(item)))
-            .toList();
+      // Robust fallback using ApiService if needed
+      if (loadedCourses.isEmpty) {
+        final result = await _api.getCourses();
+        if (result['success'] == true) {
+          final rawData = result['data'];
+          List<dynamic> list = [];
+          if (rawData is List) {
+            list = rawData;
+          } else if (rawData is Map) {
+            final inner = rawData['data'];
+            if (inner is List) {
+              list = inner;
+            } else if (inner is Map && inner['data'] is List) {
+              list = inner['data'];
+            } else if (rawData['items'] is List) {
+              list = rawData['items'];
+            }
+          }
+
+          loadedCourses = list
+              .whereType<Map>()
+              .map((item) =>
+                  CourseModel.fromJson(Map<String, dynamic>.from(item)))
+              .toList();
+          debugPrint('Loaded courses from ApiService fallback: ${loadedCourses.length}');
+        }
       }
 
       // 3. Compute relevance algorithm
@@ -85,6 +108,7 @@ class _RelevantCoursesScreenState extends State<RelevantCoursesScreen> {
         });
       }
     } catch (e) {
+      debugPrint('Error in RelevantCoursesScreen _initData: $e');
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -116,7 +140,13 @@ class _RelevantCoursesScreenState extends State<RelevantCoursesScreen> {
         titleSpacing: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-          onPressed: () => context.go(AppRouter.home),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go(AppRouter.home);
+            }
+          },
         ),
         title: Text(
           'Kurasi Kursus Untukmu',
@@ -158,7 +188,10 @@ class _RelevantCoursesScreenState extends State<RelevantCoursesScreen> {
                 ),
               ),
             )
-          : CustomScrollView(
+          : RefreshIndicator(
+              onRefresh: _initData,
+              color: AppColors.primary,
+              child: CustomScrollView(
               slivers: [
                 // 1. Profile Context Summary Header Card
                 SliverToBoxAdapter(
@@ -334,9 +367,25 @@ class _RelevantCoursesScreenState extends State<RelevantCoursesScreen> {
                               size: 48, color: AppColors.textDisabled),
                           const SizedBox(height: 12),
                           Text(
-                            'Belum ada kursus yang sesuai kriteria ini.',
+                            _selectedFilter == 'Semua'
+                                ? 'Belum ada kursus yang terdeteksi.'
+                                : 'Belum ada kursus dengan filter $_selectedFilter.',
                             style: AppTypography.bodyMedium.copyWith(
                               color: AppColors.textSecondary,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          OutlinedButton.icon(
+                            onPressed: _initData,
+                            icon: const Icon(Icons.refresh_rounded, size: 18),
+                            label: const Text('Sinkronkan Ulang'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.primary,
+                              side: const BorderSide(color: AppColors.primary),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
                             ),
                           ),
                         ],
@@ -358,6 +407,7 @@ class _RelevantCoursesScreenState extends State<RelevantCoursesScreen> {
                   ),
               ],
             ),
+          ),
     );
   }
 
