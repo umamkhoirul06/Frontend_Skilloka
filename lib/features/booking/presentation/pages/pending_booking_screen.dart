@@ -398,7 +398,7 @@ class _PendingBookingScreenState extends State<PendingBookingScreen> {
             ),
             style: TextButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              backgroundColor: AppColors.surfaceContainerLowest,
+              backgroundColor: AppColors.surfaceVariant,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
                 side: BorderSide(color: AppColors.outlineVariant.withValues(alpha: 0.5)),
