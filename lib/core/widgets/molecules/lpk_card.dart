@@ -19,6 +19,7 @@ class LPKCard extends StatefulWidget {
   final double rating;
   final int reviewCount;
   final bool isVerified;
+  final double? distanceKm;
   final String? mapThumbnailUrl;
   final VoidCallback? onTap;
 
@@ -31,6 +32,7 @@ class LPKCard extends StatefulWidget {
     required this.rating,
     required this.reviewCount,
     this.isVerified = false,
+    this.distanceKm,
     this.mapThumbnailUrl,
     this.onTap,
   });
@@ -124,6 +126,35 @@ class _LPKCardState extends State<LPKCard> with SingleTickerProviderStateMixin {
                   const SizedBox(height: 6),
                   // Verified Badge
                   if (widget.isVerified) _buildVerifiedBadge(),
+                  if (widget.distanceKm != null && widget.distanceKm! > 0) ...[
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.25),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.near_me_rounded, color: Color(0xFF10B981), size: 10.5),
+                          const SizedBox(width: 3),
+                          Text(
+                            '${widget.distanceKm!.toStringAsFixed(1)} km dari lokasimu',
+                            style: const TextStyle(
+                              color: Color(0xFF10B981),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 8),
                   // Rating / Status
                   if (widget.rating > 0)

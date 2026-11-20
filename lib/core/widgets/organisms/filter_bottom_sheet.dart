@@ -6,6 +6,8 @@ import '../../theme/app_typography.dart';
 import '../../animations/app_animations.dart';
 import '../atoms/animated_button.dart';
 import '../atoms/input_field.dart';
+import '../../services/location_service.dart';
+import '../../error/exceptions.dart';
 
 class FilterBottomSheet extends StatefulWidget {
   final List<String> kecamatanList;
@@ -63,6 +65,12 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
   double _maxDistance = 50;
   String _searchQuery = '';
 
+  bool _isLocating = false;
+  bool _useGpsLocation = false;
+  double? _detectedLat;
+  double? _detectedLng;
+  String? _gpsKecamatan;
+
   @override
   void initState() {
     super.initState();
@@ -79,6 +87,43 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
     super.dispose();
   }
 
+  Future<void> _detectLocation() async {
+    setState(() => _isLocating = true);
+    try {
+      final pos = await LocationService().getCurrentLocation();
+      final nearest = LocationService().findNearestKecamatan(pos.latitude, pos.longitude);
+      if (mounted) {
+        setState(() {
+          _useGpsLocation = true;
+          _detectedLat = pos.latitude;
+          _detectedLng = pos.longitude;
+          _gpsKecamatan = nearest.$1;
+          _selectedKecamatan = nearest.$1;
+          _isLocating = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Lokasi GPS terdeteksi: Kecamatan ${nearest.$1} (~${nearest.$2.toStringAsFixed(1)} km)',
+            ),
+            backgroundColor: AppColors.primary,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLocating = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppExceptionHandler.getFriendlyMessage(e)),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
   void _reset() {
     setState(() {
       _selectedKecamatan = null;
@@ -87,6 +132,10 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
       _maxDistance = 50;
       _searchQuery = '';
       _searchController.clear();
+      _useGpsLocation = false;
+      _detectedLat = null;
+      _detectedLng = null;
+      _gpsKecamatan = null;
     });
   }
 
@@ -98,6 +147,9 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
         categories: _selectedCategories,
         priceRange: _priceRange,
         maxDistance: _maxDistance,
+        useGpsLocation: _useGpsLocation,
+        userLat: _detectedLat,
+        userLng: _detectedLng,
       ),
     );
   }
@@ -158,11 +210,112 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Location Section
-                  Text('Kecamatan', style: AppTypography.titleSmall),
-                  const SizedBox(height: 12),
+                  Text('Kecamatan / Lokasi', style: AppTypography.titleSmall),
+                  const SizedBox(height: 10),
+
+                  // GPS / Maps Quick Location Action Card
+                  Builder(
+                    builder: (context) {
+                      final isDark = Theme.of(context).brightness == Brightness.dark;
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 14),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: _useGpsLocation
+                              ? AppColors.primary.withValues(alpha: 0.10)
+                              : (isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9)),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: _useGpsLocation
+                                ? AppColors.primary
+                                : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                            width: 1.2,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: _useGpsLocation
+                                    ? AppColors.primary
+                                    : AppColors.primary.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: _isLocating
+                                  ? const Padding(
+                                      padding: EdgeInsets.all(9),
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: AppColors.primary,
+                                      ),
+                                    )
+                                  : Icon(
+                                      Icons.my_location_rounded,
+                                      color: _useGpsLocation ? Colors.white : AppColors.primary,
+                                      size: 20,
+                                    ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _useGpsLocation
+                                        ? 'GPS Aktif: Kec. ${_gpsKecamatan ?? ''}'
+                                        : 'Gunakan Lokasi Saat Ini (Maps/GPS)',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                      color: _useGpsLocation
+                                          ? AppColors.primary
+                                          : AppColors.textPrimaryFor(context),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    _useGpsLocation
+                                        ? 'LPK terdekat akan diprioritaskan otomatis.'
+                                        : 'Cari & rekomendasikan LPK terdekat dari posisi Anda.',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            ElevatedButton(
+                              onPressed: _isLocating ? null : _detectLocation,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _useGpsLocation ? AppColors.primary : Colors.white,
+                                foregroundColor: _useGpsLocation ? Colors.white : AppColors.primary,
+                                elevation: 0,
+                                side: BorderSide(
+                                  color: AppColors.primary.withValues(alpha: 0.35),
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              ),
+                              child: Text(
+                                _useGpsLocation ? 'Ganti' : 'Aktifkan',
+                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+
                   // Search
                   AppInputField(
-                    label: 'Cari kecamatan',
+                    label: 'Cari kecamatan manual',
                     prefixIcon: Icons.search,
                     controller: _searchController,
                     onChanged: (value) {
@@ -180,6 +333,9 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                         onTap: () {
                           setState(() {
                             _selectedKecamatan = isSelected ? null : kecamatan;
+                            if (isSelected) {
+                              _useGpsLocation = false;
+                            }
                           });
                         },
                         child: AnimatedContainer(
@@ -335,12 +491,18 @@ class FilterResult {
   final List<String> categories;
   final RangeValues priceRange;
   final double maxDistance;
+  final bool useGpsLocation;
+  final double? userLat;
+  final double? userLng;
 
   const FilterResult({
     this.kecamatan,
     required this.categories,
     required this.priceRange,
     required this.maxDistance,
+    this.useGpsLocation = false,
+    this.userLat,
+    this.userLng,
   });
 }
 

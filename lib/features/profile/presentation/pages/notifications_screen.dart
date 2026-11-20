@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_shapes.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -328,11 +328,23 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     required String title,
     required List<_SettingToggle> items,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: AppShapes.cardRadius,
-        boxShadow: AppShapes.shadowSM,
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+          width: 1.1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -342,7 +354,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             child: Text(
               title,
               style: AppTypography.labelLarge.copyWith(
-                color: AppColors.textSecondary,
+                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
@@ -357,24 +370,29 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   child: Row(
                     children: [
                       Container(
-                        width: 36,
-                        height: 36,
+                        width: 38,
+                        height: 38,
                         decoration: BoxDecoration(
-                          color: item.color.withValues(alpha: 0.1),
-                          borderRadius: AppShapes.borderRadiusSM,
+                          color: item.color.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Icon(item.icon, color: item.color, size: 18),
+                        child: Icon(item.icon, color: item.color, size: 20),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(item.title, style: AppTypography.labelLarge),
+                            Text(
+                              item.title,
+                              style: AppTypography.labelLarge.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                             Text(
                               item.subtitle,
                               style: AppTypography.bodySmall.copyWith(
-                                color: AppColors.textSecondary,
+                                color: AppColors.textSecondaryFor(context),
                               ),
                             ),
                           ],
@@ -384,13 +402,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         value: item.value,
                         onChanged: item.onChanged,
                         activeColor: AppColors.primary,
-                        activeTrackColor: AppColors.primaryContainer,
+                        activeTrackColor: AppColors.primary.withValues(alpha: 0.25),
                       ),
                     ],
                   ),
                 ),
                 if (items.last != item)
-                  const Divider(height: 1, indent: 64),
+                  Divider(
+                    height: 1,
+                    indent: 66,
+                    color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
+                  ),
               ],
             ),
           ),

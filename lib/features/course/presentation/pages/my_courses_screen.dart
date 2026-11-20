@@ -8,6 +8,7 @@ import '../../../../core/services/api_service.dart';
 import '../../../../core/navigation/app_router.dart';
 import '../../../../core/animations/app_animations.dart';
 import '../../../../core/widgets/molecules/empty_state.dart';
+import '../../../../core/error/exceptions.dart';
 
 /// My Courses / Kursus Saya — PRD 8.8
 /// Kategori: Akan datang | Sedang berjalan | Selesai
@@ -117,7 +118,7 @@ class _MyCourseScreenState extends State<MyCourseScreen>
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = 'Terjadi kesalahan: $e';
+        _error = AppExceptionHandler.getFriendlyMessage(e);
         _isLoading = false;
       });
     }
@@ -125,23 +126,47 @@ class _MyCourseScreenState extends State<MyCourseScreen>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: isDark ? const Color(0xFF090D16) : const Color(0xFFF8FAFC),
       appBar: AppBar(
-        backgroundColor: AppColors.background,
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Text('Kursus Saya', style: AppTypography.titleLarge),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Kursus Saya',
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 20,
+                letterSpacing: -0.3,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'Pantau progres pelatihan & sertifikatmu',
+              style: TextStyle(
+                fontSize: 12,
+                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
         bottom: TabBar(
           controller: _tabController,
-          labelStyle: AppTypography.labelMedium.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-          unselectedLabelStyle: AppTypography.labelMedium,
           indicatorColor: AppColors.primary,
+          indicatorWeight: 3,
           labelColor: AppColors.primary,
-          unselectedLabelColor: AppColors.textSecondary,
+          unselectedLabelColor:
+              isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+          labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+          unselectedLabelStyle:
+              const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
           tabs: [
-            Tab(text: 'Akan Datang (${_upcoming.length})'),
+            Tab(text: 'Mendatang (${_upcoming.length})'),
             Tab(text: 'Berjalan (${_ongoing.length})'),
             Tab(text: 'Selesai (${_completed.length})'),
           ],
@@ -182,37 +207,130 @@ class _MyCourseScreenState extends State<MyCourseScreen>
   }
 
   Widget _buildEmptyState(String type) {
-    switch (type) {
-      case 'ongoing':
-        return AppEmptyState.courses(
-          title: 'Tidak ada kursus yang sedang berjalan',
-          message: 'Kursus aktif akan muncul di sini setelah pendaftaran dikonfirmasi oleh LPK.',
-          actionLabel: 'Cari Kursus Baru',
-          onExplore: () => context.go(AppRouter.home),
-        );
-      case 'completed':
-        return AppEmptyState.completed(
-          title: 'Belum ada kursus yang selesai',
-          message: 'Selesaikan modul kursusmu untuk membuka sertifikat kompetensi resmi.',
-          onExplore: () {
-            _tabController.animateTo(1);
-          },
-        );
-      case 'upcoming':
-      default:
-        return AppEmptyState.courses(
-          title: 'Belum ada kursus yang akan datang',
-          message: 'Temukan pelatihan vokasi yang sesuai minatmu dan lakukan booking sekarang.',
-          actionLabel: 'Eksplor Kursus',
-          onExplore: () => context.go(AppRouter.home),
-        );
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    IconData icon = Icons.calendar_today_rounded;
+    String title = 'Belum Ada Kursus Terdaftar';
+    String message =
+        'Temukan pelatihan vokasi resmi Indramayu dan mulai tingkatkan kompetensimu!';
+    String actionText = 'Jelajahi Kursus Vokasi';
+    VoidCallback onAction = () => context.push(AppRouter.search);
+
+    if (type == 'ongoing') {
+      icon = Icons.play_circle_fill_rounded;
+      title = 'Tidak Ada Kursus Berjalan';
+      message =
+          'Kursus aktif akan muncul di sini setelah jadwal pelatihan dimulai oleh LPK.';
+      actionText = 'Lihat Katalog Pelatihan';
+    } else if (type == 'completed') {
+      icon = Icons.workspace_premium_rounded;
+      title = 'Belum Ada Kursus Selesai';
+      message =
+          'Selesaikan seluruh materi pelatihan untuk mengunduh sertifikat resmi kompetensi Anda.';
+      actionText = 'Cek Kursus Berjalan';
+      onAction = () => _tabController.animateTo(1);
     }
+
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+              width: 1.1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0F172A).withValues(alpha: 0.05),
+                blurRadius: 18,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 70,
+                height: 70,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF2563EB).withValues(alpha: 0.35),
+                      blurRadius: 14,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: Icon(icon, color: Colors.white, size: 32),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16.5,
+                  letterSpacing: -0.2,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                message,
+                style: TextStyle(
+                  color: isDark
+                      ? const Color(0xFF94A3B8)
+                      : const Color(0xFF64748B),
+                  fontSize: 12.5,
+                  height: 1.35,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              FilledButton.icon(
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  onAction();
+                },
+                icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+                label: Text(
+                  actionText,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w700, fontSize: 13),
+                ),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  elevation: 2,
+                  shadowColor: AppColors.primary.withValues(alpha: 0.35),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildError() {
     return AppEmptyState.error(
       title: 'Gagal Memuat Data',
-      message: _error ?? 'Terjadi kendala saat menghubungkan ke server. Silakan coba lagi.',
+      message: _error ??
+          'Terjadi kendala saat menghubungkan ke server. Silakan coba lagi.',
       onRetry: _loadMyCourses,
     );
   }
@@ -313,198 +431,258 @@ class _MyCourseCard extends StatelessWidget {
         break;
     }
 
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: AppColors.outline),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+          width: 1.1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.05),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      color: AppColors.surface,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () {
-          HapticFeedback.lightImpact();
-          if ((type == 'ongoing' || type == 'completed') &&
-              courseId.isNotEmpty) {
-            context.push(AppRouter.courseContentPath(courseId));
-          } else if (type == 'upcoming' && bookingId.isNotEmpty) {
-            context.push(AppRouter.pendingBookingPath(bookingId));
-          }
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Hero(
-                      tag: '${AppAnimations.heroTagCourse}$courseId',
-                      child: imageUrl.isNotEmpty
-                          ? CachedNetworkImage(
-                            imageUrl: imageUrl,
-                            width: 64,
-                            height: 64,
-                            memCacheWidth: 150,
-                            memCacheHeight: 150,
-                            fit: BoxFit.cover,
-                            placeholder: (_, __) =>
-                                const _PlaceholderImage(size: 64),
-                            errorWidget: (_, __, ___) =>
-                                const _PlaceholderImage(size: 64),
-                          )
-                        : const _PlaceholderImage(size: 64),
-                      ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: AppTypography.titleSmall.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          lpkName,
-                          style: AppTypography.bodySmall.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: statusColor.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      statusLabel,
-                      style: AppTypography.labelSmall.copyWith(
-                        color: statusColor,
-                        fontWeight: FontWeight.w600,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () {
+            HapticFeedback.lightImpact();
+            if ((type == 'ongoing' || type == 'completed') &&
+                courseId.isNotEmpty) {
+              context.push(AppRouter.courseContentPath(courseId));
+            } else if (type == 'upcoming' && bookingId.isNotEmpty) {
+              context.push(AppRouter.pendingBookingPath(bookingId));
+            }
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Hero(
+                        tag: '${AppAnimations.heroTagCourse}$courseId',
+                        child: imageUrl.isNotEmpty
+                            ? CachedNetworkImage(
+                                imageUrl: imageUrl,
+                                width: 70,
+                                height: 70,
+                                memCacheWidth: 200,
+                                memCacheHeight: 200,
+                                fit: BoxFit.cover,
+                                placeholder: (_, __) =>
+                                    const _PlaceholderImage(size: 70),
+                                errorWidget: (_, __, ___) =>
+                                    const _PlaceholderImage(size: 70),
+                              )
+                            : const _PlaceholderImage(size: 70),
                       ),
                     ),
-                  ),
-                ],
-              ),
-              // Interactive Progress Bar untuk Kursus Berjalan
-              if (type == 'ongoing') ...[
-                const SizedBox(height: 12),
-                const Divider(height: 1, color: AppColors.outline),
-                const SizedBox(height: 10),
-                () {
-                  final rawProg = course['progress'];
-                  final double progressVal = (double.tryParse((rawProg ?? '0').toString()) ?? 0.0).clamp(0.0, 100.0);
-                  final int percent = progressVal > 0 ? progressVal.toInt() : 40;
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(
-                            percent >= 80 ? Icons.verified_rounded : Icons.trending_up_rounded,
-                            size: 14,
-                            color: percent >= 80 ? AppColors.success : AppColors.secondary,
-                          ),
-                          const SizedBox(width: 5),
                           Text(
-                            'Progres Belajar',
-                            style: AppTypography.labelSmall.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
+                            title,
+                            style: AppTypography.titleSmall.copyWith(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13.5,
+                              letterSpacing: -0.2,
+                              height: 1.25,
                             ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          const Spacer(),
-                          Text(
-                            '$percent% Selesai',
-                            style: AppTypography.labelSmall.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primary,
-                            ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  lpkName,
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? const Color(0xFF94A3B8)
+                                        : const Color(0xFF64748B),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              const Icon(
+                                Icons.verified_rounded,
+                                color: Color(0xFF10B981),
+                                size: 13,
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: TweenAnimationBuilder<double>(
-                          tween: Tween<double>(begin: 0, end: percent / 100.0),
-                          duration: const Duration(milliseconds: 600),
-                          curve: Curves.easeOutCubic,
-                          builder: (context, value, _) {
-                            return LinearProgressIndicator(
-                              value: value,
-                              backgroundColor: AppColors.surfaceVariant,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                value >= 0.8
-                                    ? AppColors.success
-                                    : (value >= 0.4 ? AppColors.primary : AppColors.secondary),
-                              ),
-                              minHeight: 6,
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  );
-                }(),
-              ],
-              if (dateRangeText.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                const Divider(height: 1, color: AppColors.outline),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    const Icon(Icons.calendar_today_outlined,
-                        size: 14, color: AppColors.textSecondary),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        dateRangeText,
-                        style: AppTypography.bodySmall.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
                     ),
                     const SizedBox(width: 8),
-                    if (type == 'completed') ...[
-                      const Icon(Icons.workspace_premium_outlined,
-                          size: 14, color: AppColors.warning),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Sertifikat',
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        statusLabel,
                         style: AppTypography.labelSmall.copyWith(
-                          color: AppColors.warning,
-                          fontWeight: FontWeight.w600,
+                          color: statusColor,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 10,
                         ),
                       ),
-                    ] else if (type == 'ongoing') ...[
-                      Text(
-                        'Lihat Materi →',
-                        style: AppTypography.labelSmall.copyWith(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
+                    ),
                   ],
                 ),
+                // Interactive Progress Bar untuk Kursus Berjalan
+                if (type == 'ongoing') ...[
+                  const SizedBox(height: 12),
+                  Divider(
+                    height: 1,
+                    color: isDark
+                        ? const Color(0xFF334155)
+                        : const Color(0xFFF1F5F9),
+                  ),
+                  const SizedBox(height: 10),
+                  () {
+                    final rawProg = course['progress'];
+                    final double progressVal =
+                        (double.tryParse((rawProg ?? '0').toString()) ?? 0.0)
+                            .clamp(0.0, 100.0);
+                    final int percent = progressVal.toInt();
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.trending_up_rounded,
+                              size: 14,
+                              color: Color(0xFF10B981),
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              'Progres Materi',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 11,
+                                color: isDark
+                                    ? const Color(0xFFE2E8F0)
+                                    : const Color(0xFF334155),
+                              ),
+                            ),
+                            const Spacer(),
+                            Text(
+                              '$percent% Selesai',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 11,
+                                color: Color(0xFF10B981),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: LinearProgressIndicator(
+                            value: percent / 100.0,
+                            backgroundColor: isDark
+                                ? const Color(0xFF334155)
+                                : const Color(0xFFE2E8F0),
+                            valueColor: const AlwaysStoppedAnimation<Color>(
+                              Color(0xFF10B981),
+                            ),
+                            minHeight: 6,
+                          ),
+                        ),
+                      ],
+                    );
+                  }(),
+                ],
+                if (dateRangeText.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Divider(
+                    height: 1,
+                    color: isDark
+                        ? const Color(0xFF334155)
+                        : const Color(0xFFF1F5F9),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.calendar_today_rounded,
+                        size: 13,
+                        color: isDark
+                            ? const Color(0xFF94A3B8)
+                            : const Color(0xFF64748B),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          dateRangeText,
+                          style: TextStyle(
+                            color: isDark
+                                ? const Color(0xFF94A3B8)
+                                : const Color(0xFF64748B),
+                            fontSize: 11,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      if (type == 'completed') ...[
+                        const Icon(
+                          Icons.workspace_premium_rounded,
+                          size: 14,
+                          color: Color(0xFFF59E0B),
+                        ),
+                        const SizedBox(width: 4),
+                        const Text(
+                          'Sertifikat Siap',
+                          style: TextStyle(
+                            color: Color(0xFFF59E0B),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ] else if (type == 'ongoing') ...[
+                        const Text(
+                          'Lanjut Belajar ➔',
+                          style: TextStyle(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

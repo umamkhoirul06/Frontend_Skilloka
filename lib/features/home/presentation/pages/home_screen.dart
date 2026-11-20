@@ -15,6 +15,7 @@ import '../../../../core/widgets/skeleton/skeleton_loader.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/services/course_relevance_service.dart';
+import '../../../../core/services/location_service.dart';
 import '../../data/repositories/home_repository.dart';
 import '../../data/models/lpk_model.dart';
 import '../../../course/data/models/course_model.dart';
@@ -38,6 +39,10 @@ class _HomeScreenState extends State<HomeScreen>
   List<ScoredCourse> _relevantCourses = [];
   UserProfilePreference? _userPreference;
   List<BannerItem> _banners = [];
+  List<Map<String, dynamic>> _myActiveCourses = [];
+  double? _userLat;
+  double? _userLng;
+  bool _isGpsActive = false;
 
   String _userName = 'Pengguna';
   bool _isLoadingProfile = true;
@@ -160,7 +165,18 @@ class _HomeScreenState extends State<HomeScreen>
       ]);
 
       List<LpkModel> lpks = responses[0] as List<LpkModel>;
-      if (_currentLocation != 'Semua') {
+      if (_isGpsActive && _userLat != null && _userLng != null) {
+        // Urutkan LPK berdasarkan jarak riil GPS dari lokasi pengguna
+        lpks.sort((a, b) {
+          final distA = (a.lat != null && a.lng != null)
+              ? LocationService().calculateDistanceKm(_userLat!, _userLng!, a.lat!, a.lng!)
+              : 999.0;
+          final distB = (b.lat != null && b.lng != null)
+              ? LocationService().calculateDistanceKm(_userLat!, _userLng!, b.lat!, b.lng!)
+              : 999.0;
+          return distA.compareTo(distB);
+        });
+      } else if (_currentLocation != 'Semua') {
         lpks = lpks
             .where((lpk) => lpk.locationName == _currentLocation)
             .toList();
@@ -200,6 +216,39 @@ class _HomeScreenState extends State<HomeScreen>
         );
       }
 
+      // Ambil kursus aktif pengguna dari API (tanpa dummy)
+      List<Map<String, dynamic>> activeCourses = [];
+      try {
+        final apiService = ApiService();
+        final myCoursesRes = await apiService.getMyCourses();
+        if (myCoursesRes['success'] == true) {
+          final data = myCoursesRes['data'];
+          List<dynamic> raw = [];
+          if (data is List) {
+            raw = data;
+          } else if (data is Map) {
+            raw = data['data'] ?? data['items'] ?? [];
+          }
+          final all = raw.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+          activeCourses = all.where((e) {
+            final s = (e['status'] ?? '').toString().toLowerCase();
+            final bs = (e['booking_status'] ?? '').toString().toLowerCase();
+            return s == 'ongoing' ||
+                s == 'confirmed' ||
+                s == 'approved' ||
+                s == 'paid' ||
+                s == 'lunas' ||
+                s == 'berjalan' ||
+                s == 'active' ||
+                bs.contains('ongoing') ||
+                bs.contains('confirmed') ||
+                bs.contains('paid');
+          }).toList();
+        }
+      } catch (e) {
+        debugPrint('Error loading my active courses: $e');
+      }
+
       if (mounted) {
         setState(() {
           _lpks = lpks;
@@ -207,6 +256,7 @@ class _HomeScreenState extends State<HomeScreen>
           _banners = bannerItems;
           _userPreference = pref;
           _relevantCourses = scored;
+          _myActiveCourses = activeCourses;
           _isLoading = false;
         });
         _animController.forward(from: 0.4);
@@ -225,16 +275,31 @@ class _HomeScreenState extends State<HomeScreen>
       context,
       kecamatanList: IndramayuKecamatan.list,
       categories: _categories,
+      selectedKecamatan: _currentLocation != 'Semua' ? _currentLocation : null,
       selectedCategories:
           _selectedCategoryName != null ? [_selectedCategoryName!] : null,
     );
 
     if (result != null) {
       setState(() {
-        if (result.kecamatan != null) _currentLocation = result.kecamatan!;
+        if (result.useGpsLocation && result.userLat != null && result.userLng != null) {
+          _userLat = result.userLat;
+          _userLng = result.userLng;
+          _isGpsActive = true;
+          _currentLocation = result.kecamatan ?? 'Terdekat';
+        } else {
+          _userLat = null;
+          _userLng = null;
+          _isGpsActive = false;
+          _currentLocation = result.kecamatan ?? 'Semua';
+        }
+
         if (result.categories.isNotEmpty) {
           _selectedCategoryName = result.categories.first;
           _selectedCategory = _categorySlugMap[result.categories.first];
+        } else {
+          _selectedCategoryName = null;
+          _selectedCategory = null;
         }
         _isLoading = true;
       });
@@ -423,7 +488,18 @@ class _HomeScreenState extends State<HomeScreen>
                           ? const SkeletonBanner()
                           : _banners.isEmpty
                               ? const SizedBox.shrink()
-                              : HeroBanner(items: _banners),
+                              : HeroBanner(
+                                  items: _banners,
+                                  onTap: (item) {
+                                    HapticFeedback.lightImpact();
+                                    final id = item.id.replaceFirst('featured-', '');
+                                    if (id.isNotEmpty && id != item.id) {
+                                      context.push(AppRouter.courseDetailPath(id));
+                                    } else {
+                                      context.push(AppRouter.search);
+                                    }
+                                  },
+                                ),
                       const SizedBox(height: 24),
 
                       // ── 4. Kategori Kelas Card Slider (Reference Style) ───────
@@ -932,6 +1008,10 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildHeader(BuildContext context) {
+    final firstName = _userName.trim().isNotEmpty && _userName != 'Pengguna'
+        ? _userName.trim().split(' ').first
+        : 'Sobat Vokasi';
+
     return Row(
       children: [
         // Avatar circle matching reference image
@@ -970,15 +1050,13 @@ class _HomeScreenState extends State<HomeScreen>
         ),
         const SizedBox(width: 12),
 
-        // User Greeting & Member Info
+        // User Greeting & Member Info (Ringkas & Luas)
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                _isLoadingProfile
-                    ? '...'
-                    : '$_greeting, ${_userName.split(' ').first}',
+                _isLoadingProfile ? '...' : 'Halo, $firstName',
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w800,
@@ -1009,43 +1087,6 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                   ),
                 ],
-              ),
-            ],
-          ),
-        ),
-
-        // Toggle Switch matching reference image
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.18),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF38BDF8),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Text('ON',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 9.5)),
-              ),
-              const SizedBox(width: 4),
-              const Padding(
-                padding: EdgeInsets.only(right: 4),
-                child: Text('OFF',
-                    style: TextStyle(
-                        color: Colors.white70,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 9.5)),
               ),
             ],
           ),
@@ -1097,12 +1138,174 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  // ── Reference Component 1: Hero Card "Progres Belajar Kamu" ─────────────
+  // ── Reference Component 1: Hero Card "Progres Belajar Kamu" (Data Riil / Onboarding) ──
   Widget _buildHeroLearningProgressCard(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final int progressPercent = _courses.isNotEmpty ? 75 : 60;
-    final int completedLessons = _courses.isNotEmpty ? 3 : 2;
-    final int totalLessons = _courses.isNotEmpty ? 5 : 4;
+
+    // KONDISI 1: Belum ada kursus aktif (Belum berlangganan) -> Tampilkan State Onboarding Tanpa Dummy
+    if (_myActiveCourses.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: isDark
+                  ? [
+                      const Color(0xFF0F1E36),
+                      const Color(0xFF162E56),
+                    ]
+                  : [
+                      const Color(0xFF0A192F),
+                      const Color(0xFF11254A),
+                      const Color(0xFF163266),
+                    ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: const Color(0xFF3B82F6).withValues(alpha: 0.25),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0F172A).withValues(alpha: 0.22),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 58,
+                    height: 58,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(18),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF2563EB).withValues(alpha: 0.35),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.rocket_launch_rounded,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Mulai Bangun Keahlianmu',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15.5,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          'Kamu belum memiliki kursus aktif. Pilih pelatihan vokasi resmi dan mulai tingkatkan kompetensimu!',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.78),
+                            fontSize: 11.5,
+                            height: 1.3,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        context.push(AppRouter.search);
+                      },
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8.5),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF2563EB).withValues(alpha: 0.4),
+                              blurRadius: 10,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Jelajahi Kursus',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12.5,
+                              ),
+                            ),
+                            SizedBox(width: 6),
+                            Icon(Icons.arrow_forward_rounded,
+                                color: Colors.white, size: 14),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // KONDISI 2: Sudah Ada Kursus Aktif -> Tampilkan Progres Riil dari Server
+    final activeCourse = _myActiveCourses.first;
+    final int progressPercent =
+        (activeCourse['progress'] ?? activeCourse['progress_percentage'] ?? 0)
+            .toInt()
+            .clamp(0, 100);
+    final int completedLessons =
+        (activeCourse['completed_lessons_count'] ?? activeCourse['completed_count'] ?? 0);
+    final int totalLessons =
+        (activeCourse['total_lessons_count'] ?? activeCourse['total_count'] ?? 0);
+    final String courseTitle = activeCourse['course']?['title']?.toString() ??
+        activeCourse['title']?.toString() ??
+        'Kursus Vokasi Aktif';
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -1140,7 +1343,7 @@ class _HomeScreenState extends State<HomeScreen>
           children: [
             Row(
               children: [
-                // Circular Progress Indicator Ring matching reference
+                // Circular Progress Indicator Ring
                 SizedBox(
                   width: 66,
                   height: 66,
@@ -1155,7 +1358,7 @@ class _HomeScreenState extends State<HomeScreen>
                           strokeWidth: 7,
                           backgroundColor: Colors.white.withValues(alpha: 0.12),
                           valueColor: const AlwaysStoppedAnimation<Color>(
-                            Color(0xFF10B981), // Emerald green like reference
+                            Color(0xFF10B981), // Emerald green
                           ),
                           strokeCap: StrokeCap.round,
                         ),
@@ -1180,23 +1383,27 @@ class _HomeScreenState extends State<HomeScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Progres Belajar Kamu',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.8),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
+                        courseTitle,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
                       RichText(
                         text: TextSpan(
                           children: [
                             TextSpan(
-                              text: '$completedLessons dari $totalLessons Materi ',
+                              text: totalLessons > 0
+                                  ? '$completedLessons dari $totalLessons Materi '
+                                  : 'Progres Belajar ',
                               style: const TextStyle(
                                 color: Color(0xFF10B981),
                                 fontWeight: FontWeight.w800,
-                                fontSize: 15,
+                                fontSize: 14,
                               ),
                             ),
                             TextSpan(
@@ -1204,7 +1411,7 @@ class _HomeScreenState extends State<HomeScreen>
                               style: TextStyle(
                                 color: Colors.white.withValues(alpha: 0.9),
                                 fontWeight: FontWeight.w700,
-                                fontSize: 15,
+                                fontSize: 14,
                               ),
                             ),
                           ],
@@ -1959,7 +2166,7 @@ class _HomeScreenState extends State<HomeScreen>
       );
     }
     return SizedBox(
-      height: 240,
+      height: 250,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1968,6 +2175,17 @@ class _HomeScreenState extends State<HomeScreen>
         itemBuilder: (context, index) {
           final lpk = _lpks[index];
           final logoSafe = ApiService.toFullUrl(lpk.logoUrl ?? '');
+
+          double? distanceKm;
+          if (_userLat != null && _userLng != null && lpk.lat != null && lpk.lng != null) {
+            distanceKm = LocationService().calculateDistanceKm(
+              _userLat!,
+              _userLng!,
+              lpk.lat!,
+              lpk.lng!,
+            );
+          }
+
           return LPKCard(
             id: lpk.id.toString(),
             name: lpk.name,
@@ -1978,6 +2196,7 @@ class _HomeScreenState extends State<HomeScreen>
             rating: lpk.rating,
             reviewCount: lpk.reviewCount,
             isVerified: lpk.isVerified,
+            distanceKm: distanceKm,
             onTap: () =>
                 context.push(AppRouter.lpkDetailPath(lpk.id.toString())),
           );
@@ -2002,7 +2221,7 @@ class _HomeScreenState extends State<HomeScreen>
           crossAxisCount: 2,
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
-          childAspectRatio: 0.74,
+          childAspectRatio: 0.69,
         ),
         itemCount: _courses.length,
         itemBuilder: (context, index) {

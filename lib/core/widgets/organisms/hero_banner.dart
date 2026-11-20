@@ -18,13 +18,15 @@ class HeroBanner extends StatefulWidget {
   final Duration autoPlayDuration;
   final EdgeInsetsGeometry? margin;
   final double height;
+  final void Function(BannerItem item)? onTap;
 
   const HeroBanner({
     super.key,
     required this.items,
     this.autoPlayDuration = const Duration(seconds: 5),
     this.margin,
-    this.height = 180,
+    this.height = 175,
+    this.onTap,
   });
 
   @override
@@ -39,7 +41,7 @@ class _HeroBannerState extends State<HeroBanner> {
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(viewportFraction: 0.92);
+    _pageController = PageController(viewportFraction: 0.94);
     _startAutoPlay();
   }
 
@@ -53,6 +55,7 @@ class _HeroBannerState extends State<HeroBanner> {
   void _startAutoPlay() {
     _autoPlayTimer = Timer.periodic(widget.autoPlayDuration, (_) {
       if (!mounted) return;
+      if (widget.items.isEmpty) return;
       final nextPage = (_currentPage + 1) % widget.items.length;
       _pageController.animateToPage(
         nextPage,
@@ -84,34 +87,37 @@ class _HeroBannerState extends State<HeroBanner> {
                 builder: (context, child) {
                   double parallaxOffset = 0;
                   if (_pageController.hasClients &&
-    _pageController.position.haveDimensions) {
+                      _pageController.position.haveDimensions) {
                     final page = _pageController.page ?? 0;
-                    parallaxOffset = (index - page) * 30;
+                    parallaxOffset = (index - page) * 20;
                   }
+                  final item = widget.items[index];
                   return _BannerCard(
-                    item: widget.items[index],
+                    item: item,
                     parallaxOffset: parallaxOffset,
+                    onTap: () => widget.onTap?.call(item),
                   );
                 },
               );
             },
           ),
         ),
-        const SizedBox(height: 12),
-        // Page Indicators
+        const SizedBox(height: 10),
+        // Page Indicators (Oakory style: active capsule dot & soft circles)
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(widget.items.length, (index) {
+            final isCurrent = _currentPage == index;
             return AnimatedContainer(
               duration: AppAnimations.fast,
               margin: const EdgeInsets.symmetric(horizontal: 3),
-              width: _currentPage == index ? 24 : 8,
-              height: 8,
+              width: isCurrent ? 22 : 6,
+              height: 6,
               decoration: BoxDecoration(
-                color: _currentPage == index
+                color: isCurrent
                     ? AppColors.primary
-                    : AppColors.outline,
-                borderRadius: BorderRadius.circular(4),
+                    : const Color(0xFFCBD5E1),
+                borderRadius: BorderRadius.circular(3),
               ),
             );
           }),
@@ -124,104 +130,241 @@ class _HeroBannerState extends State<HeroBanner> {
 class _BannerCard extends StatelessWidget {
   final BannerItem item;
   final double parallaxOffset;
+  final VoidCallback? onTap;
 
-  const _BannerCard({required this.item, required this.parallaxOffset});
+  const _BannerCard({
+    required this.item,
+    required this.parallaxOffset,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final resolvedUrl = ApiService.toFullUrl(item.imageUrl);
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 4),
-      child: ClipRRect(
-        borderRadius: AppShapes.cardRadius,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            // Background Image with Parallax
-            Transform.translate(
-              offset: Offset(parallaxOffset, 0),
-              child: () {
-                final resolvedUrl = ApiService.toFullUrl(item.imageUrl);
-                return resolvedUrl.isNotEmpty
-                    ? CachedNetworkImage(
-                        imageUrl: resolvedUrl,
-                        fit: BoxFit.cover,
-                        memCacheWidth: 800,
-                        placeholder: (context, url) =>
-                            Container(decoration: BoxDecoration(gradient: AppColors.heroGradient)),
-                        errorWidget: (context, url, error) => Container(
-                          decoration:
-                              const BoxDecoration(gradient: AppColors.primaryGradient),
-                        ),
-                      )
-                    : Container(
-                        decoration:
-                            const BoxDecoration(gradient: AppColors.primaryGradient),
-                      );
-              }(),
-            ),
-            // Gradient Overlay
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withValues(alpha: 0.7)
-                  ],
-                ),
-              ),
-            ),
-            // Content
-            Positioned(
-              left: 16,
-              right: 16,
-              bottom: 16,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (item.tag != null)
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.secondary,
-                        borderRadius: AppShapes.chipRadius,
-                      ),
-                      child: Text(
-                        item.tag!,
-                        style: AppTypography.badge.copyWith(
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  Text(
-                    item.title,
-                    style: AppTypography.titleMedium.copyWith(
-                      color: Colors.white,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (item.subtitle != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        item.subtitle!,
-                        style: AppTypography.bodySmall.copyWith(
-                          color: Colors.white.withValues(alpha: 0.9),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                ],
-              ),
-            ),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF0F172A), // Deep Slate
+            Color(0xFF1E293B), // Slate 800
+            Color(0xFF1E3A8A), // Royal navy accent
           ],
+          stops: [0.0, 0.55, 1.0],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.18),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(22),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(22),
+          onTap: onTap,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(22),
+            child: Stack(
+              children: [
+                // Subtle ambient decorative circle
+                Positioned(
+                  right: -15,
+                  top: -15,
+                  child: Container(
+                    width: 130,
+                    height: 130,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(0xFF3B82F6).withValues(alpha: 0.12),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  child: Row(
+                    children: [
+                      // Sisi Kiri: Teks & Oakory-style pill CTA button
+                      Expanded(
+                        flex: 12,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // Micro Pill Badge
+                            if (item.tag != null && item.tag!.isNotEmpty)
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 6),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF59E0B).withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: const Color(0xFFF59E0B).withValues(alpha: 0.4),
+                                    width: 0.8,
+                                  ),
+                                ),
+                                child: Text(
+                                  item.tag!.toUpperCase(),
+                                  style: const TextStyle(
+                                    color: Color(0xFFFBBF24),
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 9,
+                                    letterSpacing: 0.4,
+                                  ),
+                                ),
+                              ),
+
+                            // Heading Utama
+                            Text(
+                              item.title,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15.5,
+                                height: 1.25,
+                                letterSpacing: -0.3,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+
+                            // Subtitle Deskripsi
+                            if (item.subtitle != null && item.subtitle!.isNotEmpty)
+                              Text(
+                                item.subtitle!,
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.75),
+                                  fontSize: 11,
+                                  height: 1.25,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+
+                            const SizedBox(height: 12),
+
+                            // CTA Pill Button (Oakory "Shop Now ➔" Style)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6.5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.15),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'Lihat Pelatihan',
+                                    style: TextStyle(
+                                      color: Color(0xFF0F172A),
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                  SizedBox(width: 4),
+                                  Icon(
+                                    Icons.arrow_forward_rounded,
+                                    color: Color(0xFF0F172A),
+                                    size: 13,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+
+                      // Sisi Kanan: Visual Thumbnail Bersih (Oakory placement style)
+                      Expanded(
+                        flex: 8,
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: Container(
+                            height: 125,
+                            width: 125,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.25),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.12),
+                                width: 1,
+                              ),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(15),
+                              child: resolvedUrl.isNotEmpty
+                                  ? CachedNetworkImage(
+                                      imageUrl: resolvedUrl,
+                                      fit: BoxFit.cover,
+                                      placeholder: (context, url) => Container(
+                                        color: const Color(0xFF1E293B),
+                                        child: const Center(
+                                          child: SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white70,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      errorWidget: (context, url, error) => Container(
+                                        color: const Color(0xFF1E293B),
+                                        child: const Icon(
+                                          Icons.school_rounded,
+                                          color: Colors.white70,
+                                          size: 32,
+                                        ),
+                                      ),
+                                    )
+                                  : Container(
+                                      color: const Color(0xFF1E293B),
+                                      child: const Icon(
+                                        Icons.school_rounded,
+                                        color: Colors.white70,
+                                        size: 32,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

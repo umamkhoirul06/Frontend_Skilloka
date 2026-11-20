@@ -200,68 +200,214 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF090D16) : const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: const Text('Pengaturan'),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
       ),
       body: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         children: [
-          // Section: Server & Jaringan
-          ListTile(
-            leading: const Icon(Icons.cloud_sync_outlined, color: AppColors.primary),
-            title: const Text(
-              'Server & Koneksi API',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
-            subtitle: Text(
-              _getEnvironmentTitle(AppConfig.environment),
-              style: const TextStyle(color: AppColors.primary, fontSize: 13),
-            ),
-            trailing: const Icon(Icons.tune_rounded),
-            onTap: _showServerConfigDialog,
+          // Section 1: Server & Jaringan
+          _buildSettingsGroup(
+            title: 'Koneksi & Server',
+            isDark: isDark,
+            children: [
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.cloud_sync_rounded, color: AppColors.primary, size: 22),
+                ),
+                title: const Text(
+                  'Server & Koneksi API',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5),
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 2),
+                    Text(
+                      _getEnvironmentTitle(AppConfig.environment),
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Target: ${AppConfig.baseUrl}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
+                trailing: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.tune_rounded, size: 16, color: AppColors.primary),
+                ),
+                onTap: _showServerConfigDialog,
+              ),
+            ],
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Text(
-              'Target API: ${AppConfig.baseUrl}',
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-            ),
-          ),
-          const Divider(),
+          const SizedBox(height: 16),
 
-          // Section: Legal & Kebijakan
-          ListTile(
-            leading: const Icon(Icons.description_outlined),
-            title: const Text('Syarat & Ketentuan'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _openUrl(
-              'https://skilloka.my.id/terms-and-conditions.html',
-            ),
+          // Section 2: Legal & Kebijakan
+          _buildSettingsGroup(
+            title: 'Bantuan & Kebijakan',
+            isDark: isDark,
+            children: [
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                leading: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF3B82F6).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.description_outlined, color: Color(0xFF2563EB), size: 20),
+                ),
+                title: const Text('Syarat & Ketentuan', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+                trailing: const Icon(Icons.chevron_right_rounded, size: 20, color: Color(0xFF94A3B8)),
+                onTap: () => _openUrl('https://skilloka.my.id/terms-and-conditions.html'),
+              ),
+              Divider(height: 1, indent: 64, color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9)),
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                leading: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.privacy_tip_outlined, color: Color(0xFF10B981), size: 20),
+                ),
+                title: const Text('Kebijakan Privasi', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+                trailing: const Icon(Icons.chevron_right_rounded, size: 20, color: Color(0xFF94A3B8)),
+                onTap: () => _openUrl('https://skilloka.my.id/privacy-policy.html'),
+              ),
+              Divider(height: 1, indent: 64, color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9)),
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                leading: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0D9488).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.support_agent_rounded, color: Color(0xFF0D9488), size: 20),
+                ),
+                title: const Text('Hubungi Layanan WhatsApp', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+                trailing: const Icon(Icons.chevron_right_rounded, size: 20, color: Color(0xFF94A3B8)),
+                onTap: () => _openUrl('https://wa.me/qr/EBV7DJO2S5HEM1'),
+              ),
+            ],
           ),
-          ListTile(
-            leading: const Icon(Icons.privacy_tip_outlined),
-            title: const Text('Kebijakan Privasi'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _openUrl(
-              'https://skilloka.my.id/privacy-policy.html',
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.phone_outlined),
-            title: const Text('Hubungi Kami'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _openUrl(
-              'https://wa.me/qr/EBV7DJO2S5HEM1',
-            ),
-          ),
-          const Divider(),
-          const ListTile(
-            leading: Icon(Icons.info_outline),
-            title: Text('Informasi Versi'),
-            subtitle: Text('Skilloka v1.0.0'),
+          const SizedBox(height: 16),
+
+          // Section 3: Informasi Aplikasi
+          _buildSettingsGroup(
+            title: 'Tentang Aplikasi',
+            isDark: isDark,
+            children: [
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                leading: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.verified_rounded, color: Color(0xFFF59E0B), size: 20),
+                ),
+                title: const Text('Versi Aplikasi', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+                subtitle: const Text('Skilloka Mobile v4.3.0 (Official Build)', style: TextStyle(fontSize: 12)),
+                trailing: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    'Terbaru',
+                    style: TextStyle(
+                      color: Color(0xFF10B981),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSettingsGroup({
+    required String title,
+    required bool isDark,
+    required List<Widget> children,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            title.toUpperCase(),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
+              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+            ),
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+              width: 1.1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+                blurRadius: 12,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: Column(children: children),
+          ),
+        ),
+      ],
     );
   }
 }
