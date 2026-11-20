@@ -408,15 +408,29 @@ class _HomeScreenState extends State<HomeScreen>
                           ),
                         ),
                       ],
-                      const SizedBox(height: 16),
-                      // Banner
+                      const SizedBox(height: 12),
+
+                      // ── 1. Hero Card "Progres Belajar Kamu" (Reference Style) ──
+                      _buildHeroLearningProgressCard(context),
+                      const SizedBox(height: 20),
+
+                      // ── 2. Menu Utama 8 Grid (Reference Style) ────────────────
+                      _buildQuickMainMenuGrid(context),
+                      const SizedBox(height: 24),
+
+                      // ── 3. Banner Carousel ────────────────────────────────────
                       _isLoading
                           ? const SkeletonBanner()
                           : _banners.isEmpty
-                              ? const SizedBox(height: 8)
+                              ? const SizedBox.shrink()
                               : HeroBanner(items: _banners),
                       const SizedBox(height: 24),
-                      // Category chips
+
+                      // ── 4. Kategori Kelas Card Slider (Reference Style) ───────
+                      _buildCategoryCardSlider(context),
+                      const SizedBox(height: 24),
+
+                      // ── 5. Category filter chips ──────────────────────────────
                       CategoryFilterChips(
                         categories: _categories,
                         selectedCategory: _selectedCategoryName,
@@ -434,11 +448,11 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                       const SizedBox(height: 24),
 
-                      // Personalized Recommendations Section (PRD 2.3 & 8.3)
+                      // ── 6. Rekomendasi Algoritma Profil ───────────────────────
                       if (!_isLoading) _buildPersonalizedSection(context),
                       const SizedBox(height: 28),
 
-                      // LPK Section
+                      // ── 7. LPK Terdekat ───────────────────────────────────────
                       _buildSectionHeader(
                         context,
                         title: 'LPK Terdekat',
@@ -449,7 +463,8 @@ class _HomeScreenState extends State<HomeScreen>
                       const SizedBox(height: 12),
                       _isLoading ? const SkeletonLPKList() : _buildLPKList(),
                       const SizedBox(height: 28),
-                      // Course Section
+
+                      // ── 8. Kursus Populer ─────────────────────────────────────
                       _buildSectionHeader(
                         context,
                         title: 'Kursus Populer',
@@ -919,20 +934,63 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildHeader(BuildContext context) {
     return Row(
       children: [
+        // Avatar circle matching reference image
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: const LinearGradient(
+              colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.35),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.15),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Center(
+            child: Text(
+              _userName.isNotEmpty ? _userName[0].toUpperCase() : 'S',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+
+        // User Greeting & Member Info
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Text(
+                _isLoadingProfile
+                    ? '...'
+                    : '$_greeting, ${_userName.split(' ').first}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 18,
+                  letterSpacing: -0.3,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 2),
               Row(
                 children: [
-                  Text(
-                    _greeting,
-                    style: AppTypography.labelMedium.copyWith(
-                      color: Colors.white.withValues(alpha: 0.85),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
                   Container(
                     width: 6,
                     height: 6,
@@ -941,51 +999,696 @@ class _HomeScreenState extends State<HomeScreen>
                       shape: BoxShape.circle,
                     ),
                   ),
+                  const SizedBox(width: 5),
+                  Text(
+                    'Siswa Vokasi Indramayu',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.85),
+                      fontWeight: FontWeight.w500,
+                      fontSize: 12,
+                    ),
+                  ),
                 ],
-              ),
-              const SizedBox(height: 2),
-              Text(
-                _isLoadingProfile ? '...' : _userName,
-                style: AppTypography.headlineSmall.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                ),
               ),
             ],
           ),
         ),
-        // Notification bell
+
+        // Toggle Switch matching reference image
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.18),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF38BDF8),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text('ON',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 9.5)),
+              ),
+              const SizedBox(width: 4),
+              const Padding(
+                padding: EdgeInsets.only(right: 4),
+                child: Text('OFF',
+                    style: TextStyle(
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 9.5)),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+
+        // Notification Bell
         Stack(
           clipBehavior: Clip.none,
           children: [
             Material(
-              color: Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(12),
+              color: Colors.white.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(14),
               child: InkWell(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
                 onTap: () => context.push(AppRouter.notifications),
                 child: Container(
-                  width: 42,
-                  height: 42,
+                  width: 40,
+                  height: 40,
                   alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.25),
+                      width: 1,
+                    ),
+                  ),
                   child: const Icon(Icons.notifications_outlined,
-                      color: Colors.white, size: 22),
+                      color: Colors.white, size: 20),
                 ),
               ),
             ),
             Positioned(
-              right: 6,
-              top: 6,
+              right: 8,
+              top: 8,
               child: Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFFBBF24),
+                width: 7,
+                height: 7,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEF4444),
                   shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 1),
                 ),
               ),
             ),
           ],
+        ),
+      ],
+    );
+  }
+
+  // ── Reference Component 1: Hero Card "Progres Belajar Kamu" ─────────────
+  Widget _buildHeroLearningProgressCard(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final int progressPercent = _courses.isNotEmpty ? 75 : 60;
+    final int completedLessons = _courses.isNotEmpty ? 3 : 2;
+    final int totalLessons = _courses.isNotEmpty ? 5 : 4;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: isDark
+                ? [
+                    const Color(0xFF0F1E36),
+                    const Color(0xFF162E56),
+                  ]
+                : [
+                    const Color(0xFF0A192F),
+                    const Color(0xFF11254A),
+                    const Color(0xFF163266),
+                  ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: const Color(0xFF3B82F6).withValues(alpha: 0.25),
+            width: 1.2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF0F172A).withValues(alpha: 0.22),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                // Circular Progress Indicator Ring matching reference
+                SizedBox(
+                  width: 66,
+                  height: 66,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      SizedBox(
+                        width: 66,
+                        height: 66,
+                        child: CircularProgressIndicator(
+                          value: progressPercent / 100,
+                          strokeWidth: 7,
+                          backgroundColor: Colors.white.withValues(alpha: 0.12),
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            Color(0xFF10B981), // Emerald green like reference
+                          ),
+                          strokeCap: StrokeCap.round,
+                        ),
+                      ),
+                      Text(
+                        '$progressPercent%',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+
+                // Text Information & Progress Bar
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Progres Belajar Kamu',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.8),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      RichText(
+                        text: TextSpan(
+                          children: [
+                            TextSpan(
+                              text: '$completedLessons dari $totalLessons Materi ',
+                              style: const TextStyle(
+                                color: Color(0xFF10B981),
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15,
+                              ),
+                            ),
+                            TextSpan(
+                              text: 'Selesai',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.9),
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      // Linear Progress Bar
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: LinearProgressIndicator(
+                          value: progressPercent / 100,
+                          minHeight: 5.5,
+                          backgroundColor: Colors.white.withValues(alpha: 0.15),
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            Color(0xFF10B981),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+
+            // Bottom Action Button: "Lanjut Belajar ➔"
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      context.push(AppRouter.myCourses);
+                    },
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8.5),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF2563EB).withValues(alpha: 0.4),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Lanjut Belajar',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12.5,
+                            ),
+                          ),
+                          SizedBox(width: 6),
+                          Icon(
+                            Icons.arrow_forward_rounded,
+                            color: Colors.white,
+                            size: 15,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Reference Component 2: Menu Utama 8 Grid ────────────────────────────
+  Widget _buildQuickMainMenuGrid(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final menuItems = [
+      {
+        'title': 'Kategori\nKelas',
+        'icon': Icons.menu_book_rounded,
+        'badge': null,
+        'badgeColor': null,
+        'color': const Color(0xFF2563EB),
+        'onTap': () => _openFilter(),
+      },
+      {
+        'title': 'Materi',
+        'icon': Icons.play_circle_fill_rounded,
+        'badge': 'NEW',
+        'badgeColor': const Color(0xFF10B981),
+        'color': const Color(0xFF0284C7),
+        'onTap': () => context.push(AppRouter.myCourses),
+      },
+      {
+        'title': 'Diskusi',
+        'icon': Icons.forum_rounded,
+        'badge': '8',
+        'badgeColor': const Color(0xFFEF4444),
+        'color': const Color(0xFF4F46E5),
+        'onTap': () => context.push(AppRouter.chatbot),
+      },
+      {
+        'title': 'List\nSetoran',
+        'icon': Icons.assignment_turned_in_rounded,
+        'badge': null,
+        'badgeColor': null,
+        'color': const Color(0xFF0D9488),
+        'onTap': () => context.push(AppRouter.bookings),
+      },
+      {
+        'title': 'Remin\nToday',
+        'icon': Icons.campaign_rounded,
+        'badge': null,
+        'badgeColor': null,
+        'color': const Color(0xFF0284C7),
+        'onTap': () => context.push(AppRouter.notifications),
+      },
+      {
+        'title': 'Jadwal\nSeminar',
+        'icon': Icons.calendar_month_rounded,
+        'badge': null,
+        'badgeColor': null,
+        'color': const Color(0xFF38BDF8),
+        'onTap': () => context.push(AppRouter.search),
+      },
+      {
+        'title': 'Rekapan',
+        'icon': Icons.folder_shared_rounded,
+        'badge': null,
+        'badgeColor': null,
+        'color': const Color(0xFF2563EB),
+        'onTap': () => context.push(AppRouter.bookings),
+      },
+      {
+        'title': 'Lainnya',
+        'icon': Icons.apps_rounded,
+        'badge': null,
+        'badgeColor': null,
+        'color': const Color(0xFF6366F1),
+        'onTap': () => context.push(AppRouter.search),
+      },
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'Menu Utama',
+                style: AppTypography.titleMedium.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.3,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: menuItems.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 4,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 12,
+              childAspectRatio: 0.82,
+            ),
+            itemBuilder: (context, index) {
+              final item = menuItems[index];
+              return _buildMenuGridTile(
+                context,
+                title: item['title'] as String,
+                icon: item['icon'] as IconData,
+                badge: item['badge'] as String?,
+                badgeColor: item['badgeColor'] as Color?,
+                color: item['color'] as Color,
+                onTap: item['onTap'] as VoidCallback,
+                isDark: isDark,
+              );
+            },
+          ),
+          const SizedBox(height: 10),
+          // 3 Page Indicator dots matching reference design
+          Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 20,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF94A3B8),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const SizedBox(width: 5),
+                Container(
+                  width: 12,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFCBD5E1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const SizedBox(width: 5),
+                Container(
+                  width: 6,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE2E8F0),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMenuGridTile(
+    BuildContext context, {
+    required String title,
+    required IconData icon,
+    String? badge,
+    Color? badgeColor,
+    required Color color,
+    required VoidCallback onTap,
+    required bool isDark,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(18),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Squircle Box matching reference
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: isDark
+                          ? [
+                              const Color(0xFF1E293B),
+                              const Color(0xFF0F172A),
+                            ]
+                          : [
+                              const Color(0xFFEEF5FF),
+                              const Color(0xFFE0EDFF),
+                            ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: isDark
+                          ? const Color(0xFF334155)
+                          : const Color(0xFFBFDBFE).withValues(alpha: 0.6),
+                      width: 1.2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF2563EB).withValues(alpha: 0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Icon(
+                      icon,
+                      size: 28,
+                      color: color,
+                    ),
+                  ),
+                ),
+
+                // Micro Badge (e.g. "NEW", "8")
+                if (badge != null)
+                  Positioned(
+                    top: -4,
+                    right: -4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 5, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: badgeColor ?? const Color(0xFFEF4444),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.white, width: 1.2),
+                      ),
+                      child: Text(
+                        badge,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+                height: 1.15,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Reference Component 3: Kategori Kelas Card Slider ───────────────────
+  Widget _buildCategoryCardSlider(BuildContext context) {
+    final cardGradients = [
+      // Card 1: Dark Navy / Green accent
+      [const Color(0xFF0F1E36), const Color(0xFF132B52)],
+      // Card 2: Royal Blue gradient
+      [const Color(0xFF1E40AF), const Color(0xFF2563EB)],
+      // Card 3: Deep Slate / Indigo
+      [const Color(0xFF1E293B), const Color(0xFF0F172A)],
+      // Card 4: Dark Amber / Navy
+      [const Color(0xFF1E1B4B), const Color(0xFF312E81)],
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader(
+          context,
+          title: 'Kategori Kelas',
+          subtitle: '${_categories.length} bidang kejuruan',
+          icon: Icons.layers_rounded,
+          onSeeAll: () => _openFilter(),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 115,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: _categories.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              final cat = _categories[index];
+              final gradient = cardGradients[index % cardGradients.length];
+              final isLocked = index >= 3;
+              final progress = index == 0 ? 0.75 : (index == 1 ? 0.40 : 0.0);
+              final courseCount = (index * 2 + 3);
+
+              return GestureDetector(
+                onTap: () async {
+                  HapticFeedback.selectionClick();
+                  setState(() {
+                    _selectedCategoryName = cat;
+                    _selectedCategory = _categorySlugMap[cat];
+                    _isLoading = true;
+                  });
+                  await _loadData();
+                },
+                child: Container(
+                  width: 160,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: gradient,
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: gradient.first.withValues(alpha: 0.25),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Category Title
+                      Text(
+                        cat,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                          letterSpacing: -0.2,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      // Subtitle
+                      Text(
+                        '*$courseCount Materi',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.75),
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      // Progress Bar & Lock Status matching reference image
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: LinearProgressIndicator(
+                                value: progress,
+                                minHeight: 4,
+                                backgroundColor:
+                                    Colors.white.withValues(alpha: 0.2),
+                                valueColor: const AlwaysStoppedAnimation<Color>(
+                                  Color(0xFF10B981),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          if (isLocked)
+                            const Icon(
+                              Icons.lock_rounded,
+                              size: 13,
+                              color: Color(0xFFFBBF24),
+                            )
+                          else if (progress > 0)
+                            Text(
+                              '${(progress * 100).toInt()}%',
+                              style: const TextStyle(
+                                color: Color(0xFF10B981),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
         ),
       ],
     );

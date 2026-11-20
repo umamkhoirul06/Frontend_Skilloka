@@ -1,4 +1,4 @@
-/// App Router configuration using GoRouter
+// App Router configuration using GoRouter
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -504,110 +504,34 @@ class MainShell extends StatelessWidget {
     return Scaffold(
       body: child,
       bottomNavigationBar: const MainBottomNavigation(),
-      floatingActionButton: _buildChatbotFab(context),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-    );
-  }
-
-  Widget _buildChatbotFab(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(28),
-        elevation: 6,
-        shadowColor: const Color(0xFF2563EB).withValues(alpha: 0.35),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(28),
-          onTap: () {
-            HapticFeedback.mediumImpact();
-            context.push(AppRouter.chatbot);
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.3),
-                width: 1.2,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    const Icon(
-                      Icons.smart_toy_rounded,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                    Positioned(
-                      right: 0,
-                      top: 0,
-                      child: Container(
-                        width: 6,
-                        height: 6,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF4ADE80),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 1),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Tanya AI',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                    letterSpacing: 0.2,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
 
-/// Bottom Navigation Bar — 4 tab sesuai PRD 8.2
+/// Floating Docked Bottom Navigation Bar — Terinspirasi dari Modern Learning UI
 class MainBottomNavigation extends StatelessWidget {
   const MainBottomNavigation({super.key});
 
   int _calculateSelectedIndex(BuildContext context) {
     final location = GoRouterState.of(context).uri.path;
     if (location.startsWith('/home')) return 0;
-    if (location.startsWith('/my-courses')) return 1;
-    if (location.startsWith('/bookings')) return 2;
+    if (location.startsWith('/search')) return 1;
+    if (location.startsWith('/my-courses')) return 2;
     if (location.startsWith('/profile')) return 3;
     return 0;
   }
 
   void _onItemTapped(BuildContext context, int index) {
-    if (index != _calculateSelectedIndex(context)) {
-      HapticFeedback.selectionClick();
-    }
+    HapticFeedback.selectionClick();
     switch (index) {
       case 0:
         context.go(AppRouter.home);
         break;
       case 1:
-        context.go(AppRouter.myCourses);
+        context.push(AppRouter.search);
         break;
       case 2:
-        context.go(AppRouter.bookings);
+        context.go(AppRouter.myCourses);
         break;
       case 3:
         context.go(AppRouter.profile);
@@ -619,46 +543,162 @@ class MainBottomNavigation extends StatelessWidget {
   Widget build(BuildContext context) {
     final selectedIndex = _calculateSelectedIndex(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
+      height: 68 + MediaQuery.of(context).padding.bottom,
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
       decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
+            color: const Color(0xFF0F172A).withValues(alpha: isDark ? 0.4 : 0.08),
             blurRadius: 20,
             offset: const Offset(0, -4),
           ),
         ],
       ),
-      child: NavigationBar(
-        selectedIndex: selectedIndex,
-        onDestinationSelected: (index) => _onItemTapped(context, index),
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        indicatorColor: Theme.of(context).colorScheme.primaryContainer,
-        elevation: 0,
-        height: 64,
-        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home_rounded),
-            label: 'Beranda',
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              // Tab 0: Beranda
+              _buildNavItem(
+                context,
+                index: 0,
+                isSelected: selectedIndex == 0,
+                icon: Icons.home_rounded,
+                onTap: () => _onItemTapped(context, 0),
+              ),
+              // Tab 1: Cari
+              _buildNavItem(
+                context,
+                index: 1,
+                isSelected: selectedIndex == 1,
+                icon: Icons.search_rounded,
+                onTap: () => _onItemTapped(context, 1),
+              ),
+              // Center Spacer for Raised Chatbot Button
+              const SizedBox(width: 56),
+              // Tab 2: Kursus Saya
+              _buildNavItem(
+                context,
+                index: 2,
+                isSelected: selectedIndex == 2,
+                icon: Icons.menu_book_rounded,
+                onTap: () => _onItemTapped(context, 2),
+              ),
+              // Tab 3: Profil
+              _buildNavItem(
+                context,
+                index: 3,
+                isSelected: selectedIndex == 3,
+                icon: Icons.person_rounded,
+                onTap: () => _onItemTapped(context, 3),
+              ),
+            ],
           ),
-          NavigationDestination(
-            icon: Icon(Icons.menu_book_outlined),
-            selectedIcon: Icon(Icons.menu_book_rounded),
-            label: 'Kursus Saya',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.receipt_long_outlined),
-            selectedIcon: Icon(Icons.receipt_long_rounded),
-            label: 'Pesanan',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline_rounded),
-            selectedIcon: Icon(Icons.person_rounded),
-            label: 'Profil',
+
+          // Center Raised Button (Tanya AI Loka)
+          Positioned(
+            top: -14,
+            child: GestureDetector(
+              onTap: () {
+                HapticFeedback.mediumImpact();
+                context.push(AppRouter.chatbot);
+              },
+              child: Container(
+                width: 54,
+                height: 54,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                    width: 3.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF2563EB).withValues(alpha: 0.42),
+                      blurRadius: 14,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    const Icon(
+                      Icons.smart_toy_rounded,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                    Positioned(
+                      top: 10,
+                      right: 11,
+                      child: Container(
+                        width: 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF4ADE80),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 1.2),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildNavItem(
+    BuildContext context, {
+    required int index,
+    required bool isSelected,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeColor = isDark ? const Color(0xFF60A5FA) : const Color(0xFF0F172A);
+    final inactiveColor = const Color(0xFF94A3B8);
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 24,
+              color: isSelected ? activeColor : inactiveColor,
+            ),
+            const SizedBox(height: 4),
+            // Active indicator dot matching reference image
+            Container(
+              width: 5,
+              height: 5,
+              decoration: BoxDecoration(
+                color: isSelected ? activeColor : Colors.transparent,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
