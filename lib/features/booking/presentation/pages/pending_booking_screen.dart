@@ -253,27 +253,38 @@ class _PendingBookingScreenState extends State<PendingBookingScreen> {
           });
         } catch (_) {}
       }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Pembayaran (Dev) berhasil disimulasikan.'),
+            backgroundColor: AppColors.success,
+            duration: Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+
+      // Jeda singkat agar server DB menyelesaikan commit transaksi
+      await Future.delayed(const Duration(milliseconds: 600));
+      await _checkStatus();
+      if (!_isApproved && mounted) {
+        context.pushReplacement(AppRouter.bookingSuccessPath(widget.bookingId));
+      }
     } catch (e) {
       debugPrint("Simulate payment error: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal simulasi: $e'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSimulating = false);
     }
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Simulasi Pembayaran Berhasil! Mengalihkan ke tiket pelatihan...'),
-          backgroundColor: AppColors.success,
-          duration: Duration(seconds: 2),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-
-    await _checkStatus();
-    if (!_isApproved && mounted) {
-      context.pushReplacement(AppRouter.bookingSuccessPath(widget.bookingId));
-    }
-
-    if (mounted) setState(() => _isSimulating = false);
   }
 
   @override
@@ -365,35 +376,33 @@ class _PendingBookingScreenState extends State<PendingBookingScreen> {
           ),
         ),
 
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
 
-        // Tombol Shortcut Simulasi Pembayaran Sukses (Mode Demo / Expo)
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
+        // Tombol Ringkas Simulasi Dev
+        Center(
+          child: TextButton.icon(
             onPressed: _isSimulating ? null : _simulatePaymentSuccess,
             icon: _isSimulating
                 ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF10B981)),
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
                   )
-                : const Icon(Icons.flash_on_rounded, size: 20, color: Color(0xFF10B981)),
+                : const Icon(Icons.code_rounded, size: 16, color: AppColors.textSecondary),
             label: Text(
-              _isSimulating
-                  ? 'Memproses Simulasi...'
-                  : '⚡ Shortcut Bayar Sukses (Mode Demo / Expo)',
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF047857),
-                fontSize: 13.5,
+              _isSimulating ? 'Memproses...' : 'Bayar (Dev)',
+              style: AppTypography.labelMedium.copyWith(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
               ),
             ),
-            style: OutlinedButton.styleFrom(
-              backgroundColor: const Color(0xFFECFDF5),
-              side: const BorderSide(color: Color(0xFF10B981), width: 1.2),
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              backgroundColor: AppColors.surfaceContainerLowest,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                side: BorderSide(color: AppColors.outlineVariant.withValues(alpha: 0.5)),
+              ),
             ),
           ),
         ),

@@ -208,10 +208,16 @@ class _DigitalReceiptScreenState extends State<DigitalReceiptScreen>
                   iconMargin: EdgeInsets.zero,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.receipt_rounded, size: 16),
-                      SizedBox(width: 6),
-                      Text('Printer Kecil (Thermal)'),
+                      Icon(Icons.receipt_long_rounded, size: 15),
+                      SizedBox(width: 5),
+                      Flexible(
+                        child: Text(
+                          'Struk Thermal (POS)',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -219,10 +225,16 @@ class _DigitalReceiptScreenState extends State<DigitalReceiptScreen>
                   iconMargin: EdgeInsets.zero,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.description_rounded, size: 16),
-                      SizedBox(width: 6),
-                      Text('Printer Besar (A4 Invoice)'),
+                      Icon(Icons.description_rounded, size: 15),
+                      SizedBox(width: 5),
+                      Flexible(
+                        child: Text(
+                          'Faktur A4 Resmi',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -460,7 +472,7 @@ class _DigitalReceiptScreenState extends State<DigitalReceiptScreen>
   // ───────────────────────────────────────────────────────────────────────────
   Widget _buildLargeA4InvoiceTemplate(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
       child: Center(
         child: Container(
           constraints: const BoxConstraints(maxWidth: 620),
@@ -476,7 +488,7 @@ class _DigitalReceiptScreenState extends State<DigitalReceiptScreen>
               ),
             ],
           ),
-          padding: const EdgeInsets.all(32),
+          padding: const EdgeInsets.all(18),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -485,15 +497,15 @@ class _DigitalReceiptScreenState extends State<DigitalReceiptScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    width: 50,
-                    height: 50,
+                    width: 44,
+                    height: 44,
                     decoration: BoxDecoration(
                       color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.school_rounded, color: Colors.white, size: 28),
+                    child: const Icon(Icons.school_rounded, color: Colors.white, size: 24),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -503,18 +515,18 @@ class _DigitalReceiptScreenState extends State<DigitalReceiptScreen>
                           style: TextStyle(
                             fontFamily: 'Outfit',
                             fontWeight: FontWeight.w900,
-                            fontSize: 20,
+                            fontSize: 17,
                             color: Color(0xFF0F172A),
                             letterSpacing: -0.3,
                           ),
                         ),
                         const SizedBox(height: 2),
                         const Text(
-                          'Platform Agregator Kursus Vokasi & Sertifikasi LPK Resmi\nJl. MT Haryono No. 12, Indramayu, Jawa Barat 45222\nWebsite: https://skilloka.my.id • Email: support@skilloka.my.id',
+                          'Platform Kursus & Pelatihan Vokasi Resmi\nIndramayu, Jawa Barat • support@skilloka.my.id',
                           style: TextStyle(
-                            fontSize: 10.5,
+                            fontSize: 10,
                             color: Color(0xFF64748B),
-                            height: 1.35,
+                            height: 1.3,
                           ),
                         ),
                       ],
@@ -528,7 +540,7 @@ class _DigitalReceiptScreenState extends State<DigitalReceiptScreen>
                         style: TextStyle(
                           fontFamily: 'Outfit',
                           fontWeight: FontWeight.w900,
-                          fontSize: 16,
+                          fontSize: 14,
                           color: AppColors.primary,
                         ),
                       ),
@@ -537,7 +549,7 @@ class _DigitalReceiptScreenState extends State<DigitalReceiptScreen>
                         '#INV-${_bookingCode.toUpperCase()}',
                         style: const TextStyle(
                           fontFamily: 'monospace',
-                          fontSize: 11,
+                          fontSize: 10.5,
                           fontWeight: FontWeight.w700,
                           color: Color(0xFF475569),
                         ),
@@ -546,149 +558,90 @@ class _DigitalReceiptScreenState extends State<DigitalReceiptScreen>
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
-              const Divider(color: Color(0xFFE2E8F0), thickness: 1.5),
               const SizedBox(height: 16),
+              const Divider(color: Color(0xFFE2E8F0), thickness: 1.2),
+              const SizedBox(height: 12),
 
-              // Bagian Info Tagihan 2 Kolom
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'DITUJUKAN KEPADA:',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF64748B),
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          _userName,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF0F172A),
-                          ),
-                        ),
-                        Text(
-                          'No. HP: $_userPhone',
-                          style: const TextStyle(fontSize: 12, color: Color(0xFF475569)),
-                        ),
-                        const Text(
-                          'Status Peserta: Terverifikasi',
-                          style: TextStyle(fontSize: 12, color: Color(0xFF475569)),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'RINCIAN TRANSAKSI:',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF64748B),
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Tanggal Bayar: $_paidAt',
-                          style: const TextStyle(fontSize: 12, color: Color(0xFF0F172A)),
-                        ),
-                        Text(
-                          'Metode Bayar: $_paymentMethod',
-                          style: const TextStyle(fontSize: 12, color: Color(0xFF0F172A)),
-                        ),
-                        Text(
-                          'Jadwal: $_scheduleDate',
-                          style: const TextStyle(fontSize: 12, color: Color(0xFF0F172A)),
-                        ),
-                        Row(
-                          children: [
-                            const Text('Status: ', style: TextStyle(fontSize: 12, color: Color(0xFF0F172A))),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF10B981).withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: const Text(
-                                'LUNAS (TERVERIFIKASI)',
-                                style: TextStyle(
-                                  color: Color(0xFF047857),
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 10,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-
-              // Tabel Item Pembayaran
+              // Bagian Info Tagihan & Transaksi
               Container(
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: const Color(0xFFE2E8F0)),
                 ),
-                child: Column(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Header Tabel
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
-                      ),
-                      child: const Row(
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          SizedBox(width: 30, child: Text('NO', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 11, color: Color(0xFF475569)))),
-                          Expanded(flex: 3, child: Text('DESKRIPSI KURSUS', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 11, color: Color(0xFF475569)))),
-                          Expanded(flex: 2, child: Text('LPK PENYELENGGARA', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 11, color: Color(0xFF475569)))),
-                          Expanded(flex: 2, child: Text('TOTAL', textAlign: TextAlign.right, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 11, color: Color(0xFF475569)))),
+                          const Text(
+                            'DITUJUKAN KEPADA:',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF64748B),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _userName,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF0F172A),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'No. HP: $_userPhone',
+                            style: const TextStyle(fontSize: 11, color: Color(0xFF475569)),
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            'Status: Terverifikasi',
+                            style: TextStyle(fontSize: 11, color: Color(0xFF10B981), fontWeight: FontWeight.w600),
+                          ),
                         ],
                       ),
                     ),
-                    const Divider(height: 1, color: Color(0xFFE2E8F0)),
-                    // Isi Baris
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      child: Row(
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const SizedBox(width: 30, child: Text('1', style: TextStyle(fontSize: 12, color: Color(0xFF0F172A)))),
-                          Expanded(
-                            flex: 3,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(_courseTitle, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF0F172A))),
-                                const SizedBox(height: 2),
-                                const Text('Paket Pelatihan Komplit + Akses Materi Digital & Sertifikat Resmi', style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B))),
-                              ],
+                          const Text(
+                            'RINCIAN TRANSAKSI:',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF64748B),
+                              letterSpacing: 0.5,
                             ),
                           ),
-                          Expanded(
-                            flex: 2,
-                            child: Text(_lpkName, style: const TextStyle(fontSize: 12, color: Color(0xFF334155))),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Tgl: $_paidAt',
+                            style: const TextStyle(fontSize: 11, color: Color(0xFF0F172A)),
                           ),
-                          Expanded(
-                            flex: 2,
-                            child: Text(_formatRupiah(_price), textAlign: TextAlign.right, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: Color(0xFF0F172A))),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Metode: $_paymentMethod',
+                            style: const TextStyle(fontSize: 11, color: Color(0xFF0F172A)),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Jadwal: $_scheduleDate',
+                            style: const TextStyle(fontSize: 11, color: Color(0xFF0F172A)),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
@@ -698,81 +651,210 @@ class _DigitalReceiptScreenState extends State<DigitalReceiptScreen>
               ),
               const SizedBox(height: 16),
 
-              // Rincian Subtotal, Biaya Layanan & Grand Total
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // QR Code Validasi & Segel Resmi
-                  Expanded(
-                    flex: 4,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        QrImageView(
-                          data: 'https://skilloka.my.id/verify-invoice/$_bookingCode',
-                          version: QrVersions.auto,
-                          size: 80,
-                        ),
-                        const SizedBox(width: 12),
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: const Color(0xFF10B981), width: 2),
+              // Tabel Item Pembayaran (Responsive & Non-Breaking)
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFCBD5E1)),
+                ),
+                child: Column(
+                  children: [
+                    // Header Tabel
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+                      ),
+                      child: const Row(
+                        children: [
+                          SizedBox(
+                            width: 22,
+                            child: Text(
+                              'NO',
+                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 10, color: Color(0xFF475569)),
+                            ),
                           ),
-                          child: const Column(
-                            mainAxisSize: MainAxisSize.min,
+                          Expanded(
+                            flex: 5,
+                            child: Text(
+                              'DESKRIPSI KURSUS',
+                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 10, color: Color(0xFF475569)),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 3,
+                            child: Text(
+                              'MITRA LPK',
+                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 10, color: Color(0xFF475569)),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 3,
+                            child: Text(
+                              'TOTAL',
+                              textAlign: TextAlign.right,
+                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 10, color: Color(0xFF475569)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Divider(height: 1, color: Color(0xFFCBD5E1)),
+                    // Isi Baris
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          const SizedBox(
+                            width: 22,
+                            child: Text('1', style: TextStyle(fontSize: 11, color: Color(0xFF0F172A))),
+                          ),
+                          Expanded(
+                            flex: 5,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _courseTitle,
+                                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11.5, color: Color(0xFF0F172A)),
+                                ),
+                                const SizedBox(height: 2),
+                                const Text(
+                                  'Paket Pelatihan + Sertifikat Resmi',
+                                  style: TextStyle(fontSize: 9.5, color: Color(0xFF64748B)),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            flex: 3,
+                            child: Text(
+                              _lpkName,
+                              style: const TextStyle(fontSize: 11, color: Color(0xFF334155)),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            flex: 3,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerRight,
+                              child: Text(
+                                _formatRupiah(_price),
+                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: Color(0xFF0F172A)),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // Rincian Kalkulasi Biaya (Full Width Table)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  children: [
+                    _buildInvoiceSummaryRow('Subtotal Biaya Kursus:', _formatRupiah(_price)),
+                    _buildInvoiceSummaryRow('Biaya Administrasi & Gateway:', _formatRupiah(_adminFee)),
+                    _buildInvoiceSummaryRow('Pajak PPN (0%):', 'Rp 0'),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 4),
+                      child: Divider(color: Color(0xFFCBD5E1)),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'TOTAL PEMBAYARAN:',
+                          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12.5, color: Color(0xFF0F172A)),
+                        ),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            _formatRupiah(_totalAmount),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 15,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // Strip Validasi Resmi (QR Code + Segel LUNAS)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFECFDF5),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFA7F3D0)),
+                ),
+                child: Row(
+                  children: [
+                    QrImageView(
+                      data: 'https://skilloka.my.id/verify-invoice/$_bookingCode',
+                      version: QrVersions.auto,
+                      size: 60,
+                      gapless: true,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
                             children: [
-                              Icon(Icons.verified_rounded, color: Color(0xFF10B981), size: 22),
-                              Text(
-                                'LUNAS',
+                              const Icon(Icons.verified_rounded, color: Color(0xFF059669), size: 18),
+                              const SizedBox(width: 6),
+                              const Text(
+                                'STATUS: LUNAS',
                                 style: TextStyle(
                                   color: Color(0xFF047857),
                                   fontWeight: FontWeight.w900,
-                                  fontSize: 8,
-                                  letterSpacing: 1,
+                                  fontSize: 12,
+                                  letterSpacing: 0.5,
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Tabel Perhitungan Total
-                  Expanded(
-                    flex: 5,
-                    child: Column(
-                      children: [
-                        _buildInvoiceSummaryRow('Subtotal Biaya Kursus:', _formatRupiah(_price)),
-                        _buildInvoiceSummaryRow('Biaya Administrasi & Gateway:', _formatRupiah(_adminFee)),
-                        _buildInvoiceSummaryRow('Pajak PPN (0%):', 'Rp 0'),
-                        const Divider(color: Color(0xFFCBD5E1)),
-                        const SizedBox(height: 4),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'TOTAL PEMBAYARAN:',
-                              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: Color(0xFF0F172A)),
+                          const SizedBox(height: 2),
+                          Text(
+                            'KODE REF: #INV-${_bookingCode.toUpperCase()}',
+                            style: const TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF065F46),
                             ),
-                            Text(
-                              _formatRupiah(_totalAmount),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w900,
-                                fontSize: 16,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                          ),
+                          const Text(
+                            'Diverifikasi secara digital oleh Skilloka Indonesia.',
+                            style: TextStyle(fontSize: 9, color: Color(0xFF047857)),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 20),
 
               // Tanda Tangan Resmi & Catatan
               Row(
@@ -781,26 +863,27 @@ class _DigitalReceiptScreenState extends State<DigitalReceiptScreen>
                   const Expanded(
                     child: Text(
                       'Catatan:\nDokumen ini merupakan bukti pembayaran resmi yang diterbitkan secara otomatis oleh sistem Skilloka Indonesia dan sah tanpa tanda tangan basah.',
-                      style: TextStyle(fontSize: 10, color: Color(0xFF64748B), height: 1.4),
+                      style: TextStyle(fontSize: 9.5, color: Color(0xFF64748B), height: 1.35),
                     ),
                   ),
+                  const SizedBox(width: 16),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       const Text(
                         'Pengelola Skilloka Indonesia,',
-                        style: TextStyle(fontSize: 11, color: Color(0xFF475569)),
+                        style: TextStyle(fontSize: 10, color: Color(0xFF475569)),
                       ),
-                      const SizedBox(height: 38),
+                      const SizedBox(height: 32),
                       Container(
-                        width: 140,
+                        width: 120,
                         height: 1,
                         color: const Color(0xFF334155),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 3),
                       const Text(
                         'Finance & Operations Dept.',
-                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+                        style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
                       ),
                     ],
                   ),

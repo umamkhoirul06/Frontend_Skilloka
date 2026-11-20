@@ -74,20 +74,11 @@ class _MyCourseScreenState extends State<MyCourseScreen>
 
         if (!mounted) return;
         setState(() {
-          _upcoming = all.where((e) {
-            final s = (e['status'] ?? '').toString().toLowerCase();
-            final bs = (e['booking_status'] ?? '').toString().toLowerCase();
-            return s == 'upcoming' ||
-                s == 'pending' ||
-                s == 'pending_payment' ||
-                s == 'menunggu' ||
-                bs.contains('upcoming') ||
-                bs.contains('pending');
-          }).toList();
-
           _ongoing = all.where((e) {
             final s = (e['status'] ?? '').toString().toLowerCase();
             final bs = (e['booking_status'] ?? '').toString().toLowerCase();
+            final sb = (e['status_belajar'] ?? '').toString().toLowerCase();
+            final ps = (e['payment_status'] ?? '').toString().toLowerCase();
             return s == 'ongoing' ||
                 s == 'confirmed' ||
                 s == 'approved' ||
@@ -95,15 +86,38 @@ class _MyCourseScreenState extends State<MyCourseScreen>
                 s == 'lunas' ||
                 s == 'berjalan' ||
                 s == 'active' ||
-                bs.contains('ongoing') ||
-                bs.contains('confirmed') ||
-                bs.contains('paid');
+                bs == 'confirmed' ||
+                bs == 'approved' ||
+                bs == 'paid' ||
+                ps == 'success' ||
+                ps == 'paid' ||
+                sb == 'sedang_belajar';
           }).toList();
 
           _completed = all.where((e) {
             final s = (e['status'] ?? '').toString().toLowerCase();
             final bs = (e['booking_status'] ?? '').toString().toLowerCase();
-            return s == 'completed' || s == 'selesai' || bs.contains('completed');
+            final sb = (e['status_belajar'] ?? '').toString().toLowerCase();
+            return s == 'completed' || s == 'selesai' || bs.contains('completed') || sb == 'selesai_belajar';
+          }).toList();
+
+          final ongoingIds = _ongoing.map((e) => e['id']?.toString()).toSet();
+          final completedIds = _completed.map((e) => e['id']?.toString()).toSet();
+
+          _upcoming = all.where((e) {
+            final id = e['id']?.toString();
+            if (ongoingIds.contains(id) || completedIds.contains(id)) return false;
+            final s = (e['status'] ?? '').toString().toLowerCase();
+            final bs = (e['booking_status'] ?? '').toString().toLowerCase();
+            final ps = (e['payment_status'] ?? '').toString().toLowerCase();
+            if (ps == 'success' || ps == 'paid') return false;
+            return s == 'upcoming' ||
+                s == 'pending' ||
+                s == 'pending_payment' ||
+                s == 'menunggu' ||
+                bs.contains('upcoming') ||
+                bs.contains('pending') ||
+                bs.contains('menunggu');
           }).toList();
 
           _isLoading = false;
